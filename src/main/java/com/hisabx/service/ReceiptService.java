@@ -1,0 +1,700 @@
+package com.hisabx.service;
+
+import com.hisabx.database.Repository.ReceiptRepository;
+import com.hisabx.database.Repository.SaleRepository;
+import com.hisabx.model.Customer;
+import com.hisabx.model.Receipt;
+import com.hisabx.model.Sale;
+import com.hisabx.model.SaleItem;
+import com.itextpdf.text.BaseColor;
+import com.itextpdf.text.Document;
+import com.itextpdf.text.DocumentException;
+import com.itextpdf.text.Element;
+import com.itextpdf.text.Font;
+import com.itextpdf.text.Image;
+import com.itextpdf.text.PageSize;
+import com.itextpdf.text.Paragraph;
+import com.itextpdf.text.Phrase;
+import com.itextpdf.text.pdf.BaseFont;
+import com.itextpdf.text.pdf.PdfPCell;
+import com.itextpdf.text.pdf.PdfPTable;
+import com.itextpdf.text.pdf.PdfWriter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.net.URL;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
+import java.util.prefs.Preferences;
+
+public class ReceiptService {
+    private static final Logger logger = LoggerFactory.getLogger(ReceiptService.class);
+    private final ReceiptRepository receiptRepository;
+    private final SaleRepository saleRepository;
+
+    private static final String PREF_BANNER_PATH = "receipt.banner.path";
+    
+    // Company information - can be made configurable
+    
+    
+    public ReceiptService() {
+        this.receiptRepository = new ReceiptRepository();
+        this.saleRepository = new SaleRepository();
+    }
+
+    public File generateAccountStatementPdf(Customer customer,
+                                            String projectLocation,
+                                            LocalDate from,
+                                            LocalDate to,
+                                            boolean includeItems) {
+        if (customer == null || customer.getId() == null) {
+            throw new IllegalArgumentException("العميل غير موجود");
+        }
+
+        LocalDateTime fromDt = from != null ? from.atStartOfDay() : null;
+        LocalDateTime toDt = to != null ? to.atTime(23, 59, 59) : null;
+        List<Sale> sales;
+        try {
+            sales = saleRepository.findForAccountStatement(customer.getId(), projectLocation, fromDt, toDt, includeItems);
+        } catch (Exception e) {
+            logger.error("Failed to load sales for statement", e);
+            throw e;
+        }
+
+        try {
+            byte[] pdfData = generateAccountStatementPDF(customer, projectLocation, from, to, sales, includeItems);
+
+            File dir = new File("statements");
+            if (!dir.exists()) {
+                dir.mkdirs();
+            }
+
+            String datePart = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
+            String safeCustomer = customer.getName() != null ? customer.getName().replaceAll("[^\\p{L}\\p{N}]+", "_") : "customer";
+            String fileName = "statement_" + safeCustomer + "_" + datePart + ".pdf";
+            File out = new File(dir, fileName);
+
+            try (FileOutputStream fos = new FileOutputStream(out)) {
+                fos.write(pdfData);
+            }
+
+            return out;
+        } catch (Exception e) {
+            logger.error("Failed to generate account statement PDF", e);
+            throw new RuntimeException("فشل في إنشاء كشف الحساب", e);
+        }
+    }
+    
+    public Receipt generateReceipt(Long saleId, String template, String printedBy) {
+        logger.info("Generating receipt for sale: {}", saleId);
+        
+        Optional<Sale> saleOpt = saleRepository.findByIdWithDetails(saleId);
+        if (saleOpt.isEmpty()) {
+            throw new IllegalArgumentException("البيع غير موجود");
+        }
+        
+        Sale sale = saleOpt.get();
+        
+        // Create receipt record
+        Receipt receipt = new Receipt();
+        receipt.setReceiptNumber(generateReceiptNumber());
+        receipt.setSale(sale);
+        receipt.setTemplate(template != null ? template : "DEFAULT");
+        receipt.setPrintedBy(printedBy);
+        
+        // Generate PDF
+        try {
+            byte[] pdfData = generateReceiptPDF(sale, receipt.getTemplate());
+            
+            // Ensure receipts directory exists
+            java.io.File receiptsDir = new java.io.File("receipts");
+            if (!receiptsDir.exists()) {
+                receiptsDir.mkdirs();
+            }
+            
+            // Save PDF file
+            String fileName = "receipt_" + receipt.getReceiptNumber() + ".pdf";
+            String filePath = "receipts/" + fileName;
+            
+            try (FileOutputStream fos = new FileOutputStream(filePath)) {
+                fos.write(pdfData);
+            }
+            
+            receipt.setFilePath(filePath);
+            receipt.setIsPrinted(true);
+            receipt.setPrintedAt(LocalDateTime.now());
+            
+            Receipt savedReceipt = receiptRepository.save(receipt);
+            logger.info("Receipt generated successfully: {}", savedReceipt.getReceiptNumber());
+            
+            return savedReceipt;
+            
+        } catch (Exception e) {
+            logger.error("Failed to generate receipt PDF", e);
+            throw new RuntimeException("فشل في إنشاء الإيصال", e);
+        }
+    }
+
+    public Receipt regenerateReceiptPdf(Long receiptId, String printedBy) {
+        Optional<Receipt> receiptOpt = receiptRepository.findByIdWithDetails(receiptId);
+        if (receiptOpt.isEmpty()) {
+            throw new IllegalArgumentException("الوصل غير موجود");
+        }
+
+        Receipt receipt = receiptOpt.get();
+        if (receipt.getSale() == null) {
+            throw new IllegalStateException("لا توجد فاتورة مرتبطة بهذا الوصل");
+        }
+
+        try {
+            byte[] pdfData = generateReceiptPDF(receipt.getSale(), receipt.getTemplate());
+
+            java.io.File receiptsDir = new java.io.File("receipts");
+            if (!receiptsDir.exists()) {
+                receiptsDir.mkdirs();
+            }
+
+            String fileName = "receipt_" + receipt.getReceiptNumber() + ".pdf";
+            String filePath = "receipts/" + fileName;
+
+            try (FileOutputStream fos = new FileOutputStream(filePath)) {
+                fos.write(pdfData);
+            }
+
+            receipt.setFilePath(filePath);
+            receipt.setIsPrinted(true);
+            receipt.setPrintedAt(LocalDateTime.now());
+            receipt.setPrintedBy(printedBy);
+
+            Receipt savedReceipt = receiptRepository.save(receipt);
+            logger.info("Receipt PDF regenerated successfully: {}", savedReceipt.getReceiptNumber());
+            return savedReceipt;
+        } catch (Exception e) {
+            logger.error("Failed to regenerate receipt PDF", e);
+            throw new RuntimeException("فشل في إعادة إنشاء الوصل", e);
+        }
+    }
+    
+    private byte[] generateReceiptPDF(Sale sale, String template) throws DocumentException, IOException {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+
+        final float bannerTargetHeight = 120f;
+        Document document = new Document(PageSize.A4, 30, 30, 30 + bannerTargetHeight, 30);
+        PdfWriter writer = PdfWriter.getInstance(document, baos);
+        document.open();
+        
+        BaseFont baseFont = loadArabicBaseFont();
+        Font arabicFont = new Font(baseFont, 10, Font.NORMAL);
+        Font arabicBoldFont = new Font(baseFont, 11, Font.BOLD);
+        Font smallFont = new Font(baseFont, 9, Font.NORMAL);
+
+        try {
+            Image banner = loadBannerImage();
+            if (banner != null) {
+                float pageWidth = document.getPageSize().getWidth();
+                float pageHeight = document.getPageSize().getHeight();
+
+                banner.scaleAbsolute(pageWidth, bannerTargetHeight);
+                banner.setAbsolutePosition(0f, pageHeight - bannerTargetHeight);
+                writer.getDirectContent().addImage(banner);
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to add banner", e);
+        }
+
+        document.add(new Paragraph(" ", arabicFont));
+
+        PdfPTable infoTable = new PdfPTable(2);
+        infoTable.setWidthPercentage(100);
+        infoTable.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+        infoTable.setWidths(new float[]{1.5f, 1});
+        infoTable.setSpacingBefore(5f);
+        infoTable.setSpacingAfter(10f);
+
+        String customerName = sale.getCustomer() != null && sale.getCustomer().getName() != null ? sale.getCustomer().getName() : "-";
+        String customerPhone = sale.getCustomer() != null ? sale.getCustomer().getPhoneNumber() : null;
+        String customerAddress = sale.getCustomer() != null ? sale.getCustomer().getAddress() : null;
+
+        PdfPCell customerCell = new PdfPCell();
+        customerCell.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+        customerCell.setPadding(8f);
+        customerCell.addElement(new Phrase("اسم العميل: " + customerName, arabicFont));
+        if (customerPhone != null && !customerPhone.trim().isEmpty()) {
+            customerCell.addElement(new Phrase("الهاتف: " + customerPhone, arabicFont));
+        }
+        if (customerAddress != null && !customerAddress.trim().isEmpty()) {
+            customerCell.addElement(new Phrase("العنوان: " + customerAddress, arabicFont));
+        }
+        if (sale.getProjectLocation() != null && !sale.getProjectLocation().trim().isEmpty()) {
+            customerCell.addElement(new Phrase("موقع المشروع: " + sale.getProjectLocation(), arabicFont));
+        }
+        infoTable.addCell(customerCell);
+
+        PdfPCell invoiceCell = new PdfPCell();
+        invoiceCell.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+        invoiceCell.setPadding(8f);
+        invoiceCell.setBackgroundColor(new BaseColor(255, 182, 193));
+        invoiceCell.addElement(new Phrase("فاتورة بيع/أجل", arabicBoldFont));
+        invoiceCell.addElement(new Phrase(" ", smallFont));
+        invoiceCell.addElement(new Phrase("رقم الفاتورة: " + (sale.getSaleCode() != null ? sale.getSaleCode() : "-"), arabicFont));
+        invoiceCell.addElement(new Phrase(
+            "التاريخ والوقت: " + (sale.getSaleDate() != null ? sale.getSaleDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")) : "-"),
+            arabicFont
+        ));
+        infoTable.addCell(invoiceCell);
+
+        document.add(infoTable);
+
+        PdfPTable table = new PdfPTable(6);
+        table.setWidthPercentage(100);
+        table.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+        table.setWidths(new float[]{0.6f, 1f, 1f, 1f, 1f, 1f});
+        table.setSpacingBefore(5f);
+        table.setSpacingAfter(10f);
+
+        addTableHeader(table, "ت", arabicBoldFont);
+        addTableHeader(table, "المادة", arabicBoldFont);
+        addTableHeader(table, "العدد", arabicBoldFont);
+        addTableHeader(table, "التعبئة", arabicBoldFont);
+        addTableHeader(table, "السعر", arabicBoldFont);
+        addTableHeader(table, "المجموع ع", arabicBoldFont);
+
+        List<SaleItem> items = sale.getSaleItems() != null ? sale.getSaleItems() : Collections.emptyList();
+        int rowNo = 1;
+        for (SaleItem item : items) {
+            String productName = item.getProduct() != null && item.getProduct().getName() != null ? item.getProduct().getName() : "-";
+            String unitOfMeasure = item.getProduct() != null && item.getProduct().getUnitOfMeasure() != null ? item.getProduct().getUnitOfMeasure() : "-";
+
+            table.addCell(createBodyCell(String.valueOf(rowNo), arabicFont, Element.ALIGN_CENTER));
+            table.addCell(createBodyCell(productName, arabicFont, Element.ALIGN_RIGHT));
+            table.addCell(createBodyCell(item.getQuantity() != null ? String.valueOf(item.getQuantity()) : "0", arabicFont, Element.ALIGN_CENTER));
+            table.addCell(createBodyCell(unitOfMeasure, arabicFont, Element.ALIGN_CENTER));
+            table.addCell(createBodyCell(formatAmount(item.getUnitPrice()), arabicFont, Element.ALIGN_CENTER));
+            table.addCell(createBodyCell(formatAmount(item.getTotalPrice()), arabicFont, Element.ALIGN_CENTER));
+            rowNo++;
+        }
+
+        document.add(table);
+
+        PdfPTable totalsTable = new PdfPTable(2);
+        totalsTable.setWidthPercentage(100);
+        totalsTable.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+        totalsTable.setWidths(new float[]{1, 1});
+        totalsTable.setSpacingBefore(5f);
+        totalsTable.setSpacingAfter(10f);
+
+        PdfPCell notesCell = new PdfPCell();
+        notesCell.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+        notesCell.setPadding(8f);
+        notesCell.setMinimumHeight(60f);
+        notesCell.addElement(new Phrase("عدد المواد: " + (sale.getSaleItems() != null ? sale.getSaleItems().size() : 0), arabicFont));
+        if (sale.getNotes() != null && !sale.getNotes().trim().isEmpty()) {
+            notesCell.addElement(new Phrase("ملاحظات: " + sale.getNotes(), arabicFont));
+        }
+        totalsTable.addCell(notesCell);
+
+        PdfPCell summaryCell = new PdfPCell();
+        summaryCell.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+        summaryCell.setPadding(8f);
+        
+        PdfPTable innerTotals = new PdfPTable(2);
+        innerTotals.setWidthPercentage(100);
+        innerTotals.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+        
+        addTotalRowBordered(innerTotals, "المجموع", formatCurrency(sale.getTotalAmount()), arabicFont, arabicBoldFont);
+        if (sale.getDiscountAmount() != null && sale.getDiscountAmount() > 0) {
+            addTotalRowBordered(innerTotals, "الخصم", formatCurrency(sale.getDiscountAmount()), arabicFont, arabicBoldFont);
+        }
+        addTotalRowBordered(innerTotals, "الإجمالي", formatCurrency(sale.getFinalAmount()), arabicBoldFont, arabicBoldFont);
+        
+        Double paid = sale.getPaidAmount() != null ? sale.getPaidAmount() : 0.0;
+        if (paid > 0) {
+            addTotalRowBordered(innerTotals, "المدفوع", formatCurrency(paid), arabicFont, arabicBoldFont);
+            Double finalAmount = sale.getFinalAmount() != null ? sale.getFinalAmount() : 0.0;
+            addTotalRowBordered(innerTotals, "المتبقي", formatCurrency(finalAmount - paid), arabicFont, arabicBoldFont);
+        }
+        
+        summaryCell.addElement(innerTotals);
+        totalsTable.addCell(summaryCell);
+        
+        document.add(totalsTable);
+
+        PdfPTable signatureTable = new PdfPTable(2);
+        signatureTable.setWidthPercentage(100);
+        signatureTable.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+        signatureTable.setSpacingBefore(10f);
+        signatureTable.setSpacingAfter(10f);
+
+        PdfPCell paymentCell = new PdfPCell();
+        paymentCell.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+        paymentCell.setPadding(8f);
+        paymentCell.setMinimumHeight(50f);
+        paymentCell.addElement(new Phrase("طريقة الدفع: " + getPaymentMethodArabic(sale.getPaymentMethod()), arabicFont));
+        paymentCell.addElement(new Phrase("الحالة: " + getPaymentStatusArabic(sale.getPaymentStatus()), arabicFont));
+        signatureTable.addCell(paymentCell);
+
+        PdfPCell signCell = new PdfPCell();
+        signCell.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+        signCell.setPadding(8f);
+        signCell.setMinimumHeight(50f);
+        signCell.addElement(new Phrase("التوقيع: ", arabicFont));
+        signatureTable.addCell(signCell);
+
+        document.add(signatureTable);
+
+        PdfPTable footerTable = new PdfPTable(1);
+        footerTable.setWidthPercentage(100);
+        footerTable.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+        PdfPCell footerCell = new PdfPCell(new Phrase("شكراً لتعاملكم معنا", arabicBoldFont));
+        footerCell.setBorder(PdfPCell.NO_BORDER);
+        footerCell.setHorizontalAlignment(Element.ALIGN_CENTER);
+        footerCell.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+        footerCell.setPadding(10f);
+        footerTable.addCell(footerCell);
+        document.add(footerTable);
+        
+        document.close();
+        
+        return baos.toByteArray();
+    }
+    
+    private BaseFont loadArabicBaseFont() throws DocumentException, IOException {
+        String[] fontCandidates = new String[]{
+            "C:\\Windows\\Fonts\\arial.ttf",
+            "C:\\Windows\\Fonts\\tahoma.ttf",
+            "C:\\Windows\\Fonts\\arialuni.ttf"
+        };
+
+        for (String fontPath : fontCandidates) {
+            try {
+                return BaseFont.createFont(fontPath, BaseFont.IDENTITY_H, BaseFont.EMBEDDED);
+            } catch (Exception ignored) {
+            }
+        }
+
+        logger.warn("Arabic font not found on system. Falling back to Helvetica.");
+        return BaseFont.createFont(BaseFont.HELVETICA, BaseFont.WINANSI, BaseFont.NOT_EMBEDDED);
+    }
+
+    private Image loadBannerImage() {
+        try {
+            Preferences prefs = Preferences.userNodeForPackage(ReceiptService.class);
+            String bannerPath = prefs.get(PREF_BANNER_PATH, null);
+            if (bannerPath != null && !bannerPath.trim().isEmpty()) {
+                java.io.File f = new java.io.File(bannerPath);
+                if (f.exists() && f.isFile()) {
+                    return Image.getInstance(f.getAbsolutePath());
+                }
+            }
+
+            URL logoUrl = ReceiptService.class.getResource("/templates/HisabX.png");
+            if (logoUrl != null) {
+                return Image.getInstance(logoUrl);
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to load banner image", e);
+        }
+        return null;
+    }
+
+    private byte[] generateAccountStatementPDF(Customer customer,
+                                               String projectLocation,
+                                               LocalDate from,
+                                               LocalDate to,
+                                               List<Sale> sales,
+                                               boolean includeItems) throws DocumentException, IOException {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+
+        final float bannerTargetHeight = 120f;
+        Document document = new Document(PageSize.A4, 30, 30, 30 + bannerTargetHeight, 30);
+        PdfWriter writer = PdfWriter.getInstance(document, baos);
+        document.open();
+
+        BaseFont baseFont = loadArabicBaseFont();
+        Font arabicFont = new Font(baseFont, 10, Font.NORMAL);
+        Font arabicBoldFont = new Font(baseFont, 11, Font.BOLD);
+        Font sectionTitleFont = new Font(baseFont, 12, Font.BOLD);
+        Font smallFont = new Font(baseFont, 9, Font.NORMAL);
+
+        try {
+            Image banner = loadBannerImage();
+            if (banner != null) {
+                float pageWidth = document.getPageSize().getWidth();
+                float pageHeight = document.getPageSize().getHeight();
+                banner.scaleAbsolute(pageWidth, bannerTargetHeight);
+                banner.setAbsolutePosition(0f, pageHeight - bannerTargetHeight);
+                writer.getDirectContent().addImage(banner);
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to add banner", e);
+        }
+
+        PdfPTable header = new PdfPTable(1);
+        header.setWidthPercentage(100);
+        header.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+
+        PdfPCell titleCell = new PdfPCell(new Phrase("كشف حساب", sectionTitleFont));
+        titleCell.setBorder(PdfPCell.NO_BORDER);
+        titleCell.setHorizontalAlignment(Element.ALIGN_CENTER);
+        titleCell.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+        titleCell.setPaddingBottom(4f);
+        header.addCell(titleCell);
+
+        document.add(header);
+
+        PdfPTable info = new PdfPTable(2);
+        info.setWidthPercentage(100);
+        info.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+        info.setWidths(new float[]{1.4f, 1f});
+        info.setSpacingBefore(6f);
+        info.setSpacingAfter(8f);
+
+        PdfPCell left = new PdfPCell();
+        left.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+        left.setPadding(8f);
+        left.addElement(new Phrase("اسم العميل: " + (customer.getName() != null ? customer.getName() : "-"), arabicFont));
+        if (customer.getPhoneNumber() != null && !customer.getPhoneNumber().trim().isEmpty()) {
+            left.addElement(new Phrase("الهاتف: " + customer.getPhoneNumber(), arabicFont));
+        }
+        if (projectLocation != null && !projectLocation.trim().isEmpty()) {
+            left.addElement(new Phrase("المشروع: " + projectLocation, arabicFont));
+        }
+        info.addCell(left);
+
+        PdfPCell right = new PdfPCell();
+        right.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+        right.setPadding(8f);
+        String period;
+        if (from != null && to != null) {
+            period = from.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")) + " إلى " + to.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+        } else if (from != null) {
+            period = "من " + from.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+        } else if (to != null) {
+            period = "إلى " + to.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+        } else {
+            period = "كل الفترات";
+        }
+        right.addElement(new Phrase("الفترة: " + period, arabicFont));
+        right.addElement(new Phrase("تاريخ الإصدار: " + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")), arabicFont));
+        info.addCell(right);
+
+        document.add(info);
+
+        double totalFinal = 0.0;
+        double totalPaid = 0.0;
+        for (Sale s : sales) {
+            totalFinal += s.getFinalAmount() != null ? s.getFinalAmount() : 0.0;
+            totalPaid += s.getPaidAmount() != null ? s.getPaidAmount() : 0.0;
+        }
+        double totalRemaining = totalFinal - totalPaid;
+
+        PdfPTable summary = new PdfPTable(3);
+        summary.setWidthPercentage(100);
+        summary.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+        summary.setSpacingBefore(6f);
+        summary.setSpacingAfter(10f);
+        summary.setWidths(new float[]{1f, 1f, 1f});
+
+        PdfPCell s1 = new PdfPCell(new Phrase("إجمالي الفواتير\n" + formatCurrency(totalFinal), arabicBoldFont));
+        s1.setHorizontalAlignment(Element.ALIGN_CENTER);
+        s1.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+        s1.setPadding(8f);
+        summary.addCell(s1);
+
+        PdfPCell s2 = new PdfPCell(new Phrase("إجمالي المدفوع\n" + formatCurrency(totalPaid), arabicBoldFont));
+        s2.setHorizontalAlignment(Element.ALIGN_CENTER);
+        s2.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+        s2.setPadding(8f);
+        summary.addCell(s2);
+
+        PdfPCell s3 = new PdfPCell(new Phrase("إجمالي الدين\n" + formatCurrency(totalRemaining), arabicBoldFont));
+        s3.setHorizontalAlignment(Element.ALIGN_CENTER);
+        s3.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+        s3.setPadding(8f);
+        summary.addCell(s3);
+
+        document.add(summary);
+
+        PdfPTable salesTable = new PdfPTable(6);
+        salesTable.setWidthPercentage(100);
+        salesTable.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+        salesTable.setSpacingBefore(5f);
+        salesTable.setSpacingAfter(10f);
+        salesTable.setWidths(new float[]{0.6f, 1f, 1.2f, 1f, 1f, 1f});
+
+        addTableHeader(salesTable, "ت", arabicBoldFont);
+        addTableHeader(salesTable, "رقم الفاتورة", arabicBoldFont);
+        addTableHeader(salesTable, "التاريخ", arabicBoldFont);
+        addTableHeader(salesTable, "المشروع", arabicBoldFont);
+        addTableHeader(salesTable, "الإجمالي", arabicBoldFont);
+        addTableHeader(salesTable, "المدفوع/الدين", arabicBoldFont);
+
+        int row = 1;
+        for (Sale s : sales) {
+            String code = s.getSaleCode() != null ? s.getSaleCode() : "-";
+            String date = s.getSaleDate() != null ? s.getSaleDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")) : "-";
+            String proj = s.getProjectLocation() != null ? s.getProjectLocation() : "-";
+            double fin = s.getFinalAmount() != null ? s.getFinalAmount() : 0.0;
+            double paid = s.getPaidAmount() != null ? s.getPaidAmount() : 0.0;
+            double rem = fin - paid;
+
+            salesTable.addCell(createBodyCell(String.valueOf(row), arabicFont, Element.ALIGN_CENTER));
+            salesTable.addCell(createBodyCell(code, arabicFont, Element.ALIGN_CENTER));
+            salesTable.addCell(createBodyCell(date, arabicFont, Element.ALIGN_CENTER));
+            salesTable.addCell(createBodyCell(proj, arabicFont, Element.ALIGN_CENTER));
+            salesTable.addCell(createBodyCell(formatCurrency(fin), arabicFont, Element.ALIGN_CENTER));
+            salesTable.addCell(createBodyCell(formatCurrency(paid) + " / " + formatCurrency(rem), arabicFont, Element.ALIGN_CENTER));
+            row++;
+
+            if (includeItems) {
+                PdfPCell itemsCell = new PdfPCell();
+                itemsCell.setColspan(6);
+                itemsCell.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+                itemsCell.setPadding(6f);
+
+                PdfPTable itemsTable = new PdfPTable(5);
+                itemsTable.setWidthPercentage(100);
+                itemsTable.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+                itemsTable.setWidths(new float[]{0.6f, 1.6f, 0.9f, 1f, 1f});
+
+                addTableHeader(itemsTable, "ت", arabicBoldFont);
+                addTableHeader(itemsTable, "المادة", arabicBoldFont);
+                addTableHeader(itemsTable, "العدد", arabicBoldFont);
+                addTableHeader(itemsTable, "السعر", arabicBoldFont);
+                addTableHeader(itemsTable, "المجموع", arabicBoldFont);
+
+                List<SaleItem> items = s.getSaleItems() != null ? s.getSaleItems() : Collections.emptyList();
+                int i = 1;
+                for (SaleItem it : items) {
+                    String name = it.getProduct() != null && it.getProduct().getName() != null ? it.getProduct().getName() : "-";
+                    itemsTable.addCell(createBodyCell(String.valueOf(i), smallFont, Element.ALIGN_CENTER));
+                    itemsTable.addCell(createBodyCell(name, smallFont, Element.ALIGN_RIGHT));
+                    itemsTable.addCell(createBodyCell(it.getQuantity() != null ? String.valueOf(it.getQuantity()) : "0", smallFont, Element.ALIGN_CENTER));
+                    itemsTable.addCell(createBodyCell(formatCurrency(it.getUnitPrice() != null ? it.getUnitPrice() : 0.0), smallFont, Element.ALIGN_CENTER));
+                    itemsTable.addCell(createBodyCell(formatCurrency(it.getTotalPrice() != null ? it.getTotalPrice() : 0.0), smallFont, Element.ALIGN_CENTER));
+                    i++;
+                }
+
+                itemsCell.addElement(itemsTable);
+                salesTable.addCell(itemsCell);
+            }
+        }
+
+        document.add(salesTable);
+
+        PdfPTable footerTable = new PdfPTable(1);
+        footerTable.setWidthPercentage(100);
+        footerTable.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+        PdfPCell footerCell = new PdfPCell(new Phrase("شكراً لتعاملكم معنا", arabicBoldFont));
+        footerCell.setBorder(PdfPCell.NO_BORDER);
+        footerCell.setHorizontalAlignment(Element.ALIGN_CENTER);
+        footerCell.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+        footerCell.setPadding(10f);
+        footerTable.addCell(footerCell);
+        document.add(footerTable);
+
+        document.close();
+        return baos.toByteArray();
+    }
+
+    private PdfPCell createInfoCell(String text, Font font) {
+        PdfPCell cell = new PdfPCell(new Phrase(text != null ? text : "", font));
+        cell.setBorder(PdfPCell.NO_BORDER);
+        cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+        cell.setVerticalAlignment(Element.ALIGN_TOP);
+        cell.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+        cell.setPadding(4f);
+        return cell;
+    }
+
+    private PdfPCell createBodyCell(String text, Font font, int alignment) {
+        PdfPCell cell = new PdfPCell(new Phrase(text != null ? text : "", font));
+        cell.setHorizontalAlignment(alignment);
+        cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+        cell.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+        cell.setPadding(4f);
+        return cell;
+    }
+
+    private void addTotalRowBordered(PdfPTable table, String label, String value, Font labelFont, Font valueFont) {
+        PdfPCell labelCell = new PdfPCell(new Phrase(label, labelFont));
+        labelCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+        labelCell.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+        labelCell.setPadding(5f);
+
+        PdfPCell valueCell = new PdfPCell(new Phrase(value, valueFont));
+        valueCell.setHorizontalAlignment(Element.ALIGN_CENTER);
+        valueCell.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+        valueCell.setPadding(5f);
+
+        table.addCell(labelCell);
+        table.addCell(valueCell);
+    }
+    
+    private void addTableHeader(PdfPTable table, String header, Font font) {
+        PdfPCell cell = new PdfPCell(new Phrase(header, font));
+        cell.setHorizontalAlignment(Element.ALIGN_CENTER);
+        cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+        cell.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+        cell.setBackgroundColor(BaseColor.LIGHT_GRAY);
+        cell.setPadding(5f);
+        table.addCell(cell);
+    }
+    
+    private String formatAmount(Double value) {
+        double v = value != null ? value : 0.0;
+        return String.format("%.2f", v);
+    }
+
+    private String formatCurrency(Double value) {
+        return formatAmount(value) + " دينار";
+    }
+    
+    private String generateReceiptNumber() {
+        return String.valueOf(receiptRepository.getNextReceiptNumberNumeric());
+    }
+    
+    private String getPaymentMethodArabic(String method) {
+        if (method == null) return "-";
+        switch (method) {
+            case "CASH": return "نقدي";
+            case "DEBT": return "دين";
+            case "CARD": return "بطاقة";
+            default: return method;
+        }
+    }
+    
+    private String getPaymentStatusArabic(String status) {
+        if (status == null) return "-";
+        switch (status) {
+            case "PAID": return "مدفوع";
+            case "PENDING": return "معلق";
+            case "OVERDUE": return "متأخر";
+            default: return status;
+        }
+    }
+    
+    public Optional<Receipt> getReceiptById(Long id) {
+        return receiptRepository.findById(id);
+    }
+    
+    public Optional<Receipt> getReceiptByNumber(String receiptNumber) {
+        return receiptRepository.findByReceiptNumber(receiptNumber);
+    }
+    
+    public List<Receipt> getAllReceipts() {
+        return receiptRepository.findAllWithDetails();
+    }
+    
+    public void deleteReceipt(Long id) {
+        receiptRepository.deleteById(id);
+    }
+}
