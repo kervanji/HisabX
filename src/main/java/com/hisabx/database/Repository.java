@@ -6,6 +6,8 @@ import com.hisabx.model.Product;
 import com.hisabx.model.Sale;
 import com.hisabx.model.SaleItem;
 import com.hisabx.model.Receipt;
+import com.hisabx.model.SaleReturn;
+import com.hisabx.model.ReturnItem;
 import org.hibernate.Session;
 import org.hibernate.Transaction;
 import org.hibernate.query.Query;
@@ -316,6 +318,21 @@ public class Repository<T> {
                 throw new RuntimeException("Failed to load sales for account statement", e);
             }
         }
+
+        public List<Sale> findAllWithCustomer() {
+            try (Session session = DatabaseManager.getSessionFactory().openSession()) {
+                Query<Sale> query = session.createQuery(
+                    "SELECT DISTINCT s FROM Sale s " +
+                        "LEFT JOIN FETCH s.customer " +
+                        "ORDER BY s.saleDate DESC",
+                    Sale.class
+                );
+                return query.list();
+            } catch (Exception e) {
+                logger.error("Failed to load sales with customer data", e);
+                throw new RuntimeException("Failed to load sales with customer data", e);
+            }
+        }
     }
     
     public static class ReceiptRepository extends Repository<Receipt> {
@@ -355,6 +372,33 @@ public class Repository<T> {
             } catch (Exception e) {
                 logger.error("Failed to find all receipts with details", e);
                 throw new RuntimeException("Failed to find all receipts with details", e);
+            }
+        }
+
+        public List<Receipt> findBySaleId(Long saleId) {
+            try (Session session = DatabaseManager.getSessionFactory().openSession()) {
+                Query<Receipt> query = session.createQuery(
+                    "FROM Receipt WHERE sale.id = :saleId ORDER BY id ASC",
+                    Receipt.class
+                );
+                query.setParameter("saleId", saleId);
+                return query.list();
+            } catch (Exception e) {
+                logger.error("Failed to find receipts by sale id: {}", saleId, e);
+                throw new RuntimeException("Failed to find receipts by sale id", e);
+            }
+        }
+
+        public List<Long> findSaleIdsWithMultipleReceipts() {
+            try (Session session = DatabaseManager.getSessionFactory().openSession()) {
+                Query<Long> query = session.createQuery(
+                    "SELECT r.sale.id FROM Receipt r GROUP BY r.sale.id HAVING COUNT(r.id) > 1",
+                    Long.class
+                );
+                return query.list();
+            } catch (Exception e) {
+                logger.error("Failed to find duplicate receipts", e);
+                throw new RuntimeException("Failed to find duplicate receipts", e);
             }
         }
 
@@ -409,6 +453,94 @@ public class Repository<T> {
                 logger.error("Failed to find active categories", e);
                 throw new RuntimeException("Failed to find active categories", e);
             }
+        }
+    }
+
+    public static class SaleReturnRepository extends Repository<SaleReturn> {
+        public SaleReturnRepository() {
+            super(SaleReturn.class);
+        }
+
+        public String generateReturnCode() {
+            try (Session session = DatabaseManager.getSessionFactory().openSession()) {
+                Query<Long> query = session.createQuery("SELECT COALESCE(MAX(id), 0) FROM SaleReturn", Long.class);
+                Long maxId = query.uniqueResult();
+                long next = (maxId == null ? 0L : maxId) + 1L;
+                return String.format("RET-%06d", next);
+            } catch (Exception e) {
+                logger.error("Failed to generate return code", e);
+                return "RET-" + System.currentTimeMillis();
+            }
+        }
+
+        public List<SaleReturn> findBySaleId(Long saleId) {
+            try (Session session = DatabaseManager.getSessionFactory().openSession()) {
+                Query<SaleReturn> query = session.createQuery(
+                    "SELECT DISTINCT r FROM SaleReturn r " +
+                    "LEFT JOIN FETCH r.customer " +
+                    "LEFT JOIN FETCH r.sale " +
+                    "LEFT JOIN FETCH r.returnItems ri " +
+                    "LEFT JOIN FETCH ri.product " +
+                    "WHERE r.sale.id = :saleId ORDER BY r.returnDate DESC", SaleReturn.class);
+                query.setParameter("saleId", saleId);
+                return query.list();
+            } catch (Exception e) {
+                logger.error("Failed to find returns by sale id: {}", saleId, e);
+                return List.of();
+            }
+        }
+
+        public List<SaleReturn> findByCustomerId(Long customerId) {
+            try (Session session = DatabaseManager.getSessionFactory().openSession()) {
+                Query<SaleReturn> query = session.createQuery(
+                    "FROM SaleReturn WHERE customer.id = :customerId ORDER BY returnDate DESC", SaleReturn.class);
+                query.setParameter("customerId", customerId);
+                return query.list();
+            } catch (Exception e) {
+                logger.error("Failed to find returns by customer id: {}", customerId, e);
+                return List.of();
+            }
+        }
+
+        public List<SaleReturn> findAllWithDetails() {
+            try (Session session = DatabaseManager.getSessionFactory().openSession()) {
+                Query<SaleReturn> query = session.createQuery(
+                    "SELECT DISTINCT r FROM SaleReturn r " +
+                    "LEFT JOIN FETCH r.sale s " +
+                    "LEFT JOIN FETCH r.customer " +
+                    "LEFT JOIN FETCH r.returnItems ri " +
+                    "LEFT JOIN FETCH ri.product " +
+                    "ORDER BY r.returnDate DESC", SaleReturn.class);
+                return query.list();
+            } catch (Exception e) {
+                logger.error("Failed to find all returns with details", e);
+                return List.of();
+            }
+        }
+
+        public Double getTotalReturnsByCustomerAndProject(Long customerId, String projectLocation) {
+            try (Session session = DatabaseManager.getSessionFactory().openSession()) {
+                String hql = "SELECT COALESCE(SUM(r.totalReturnAmount), 0) FROM SaleReturn r " +
+                             "WHERE r.customer.id = :customerId AND r.returnStatus = 'COMPLETED'";
+                if (projectLocation != null && !projectLocation.trim().isEmpty()) {
+                    hql += " AND r.sale.projectLocation = :projectLocation";
+                }
+                Query<Double> query = session.createQuery(hql, Double.class);
+                query.setParameter("customerId", customerId);
+                if (projectLocation != null && !projectLocation.trim().isEmpty()) {
+                    query.setParameter("projectLocation", projectLocation);
+                }
+                return query.uniqueResult();
+            } catch (Exception e) {
+                logger.error("Failed to get total returns", e);
+                return 0.0;
+            }
+        }
+    }
+
+    public static class ReturnItemRepository extends Repository<ReturnItem> {
+        public ReturnItemRepository() {
+            super(ReturnItem.class);
         }
     }
 }

@@ -5,6 +5,9 @@ import com.hisabx.model.Category;
 import com.hisabx.model.Product;
 import com.hisabx.service.CategoryService;
 import com.hisabx.service.InventoryService;
+import com.hisabx.service.PrintService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.collections.FXCollections;
@@ -27,6 +30,8 @@ import java.util.List;
 import java.util.Locale;
 
 public class InventoryListController {
+    private static final Logger logger = LoggerFactory.getLogger(InventoryListController.class);
+    
     @FXML private TextField searchField;
     @FXML private ComboBox<String> categoryFilter;
     @FXML private ComboBox<String> statusFilter;
@@ -310,6 +315,24 @@ public class InventoryListController {
     private void handleRefresh() {
         loadProducts();
         setupFilters();
+    }
+    
+    @FXML
+    private void handlePrint() {
+        try {
+            PrintService printService = new PrintService();
+            java.io.File pdfFile = printService.generateInventoryListPdf(productsList);
+            
+            if (pdfFile.exists()) {
+                if (java.awt.Desktop.isDesktopSupported()) {
+                    java.awt.Desktop.getDesktop().open(pdfFile);
+                }
+                showInfo("تم", "تم إنشاء تقرير المخزون:\n" + pdfFile.getAbsolutePath());
+            }
+        } catch (Exception e) {
+            logger.error("Failed to print inventory list", e);
+            showError("خطأ", "فشل في طباعة قائمة المخزون: " + e.getMessage());
+        }
     }
     
     private void showError(String title, String message) {

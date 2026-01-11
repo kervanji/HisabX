@@ -88,6 +88,10 @@ public class CustomerService {
             throw new IllegalArgumentException("كود العميل مطلوب");
         }
 
+        if (customer.getProjectLocation() == null || customer.getProjectLocation().trim().isEmpty()) {
+            throw new IllegalArgumentException("مواقع المشاريع مطلوبة (أدخل موقعاً واحداً على الأقل)");
+        }
+
         Optional<Customer> byCode = customerRepository.findByCustomerCode(customer.getCustomerCode());
         if (byCode.isPresent() && (customer.getId() == null || !byCode.get().getId().equals(customer.getId()))) {
             throw new IllegalArgumentException("كود العميل مستخدم بالفعل");

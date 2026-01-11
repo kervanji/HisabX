@@ -2,6 +2,7 @@
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.Menu?>
+<?import javafx.scene.control.MenuButton?>
 <?import javafx.scene.control.MenuBar?>
 <?import javafx.scene.control.MenuItem?>
 <?import javafx.scene.control.SeparatorMenuItem?>
@@ -41,6 +42,8 @@
                     <MenuItem text="عرض كل المبيعات" onAction="#handleViewSales"/>
                     <MenuItem text="تقرير المبيعات" onAction="#handleSalesReport"/>
                     <MenuItem text="المدفوعات المعلقة" onAction="#handlePendingPayments"/>
+                    <SeparatorMenuItem/>
+                    <MenuItem text="إرجاع مواد" onAction="#handleProductReturn"/>
                 </Menu>
                 <Menu text="الإيصالات">
                     <MenuItem text="إنشاء إيصال" onAction="#handleCreateReceipt"/>
@@ -51,7 +54,6 @@
                     <MenuItem text="مزامنة مع فايربيس" onAction="#handleFirebaseSync"/>
                 </Menu>
                 <Menu text="مساعدة">
-                    <MenuItem text="دليل الاستخدام" onAction="#handleHelp"/>
                     <MenuItem text="عن البرنامج" onAction="#handleAbout"/>
                 </Menu>
             </MenuBar>
@@ -75,6 +77,11 @@
                             <Font name="Segoe UI Semibold" size="46"/>
                         </font>
                     </Label>
+                    <Label fx:id="companyNameLabel" text="" style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #3b82f6;">
+                        <font>
+                            <Font name="Segoe UI" size="16"/>
+                        </font>
+                    </Label>
                     <Label text="نظام إدارة المخازن والمبيعات" style="-fx-font-size: 20px; -fx-text-fill: #5d6d7e;">
                         <font>
                             <Font name="Segoe UI" size="20"/>
@@ -94,21 +101,53 @@
                 <HBox alignment="CENTER" spacing="16">
                     <VBox alignment="TOP_RIGHT" spacing="8" prefWidth="220"
                           style="-fx-background-color: white; -fx-padding: 16; -fx-background-radius: 14; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 14,0,0,6);">
-                        <Label text="حركة اليوم" style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #1f3c56;"/>
-                        <Label text="مبيعات + إيصالات" style="-fx-font-size: 12px; -fx-text-fill: #5d6d7e;"/>
-                        <Label text="جاهز لبدء العمليات" style="-fx-font-size: 12px; -fx-text-fill: #2a8cff; -fx-background-color: #e8f1ff; -fx-padding: 6 10; -fx-background-radius: 8;"/>
+                        <HBox alignment="CENTER_RIGHT" spacing="8">
+                            <MenuButton text="⋮" style="-fx-background-color: transparent; -fx-font-size: 16px;">
+                                <items>
+                                    <MenuItem text="عرض كل المبيعات" onAction="#handleViewSales"/>
+                                    <MenuItem text="تقرير المبيعات" onAction="#handleSalesReport"/>
+                                    <MenuItem text="المدفوعات المعلقة" onAction="#handlePendingPayments"/>
+                                </items>
+                            </MenuButton>
+                            <Label text="مبيعات اليوم" style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #1f3c56;" HBox.hgrow="ALWAYS"/>
+                        </HBox>
+                        <Label fx:id="todaySalesCountLabel" text="عدد المبيعات: --" style="-fx-font-size: 12px; -fx-text-fill: #5d6d7e;"/>
+                        <Label fx:id="todaySalesAmountLabel" text="0 د.ع" style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #2a8cff; -fx-background-color: #e8f1ff; -fx-padding: 6 10; -fx-background-radius: 8;"/>
                     </VBox>
                     <VBox alignment="TOP_RIGHT" spacing="8" prefWidth="220"
                           style="-fx-background-color: white; -fx-padding: 16; -fx-background-radius: 14; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 14,0,0,6);">
                         <Label text="تنبيهات المخزون" style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #1f3c56;"/>
-                        <Label text="راقب المنتجات منخفضة المخزون" style="-fx-font-size: 12px; -fx-text-fill: #5d6d7e;"/>
-                        <Label text="لا توجد تنبيهات حالياً" style="-fx-font-size: 12px; -fx-text-fill: #35b585; -fx-background-color: #e6fff4; -fx-padding: 6 10; -fx-background-radius: 8;"/>
+                        <Label fx:id="lowStockDescLabel" text="راقب المنتجات منخفضة المخزون" style="-fx-font-size: 12px; -fx-text-fill: #5d6d7e;"/>
+                        <Label fx:id="lowStockCountLabel" text="لا توجد تنبيهات حالياً" style="-fx-font-size: 12px; -fx-text-fill: #35b585; -fx-background-color: #e6fff4; -fx-padding: 6 10; -fx-background-radius: 8;"/>
                     </VBox>
                     <VBox alignment="TOP_RIGHT" spacing="8" prefWidth="220"
                           style="-fx-background-color: white; -fx-padding: 16; -fx-background-radius: 14; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 14,0,0,6);">
-                        <Label text="إدارة العملاء" style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #1f3c56;"/>
-                        <Label text="إضافة، تعديل، بحث" style="-fx-font-size: 12px; -fx-text-fill: #5d6d7e;"/>
-                        <Label text="إجمالي العملاء: --" style="-fx-font-size: 12px; -fx-text-fill: #ff8c42; -fx-background-color: #fff2e5; -fx-padding: 6 10; -fx-background-radius: 8;"/>
+                        <Label text="المدفوعات المعلقة" style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #1f3c56;"/>
+                        <Label fx:id="pendingPaymentsDescLabel" text="فواتير تنتظر الدفع" style="-fx-font-size: 12px; -fx-text-fill: #5d6d7e;"/>
+                        <Label fx:id="pendingPaymentsLabel" text="0 فاتورة" style="-fx-font-size: 12px; -fx-text-fill: #ff8c42; -fx-background-color: #fff2e5; -fx-padding: 6 10; -fx-background-radius: 8;"/>
+                    </VBox>
+                </HBox>
+                
+                <HBox alignment="CENTER" spacing="16">
+                    <VBox alignment="TOP_RIGHT" spacing="8" prefWidth="170"
+                          style="-fx-background-color: white; -fx-padding: 14; -fx-background-radius: 12; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.06), 10,0,0,4);">
+                        <Label text="العملاء" style="-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #1f3c56;"/>
+                        <Label fx:id="totalCustomersLabel" text="--" style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #6366f1;"/>
+                    </VBox>
+                    <VBox alignment="TOP_RIGHT" spacing="8" prefWidth="170"
+                          style="-fx-background-color: white; -fx-padding: 14; -fx-background-radius: 12; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.06), 10,0,0,4);">
+                        <Label text="المنتجات" style="-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #1f3c56;"/>
+                        <Label fx:id="totalProductsLabel" text="--" style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #10b981;"/>
+                    </VBox>
+                    <VBox alignment="TOP_RIGHT" spacing="8" prefWidth="170"
+                          style="-fx-background-color: white; -fx-padding: 14; -fx-background-radius: 12; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.06), 10,0,0,4);">
+                        <Label text="إجمالي المبيعات" style="-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #1f3c56;"/>
+                        <Label fx:id="totalSalesLabel" text="--" style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #f59e0b;"/>
+                    </VBox>
+                    <VBox alignment="TOP_RIGHT" spacing="8" prefWidth="170"
+                          style="-fx-background-color: white; -fx-padding: 14; -fx-background-radius: 12; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.06), 10,0,0,4);">
+                        <Label text="قيمة المخزون" style="-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #1f3c56;"/>
+                        <Label fx:id="inventoryValueLabel" text="--" style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #ef4444;"/>
                     </VBox>
                 </HBox>
             </VBox>

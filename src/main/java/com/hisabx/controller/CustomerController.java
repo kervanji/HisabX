@@ -67,6 +67,7 @@ public class CustomerController {
     private void handleSave() {
         String name = customerNameField.getText().trim();
         String phone = phoneNumberField.getText().trim();
+        String projectLocations = projectLocationsArea.getText().trim();
         
         if (name.isEmpty()) {
             showError("خطأ", "اسم العميل مطلوب");
@@ -86,13 +87,19 @@ public class CustomerController {
             return;
         }
         
+        if (projectLocations.isEmpty()) {
+            showError("خطأ", "مواقع المشاريع مطلوبة (أدخل موقعاً واحداً على الأقل)");
+            projectLocationsArea.requestFocus();
+            return;
+        }
+        
         try {
             Customer customer = editingCustomer != null ? editingCustomer : new Customer();
             
             customer.setName(name);
             customer.setPhoneNumber(phone);
             customer.setAddress(addressField.getText().trim().isEmpty() ? null : addressField.getText().trim());
-            customer.setProjectLocation(projectLocationsArea.getText().trim().isEmpty() ? null : projectLocationsArea.getText().trim());
+            customer.setProjectLocation(projectLocations);
 
             // Ensure customer code is set for new customers
             if (editingCustomer == null) {

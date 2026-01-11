@@ -80,6 +80,8 @@
     </TableView>
     
     <HBox alignment="CENTER_RIGHT" spacing="12">
+        <Button text="طباعة التقرير" onAction="#handlePrint"
+                style="-fx-background-color: #6366f1; -fx-text-fill: white; -fx-font-size: 13px; -fx-padding: 8 16; -fx-background-radius: 8;"/>
         <Label fx:id="statusLabel" text="جاهز" style="-fx-font-size: 13px; -fx-text-fill: #6b7280;"/>
     </HBox>
 </VBox>

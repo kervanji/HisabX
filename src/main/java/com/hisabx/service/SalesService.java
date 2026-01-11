@@ -123,7 +123,8 @@ public class SalesService {
     }
     
     public List<Sale> getAllSales() {
-        return saleRepository.findAll();
+        new ReceiptService().ensureSingleReceiptPerSale();
+        return saleRepository.findAllWithCustomer();
     }
     
     public List<Sale> getSalesByCustomerId(Long customerId) {

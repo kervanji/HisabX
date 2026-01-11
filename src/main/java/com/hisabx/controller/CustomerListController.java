@@ -3,6 +3,7 @@ package com.hisabx.controller;
 import com.hisabx.MainApp;
 import com.hisabx.model.Customer;
 import com.hisabx.service.CustomerService;
+import com.hisabx.service.PrintService;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -262,7 +263,20 @@ public class CustomerListController {
     
     @FXML
     private void handlePrint() {
-        showInfo("قريباً", "ميزة الطباعة قيد التطوير");
+        try {
+            PrintService printService = new PrintService();
+            java.io.File pdfFile = printService.generateCustomerListPdf(allCustomers);
+            
+            if (pdfFile.exists()) {
+                if (java.awt.Desktop.isDesktopSupported()) {
+                    java.awt.Desktop.getDesktop().open(pdfFile);
+                }
+                showInfo("تم", "تم إنشاء تقرير العملاء:\n" + pdfFile.getAbsolutePath());
+            }
+        } catch (Exception e) {
+            logger.error("Failed to print customer list", e);
+            showError("خطأ", "فشل في طباعة قائمة العملاء: " + e.getMessage());
+        }
     }
     
     private void showError(String title, String message) {

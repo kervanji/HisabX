@@ -42,8 +42,9 @@ public class ReceiptService {
 
     private static final String PREF_BANNER_PATH = "receipt.banner.path";
     
-    // Company information - can be made configurable
-    
+    // Company information
+    private static final String APP_NAME = "HisabX";
+    private static final String COMPANY_WEBSITE = "Kervanjiholding.com";
     
     public ReceiptService() {
         this.receiptRepository = new ReceiptRepository();
@@ -92,6 +93,61 @@ public class ReceiptService {
             throw new RuntimeException("فشل في إنشاء كشف الحساب", e);
         }
     }
+
+    private Receipt prepareReceiptForSale(Sale sale, String template, String printedBy) {
+        List<Receipt> existingReceipts = receiptRepository.findBySaleId(sale.getId());
+        Receipt receipt;
+
+        if (existingReceipts.isEmpty()) {
+            receipt = new Receipt();
+            receipt.setReceiptNumber(generateReceiptNumber());
+            receipt.setSale(sale);
+        } else {
+            // keep the latest receipt and delete older duplicates
+            receipt = existingReceipts.get(existingReceipts.size() - 1);
+            for (int i = 0; i < existingReceipts.size() - 1; i++) {
+                Receipt duplicate = existingReceipts.get(i);
+                deleteReceiptSafely(duplicate);
+            }
+        }
+
+        receipt.setTemplate(template != null ? template : "DEFAULT");
+        receipt.setPrintedBy(printedBy);
+        receipt.setReceiptDate(LocalDateTime.now());
+        receipt.setUpdatedAt(LocalDateTime.now());
+        return receipt;
+    }
+
+    public void ensureSingleReceiptPerSale() {
+        List<Long> saleIds = receiptRepository.findSaleIdsWithMultipleReceipts();
+        for (Long saleId : saleIds) {
+            List<Receipt> receipts = receiptRepository.findBySaleId(saleId);
+            if (receipts.isEmpty()) {
+                continue;
+            }
+            Receipt keep = receipts.get(receipts.size() - 1);
+            for (int i = 0; i < receipts.size() - 1; i++) {
+                Receipt duplicate = receipts.get(i);
+                if (!duplicate.getId().equals(keep.getId())) {
+                    deleteReceiptSafely(duplicate);
+                }
+            }
+        }
+    }
+
+    private void deleteReceiptSafely(Receipt receipt) {
+        try {
+            if (receipt.getFilePath() != null) {
+                java.io.File pdf = new java.io.File(receipt.getFilePath());
+                if (pdf.exists()) {
+                    pdf.delete();
+                }
+            }
+            receiptRepository.delete(receipt);
+        } catch (Exception e) {
+            logger.warn("Failed to delete duplicate receipt {}", receipt.getId(), e);
+        }
+    }
     
     public Receipt generateReceipt(Long saleId, String template, String printedBy) {
         logger.info("Generating receipt for sale: {}", saleId);
@@ -102,13 +158,7 @@ public class ReceiptService {
         }
         
         Sale sale = saleOpt.get();
-        
-        // Create receipt record
-        Receipt receipt = new Receipt();
-        receipt.setReceiptNumber(generateReceiptNumber());
-        receipt.setSale(sale);
-        receipt.setTemplate(template != null ? template : "DEFAULT");
-        receipt.setPrintedBy(printedBy);
+        Receipt receipt = prepareReceiptForSale(sale, template, printedBy);
         
         // Generate PDF
         try {
@@ -350,16 +400,7 @@ public class ReceiptService {
 
         document.add(signatureTable);
 
-        PdfPTable footerTable = new PdfPTable(1);
-        footerTable.setWidthPercentage(100);
-        footerTable.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
-        PdfPCell footerCell = new PdfPCell(new Phrase("شكراً لتعاملكم معنا", arabicBoldFont));
-        footerCell.setBorder(PdfPCell.NO_BORDER);
-        footerCell.setHorizontalAlignment(Element.ALIGN_CENTER);
-        footerCell.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
-        footerCell.setPadding(10f);
-        footerTable.addCell(footerCell);
-        document.add(footerTable);
+        addUnifiedFooter(document, arabicBoldFont, smallFont);
         
         document.close();
         
@@ -590,29 +631,10 @@ public class ReceiptService {
 
         document.add(salesTable);
 
-        PdfPTable footerTable = new PdfPTable(1);
-        footerTable.setWidthPercentage(100);
-        footerTable.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
-        PdfPCell footerCell = new PdfPCell(new Phrase("شكراً لتعاملكم معنا", arabicBoldFont));
-        footerCell.setBorder(PdfPCell.NO_BORDER);
-        footerCell.setHorizontalAlignment(Element.ALIGN_CENTER);
-        footerCell.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
-        footerCell.setPadding(10f);
-        footerTable.addCell(footerCell);
-        document.add(footerTable);
+        addUnifiedFooter(document, arabicBoldFont, smallFont);
 
         document.close();
         return baos.toByteArray();
-    }
-
-    private PdfPCell createInfoCell(String text, Font font) {
-        PdfPCell cell = new PdfPCell(new Phrase(text != null ? text : "", font));
-        cell.setBorder(PdfPCell.NO_BORDER);
-        cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
-        cell.setVerticalAlignment(Element.ALIGN_TOP);
-        cell.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
-        cell.setPadding(4f);
-        return cell;
     }
 
     private PdfPCell createBodyCell(String text, Font font, int alignment) {
@@ -672,6 +694,30 @@ public class ReceiptService {
         }
     }
     
+    private void addUnifiedFooter(Document document, Font boldFont, Font smallFont) throws DocumentException {
+        PdfPTable footerTable = new PdfPTable(1);
+        footerTable.setWidthPercentage(100);
+        footerTable.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+        footerTable.setSpacingBefore(15f);
+
+        PdfPCell thankYouCell = new PdfPCell(new Phrase("شكراً لتعاملكم معنا", boldFont));
+        thankYouCell.setBorder(PdfPCell.NO_BORDER);
+        thankYouCell.setHorizontalAlignment(Element.ALIGN_CENTER);
+        thankYouCell.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+        thankYouCell.setPaddingBottom(8f);
+        footerTable.addCell(thankYouCell);
+
+        PdfPCell appInfoCell = new PdfPCell(new Phrase(APP_NAME + " | " + COMPANY_WEBSITE, smallFont));
+        appInfoCell.setBorder(PdfPCell.NO_BORDER);
+        appInfoCell.setHorizontalAlignment(Element.ALIGN_CENTER);
+        appInfoCell.setRunDirection(PdfWriter.RUN_DIRECTION_LTR);
+        appInfoCell.setPaddingTop(5f);
+        appInfoCell.setBackgroundColor(new BaseColor(245, 245, 245));
+        footerTable.addCell(appInfoCell);
+
+        document.add(footerTable);
+    }
+
     private String getPaymentStatusArabic(String status) {
         if (status == null) return "-";
         switch (status) {
@@ -696,5 +742,11 @@ public class ReceiptService {
     
     public void deleteReceipt(Long id) {
         receiptRepository.deleteById(id);
+    }
+    
+    public boolean hasReceiptForSale(Long saleId) {
+        if (saleId == null) return false;
+        return receiptRepository.findAll().stream()
+                .anyMatch(r -> r.getSale() != null && saleId.equals(r.getSale().getId()));
     }
 }

@@ -352,6 +352,13 @@ public class SaleFormController {
         this.dialogStage = dialogStage;
     }
 
+    public void setSelectedCustomer(Customer customer) {
+        if (customer != null) {
+            customerComboBox.setValue(customer);
+            updateProjectLocations(customer);
+        }
+    }
+
     @FXML
     private void handleNewCustomer() {
         try {

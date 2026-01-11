@@ -175,6 +175,44 @@ public class DatabaseManager {
             )
         """);
         
+        // Sale Returns table
+        stmt.execute("""
+            CREATE TABLE IF NOT EXISTS sale_returns (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                return_code TEXT UNIQUE NOT NULL,
+                sale_id INTEGER NOT NULL,
+                customer_id INTEGER NOT NULL,
+                return_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+                total_return_amount REAL NOT NULL,
+                return_reason TEXT,
+                return_status TEXT DEFAULT 'PENDING',
+                notes TEXT,
+                processed_by TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (sale_id) REFERENCES sales(id),
+                FOREIGN KEY (customer_id) REFERENCES customers(id)
+            )
+        """);
+        
+        // Return Items table
+        stmt.execute("""
+            CREATE TABLE IF NOT EXISTS return_items (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                return_id INTEGER NOT NULL,
+                product_id INTEGER NOT NULL,
+                original_sale_item_id INTEGER,
+                quantity INTEGER NOT NULL,
+                unit_price REAL NOT NULL,
+                total_price REAL NOT NULL,
+                return_reason TEXT,
+                condition_status TEXT DEFAULT 'GOOD',
+                FOREIGN KEY (return_id) REFERENCES sale_returns(id),
+                FOREIGN KEY (product_id) REFERENCES products(id),
+                FOREIGN KEY (original_sale_item_id) REFERENCES sale_items(id)
+            )
+        """);
+        
         // Create indexes for better performance
         stmt.execute("CREATE INDEX IF NOT EXISTS idx_customers_code ON customers(customer_code)");
         stmt.execute("CREATE INDEX IF NOT EXISTS idx_products_code ON products(product_code)");
@@ -184,6 +222,9 @@ public class DatabaseManager {
         stmt.execute("CREATE INDEX IF NOT EXISTS idx_sales_customer ON sales(customer_id)");
         stmt.execute("CREATE INDEX IF NOT EXISTS idx_receipts_number ON receipts(receipt_number)");
         stmt.execute("CREATE INDEX IF NOT EXISTS idx_categories_name ON categories(name)");
+        stmt.execute("CREATE INDEX IF NOT EXISTS idx_returns_code ON sale_returns(return_code)");
+        stmt.execute("CREATE INDEX IF NOT EXISTS idx_returns_sale ON sale_returns(sale_id)");
+        stmt.execute("CREATE INDEX IF NOT EXISTS idx_returns_customer ON sale_returns(customer_id)");
         
         logger.info("Database tables created successfully");
     }
@@ -209,6 +250,8 @@ public class DatabaseManager {
             configuration.addAnnotatedClass(com.hisabx.model.SaleItem.class);
             configuration.addAnnotatedClass(com.hisabx.model.Receipt.class);
             configuration.addAnnotatedClass(com.hisabx.model.Category.class);
+            configuration.addAnnotatedClass(com.hisabx.model.SaleReturn.class);
+            configuration.addAnnotatedClass(com.hisabx.model.ReturnItem.class);
             
             sessionFactory = configuration.buildSessionFactory();
             logger.info("Hibernate configured successfully");

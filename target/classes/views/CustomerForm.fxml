@@ -50,7 +50,7 @@
                    style="-fx-padding: 10; -fx-background-radius: 8; -fx-pref-width: 250;"/>
         
         <!-- Project Location -->
-        <Label text="مواقع المشاريع:" GridPane.columnIndex="1" GridPane.rowIndex="4"
+        <Label text="مواقع المشاريع: *" GridPane.columnIndex="1" GridPane.rowIndex="4"
                style="-fx-font-size: 14px; -fx-text-fill: #374151; -fx-font-weight: bold;"/>
         <TextArea fx:id="projectLocationsArea" GridPane.columnIndex="0" GridPane.rowIndex="4"
                   promptText="اكتب كل موقع في سطر منفصل"
