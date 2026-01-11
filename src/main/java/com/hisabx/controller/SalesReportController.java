@@ -138,10 +138,11 @@ public class SalesReportController {
         int invoiceCount = reportData.size();
         double avgSale = invoiceCount > 0 ? totalSales / invoiceCount : 0;
         double totalDiscount = reportData.stream().mapToDouble(Sale::getDiscountAmount).sum();
-        totalSalesLabel.setText(String.format("%.2f", totalSales));
+        java.text.DecimalFormat df = new java.text.DecimalFormat("#,##0.00");
+        totalSalesLabel.setText(df.format(totalSales));
         invoiceCountLabel.setText(String.valueOf(invoiceCount));
-        avgSaleLabel.setText(String.format("%.2f", avgSale));
-        totalDiscountLabel.setText(String.format("%.2f", totalDiscount));
+        avgSaleLabel.setText(df.format(avgSale));
+        totalDiscountLabel.setText(df.format(totalDiscount));
     }
 
     private void updatePaymentBreakdown() {
@@ -169,7 +170,8 @@ public class SalesReportController {
             progressBar.setPrefWidth(120);
             progressBar.setStyle("-fx-accent: " + getColorForMethod(entry.getKey()) + ";");
 
-            Label valueLabel = new Label(String.format("%.2f دينار (%.1f%%)", entry.getValue(), percentage));
+            java.text.DecimalFormat df = new java.text.DecimalFormat("#,##0.00");
+            Label valueLabel = new Label(df.format(entry.getValue()) + " دينار (" + String.format("%.1f%%", percentage) + ")");
             valueLabel.setStyle("-fx-text-fill: #7f8c8d;");
 
             row.getChildren().addAll(methodLabel, progressBar, valueLabel);

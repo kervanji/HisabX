@@ -91,7 +91,6 @@
                 <HBox spacing="10">
                     <RadioButton fx:id="cashRadio" text="💵 نقدي" toggleGroup="$paymentGroup"/>
                     <RadioButton fx:id="creditRadio" text="📋 دين" toggleGroup="$paymentGroup"/>
-                    <RadioButton fx:id="cardRadio" text="💳 بطاقة" toggleGroup="$paymentGroup"/>
                 </HBox>
                 <fx:define>
                     <ToggleGroup fx:id="paymentGroup"/>

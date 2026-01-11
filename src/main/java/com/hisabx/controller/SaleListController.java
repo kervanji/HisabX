@@ -203,10 +203,11 @@ public class SaleListController {
                 .filter(s -> !"PAID".equals(s.getPaymentStatus()))
                 .mapToDouble(Sale::getFinalAmount).sum();
 
+        java.text.DecimalFormat df = new java.text.DecimalFormat("#,##0.00");
         totalSalesLabel.setText(String.valueOf(totalCount));
-        totalAmountLabel.setText(String.format("%.2f دينار", totalAmount));
-        paidAmountLabel.setText(String.format("%.2f دينار", paidAmount));
-        pendingAmountLabel.setText(String.format("%.2f دينار", pendingAmount));
+        totalAmountLabel.setText(df.format(totalAmount) + " دينار");
+        paidAmountLabel.setText(df.format(paidAmount) + " دينار");
+        pendingAmountLabel.setText(df.format(pendingAmount) + " دينار");
     }
 
     private void handleViewSale(Sale sale) {
@@ -216,9 +217,10 @@ public class SaleListController {
         details.append("التاريخ: ").append(sale.getSaleDate().format(dateFormatter)).append("\n");
         details.append("طريقة الدفع: ").append(getPaymentMethodArabic(sale.getPaymentMethod())).append("\n");
         details.append("الحالة: ").append(getStatusArabic(sale.getPaymentStatus())).append("\n\n");
-        details.append("المجموع: ").append(String.format("%.2f", sale.getTotalAmount())).append(" دينار\n");
-        details.append("الخصم: ").append(String.format("%.2f", sale.getDiscountAmount())).append(" دينار\n");
-        details.append("الإجمالي النهائي: ").append(String.format("%.2f", sale.getFinalAmount())).append(" دينار");
+        java.text.DecimalFormat df = new java.text.DecimalFormat("#,##0.00");
+        details.append("المجموع: ").append(df.format(sale.getTotalAmount())).append(" دينار\n");
+        details.append("الخصم: ").append(df.format(sale.getDiscountAmount())).append(" دينار\n");
+        details.append("الإجمالي النهائي: ").append(df.format(sale.getFinalAmount())).append(" دينار");
 
         if (sale.getNotes() != null && !sale.getNotes().isEmpty()) {
             details.append("\n\nملاحظات: ").append(sale.getNotes());
@@ -257,7 +259,8 @@ public class SaleListController {
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
         alert.setTitle("تأكيد الدفع");
         alert.setHeaderText("هل تريد تحديث حالة الدفع إلى 'مدفوع'؟");
-        alert.setContentText("رقم الفاتورة: " + sale.getSaleCode() + "\nالمبلغ: " + String.format("%.2f", sale.getFinalAmount()) + " دينار");
+        java.text.DecimalFormat df = new java.text.DecimalFormat("#,##0.00");
+        alert.setContentText("رقم الفاتورة: " + sale.getSaleCode() + "\nالمبلغ: " + df.format(sale.getFinalAmount()) + " دينار");
 
         alert.showAndWait().ifPresent(response -> {
             if (response == ButtonType.OK) {

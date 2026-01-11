@@ -1,7 +1,9 @@
 package com.hisabx.service;
 
 import com.hisabx.database.Repository.CustomerRepository;
+import com.hisabx.database.Repository.CustomerPaymentRepository;
 import com.hisabx.model.Customer;
+import com.hisabx.model.CustomerPayment;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -11,9 +13,11 @@ import java.util.Optional;
 public class CustomerService {
     private static final Logger logger = LoggerFactory.getLogger(CustomerService.class);
     private final CustomerRepository customerRepository;
+    private final CustomerPaymentRepository paymentRepository;
     
     public CustomerService() {
         this.customerRepository = new CustomerRepository();
+        this.paymentRepository = new CustomerPaymentRepository();
     }
     
     public Customer createCustomer(Customer customer) {
@@ -122,5 +126,47 @@ public class CustomerService {
         return customerRepository.findAll().stream()
                 .filter(customer -> customer.getCurrentBalance() > 0)
                 .toList();
+    }
+    
+    public CustomerPayment payToCustomer(Long customerId, Double amount, String paymentMethod, String notes, String processedBy) {
+        logger.info("Processing payment to customer: {}", customerId);
+        
+        if (amount == null || amount <= 0) {
+            throw new IllegalArgumentException("المبلغ يجب أن يكون أكبر من صفر");
+        }
+        
+        Optional<Customer> customerOpt = customerRepository.findById(customerId);
+        if (customerOpt.isEmpty()) {
+            throw new IllegalArgumentException("العميل غير موجود");
+        }
+        
+        Customer customer = customerOpt.get();
+        
+        if (customer.getCurrentBalance() <= 0) {
+            throw new IllegalArgumentException("العميل ليس لديه رصيد دائن (نحن لسنا مدينين له)");
+        }
+        
+        if (amount > customer.getCurrentBalance()) {
+            throw new IllegalArgumentException("المبلغ المدخل أكبر من الرصيد الدائن للعميل");
+        }
+        
+        CustomerPayment payment = new CustomerPayment();
+        payment.setPaymentCode(paymentRepository.generatePaymentCode());
+        payment.setCustomer(customer);
+        payment.setAmount(amount);
+        payment.setPaymentMethod(paymentMethod);
+        payment.setNotes(notes);
+        payment.setProcessedBy(processedBy);
+        
+        CustomerPayment savedPayment = paymentRepository.save(payment);
+        
+        updateCustomerBalance(customerId, -amount);
+        
+        logger.info("Payment to customer completed: {}", savedPayment.getPaymentCode());
+        return savedPayment;
+    }
+    
+    public List<CustomerPayment> getCustomerPayments(Long customerId) {
+        return paymentRepository.findByCustomerId(customerId);
     }
 }

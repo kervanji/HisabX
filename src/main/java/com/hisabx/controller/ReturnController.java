@@ -302,27 +302,19 @@ public class ReturnController {
             return;
         }
         
-        SaleReturn lastReturn = returns.get(0);
-        StringBuilder receipt = new StringBuilder();
-        receipt.append("=== إيصال إرجاع ===\n\n");
-        receipt.append("رقم المرتجع: ").append(lastReturn.getReturnCode()).append("\n");
-        receipt.append("رقم الفاتورة: ").append(sale.getSaleCode()).append("\n");
-        receipt.append("العميل: ").append(lastReturn.getCustomer().getName()).append("\n");
-        receipt.append("التاريخ: ").append(lastReturn.getReturnDate().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))).append("\n\n");
-        
-        receipt.append("--- المواد المرتجعة ---\n");
-        if (lastReturn.getReturnItems() != null) {
-            for (ReturnItem item : lastReturn.getReturnItems()) {
-                receipt.append("• ").append(item.getProduct().getName())
-                        .append(" × ").append(item.getQuantity())
-                        .append(" = ").append(currencyFormat.format(item.getTotalPrice())).append(" د.ع\n");
+        try {
+            java.io.File pdfFile = returnService.generateAllReturnsReceiptPdf(sale);
+            if (pdfFile != null && pdfFile.exists()) {
+                if (java.awt.Desktop.isDesktopSupported()) {
+                    java.awt.Desktop.getDesktop().open(pdfFile);
+                } else {
+                    showSuccess("تم بنجاح", "تم إنشاء إيصال المرتجعات:\n" + pdfFile.getAbsolutePath());
+                }
             }
+        } catch (Exception e) {
+            logger.error("Failed to generate returns receipt PDF", e);
+            showError("خطأ", "فشل في إنشاء إيصال المرتجعات: " + e.getMessage());
         }
-        
-        receipt.append("\nالمبلغ المرتجع: ").append(currencyFormat.format(lastReturn.getTotalReturnAmount())).append(" د.ع\n");
-        receipt.append("السبب: ").append(lastReturn.getReturnReason()).append("\n");
-        
-        showInfo("إيصال الإرجاع", receipt.toString());
     }
 
     @FXML

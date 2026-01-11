@@ -82,9 +82,9 @@
 
     <!-- Action Buttons -->
     <HBox spacing="10" alignment="CENTER">
-        <Button text="📧 إرسال تذكير للجميع" onAction="#handleSendReminders" prefHeight="35"
-                style="-fx-background-color: #9b59b6; -fx-text-fill: white; -fx-font-weight: bold;"/>
-        <Button text="📊 تقرير الذمم" onAction="#handleDebtReport" prefHeight="35"
+        <Button text="💰 دفع للعميل" onAction="#handlePayToCustomer" prefHeight="35"
+                style="-fx-background-color: #27ae60; -fx-text-fill: white; -fx-font-weight: bold;"/>
+        <Button text="📊 كشف الحساب" onAction="#handleDebtReport" prefHeight="35"
                 style="-fx-background-color: #f39c12; -fx-text-fill: white; -fx-font-weight: bold;"/>
         <Button text="❌ إغلاق" onAction="#handleClose" prefHeight="35"
                 style="-fx-background-color: #95a5a6; -fx-text-fill: white;"/>

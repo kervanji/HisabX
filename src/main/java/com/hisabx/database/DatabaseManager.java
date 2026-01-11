@@ -213,6 +213,23 @@ public class DatabaseManager {
             )
         """);
         
+        // Customer Payments table
+        stmt.execute("""
+            CREATE TABLE IF NOT EXISTS customer_payments (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                payment_code TEXT UNIQUE NOT NULL,
+                customer_id INTEGER NOT NULL,
+                amount REAL NOT NULL,
+                payment_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+                payment_method TEXT,
+                notes TEXT,
+                processed_by TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (customer_id) REFERENCES customers(id)
+            )
+        """);
+        
         // Create indexes for better performance
         stmt.execute("CREATE INDEX IF NOT EXISTS idx_customers_code ON customers(customer_code)");
         stmt.execute("CREATE INDEX IF NOT EXISTS idx_products_code ON products(product_code)");
@@ -225,6 +242,8 @@ public class DatabaseManager {
         stmt.execute("CREATE INDEX IF NOT EXISTS idx_returns_code ON sale_returns(return_code)");
         stmt.execute("CREATE INDEX IF NOT EXISTS idx_returns_sale ON sale_returns(sale_id)");
         stmt.execute("CREATE INDEX IF NOT EXISTS idx_returns_customer ON sale_returns(customer_id)");
+        stmt.execute("CREATE INDEX IF NOT EXISTS idx_payments_code ON customer_payments(payment_code)");
+        stmt.execute("CREATE INDEX IF NOT EXISTS idx_payments_customer ON customer_payments(customer_id)");
         
         logger.info("Database tables created successfully");
     }
@@ -252,6 +271,7 @@ public class DatabaseManager {
             configuration.addAnnotatedClass(com.hisabx.model.Category.class);
             configuration.addAnnotatedClass(com.hisabx.model.SaleReturn.class);
             configuration.addAnnotatedClass(com.hisabx.model.ReturnItem.class);
+            configuration.addAnnotatedClass(com.hisabx.model.CustomerPayment.class);
             
             sessionFactory = configuration.buildSessionFactory();
             logger.info("Hibernate configured successfully");

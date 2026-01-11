@@ -2,6 +2,8 @@ package com.hisabx.controller;
 
 import com.hisabx.model.Sale;
 import com.hisabx.service.SalesService;
+import com.hisabx.service.ReceiptService;
+import com.hisabx.service.CustomerService;
 import com.hisabx.database.Repository.CustomerRepository;
 import com.hisabx.model.Customer;
 import javafx.beans.property.SimpleDoubleProperty;
@@ -11,15 +13,19 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
+import javafx.scene.layout.GridPane;
 import javafx.stage.Stage;
+import javafx.geometry.Insets;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.text.DecimalFormat;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 
 public class PendingPaymentsController {
     private static final Logger logger = LoggerFactory.getLogger(PendingPaymentsController.class);
@@ -39,13 +45,18 @@ public class PendingPaymentsController {
     @FXML private TableColumn<Sale, Void> actionsColumn;
 
     private final SalesService salesService;
+    private final ReceiptService receiptService;
     private final CustomerRepository customerRepository;
+    private final CustomerService customerService;
     private ObservableList<Sale> allPendingSales;
     private final DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+    private final DecimalFormat currencyFormat = new DecimalFormat("#,##0.00");
 
     public PendingPaymentsController() {
         this.salesService = new SalesService();
+        this.receiptService = new ReceiptService();
         this.customerRepository = new CustomerRepository();
+        this.customerService = new CustomerService();
     }
 
     @FXML
@@ -117,18 +128,12 @@ public class PendingPaymentsController {
 
         actionsColumn.setCellFactory(col -> new TableCell<>() {
             private final Button payBtn = new Button("💰 تسديد");
-            private final Button reminderBtn = new Button("📧");
-            private final javafx.scene.layout.HBox hbox = new javafx.scene.layout.HBox(5, payBtn, reminderBtn);
+            private final javafx.scene.layout.HBox hbox = new javafx.scene.layout.HBox(5, payBtn);
 
             {
                 payBtn.setStyle("-fx-background-color: #27ae60; -fx-text-fill: white;");
-                reminderBtn.setStyle("-fx-background-color: #9b59b6; -fx-text-fill: white;");
-
                 payBtn.setTooltip(new Tooltip("تسجيل الدفع"));
-                reminderBtn.setTooltip(new Tooltip("إرسال تذكير"));
-
                 payBtn.setOnAction(e -> handleMarkAsPaid(getTableView().getItems().get(getIndex())));
-                reminderBtn.setOnAction(e -> handleSendReminder(getTableView().getItems().get(getIndex())));
             }
 
             @Override
@@ -218,9 +223,9 @@ public class PendingPaymentsController {
                 })
                 .mapToDouble(Sale::getFinalAmount).sum();
 
-        totalPendingLabel.setText(String.format("%.2f دينار", totalPending));
+        totalPendingLabel.setText(String.format("%,.2f دينار", totalPending));
         invoiceCountLabel.setText(String.valueOf(invoiceCount));
-        overdueLabel.setText(String.format("%.2f دينار", overdue));
+        overdueLabel.setText(String.format("%,.2f دينار", overdue));
     }
 
     private void handleMarkAsPaid(Sale sale) {
@@ -228,7 +233,7 @@ public class PendingPaymentsController {
         alert.setTitle("تأكيد الدفع");
         alert.setHeaderText("هل تريد تسجيل الدفع لهذه الفاتورة؟");
         alert.setContentText("رقم الفاتورة: " + sale.getSaleCode() + "\nالمبلغ: " + 
-                           String.format("%.2f", sale.getFinalAmount()) + " دينار");
+                           String.format("%,.2f", sale.getFinalAmount()) + " دينار");
 
         alert.showAndWait().ifPresent(response -> {
             if (response == ButtonType.OK) {
@@ -244,50 +249,109 @@ public class PendingPaymentsController {
         });
     }
 
-    private void handleSendReminder(Sale sale) {
-        String customerName = sale.getCustomer() != null ? sale.getCustomer().getName() : "العميل";
-        String phone = sale.getCustomer() != null ? sale.getCustomer().getPhoneNumber() : "";
-        
-        showInfo("إرسال تذكير", 
-                "سيتم إرسال تذكير إلى: " + customerName + "\n" +
-                (phone != null && !phone.isEmpty() ? "الهاتف: " + phone + "\n" : "") +
-                "المبلغ المستحق: " + String.format("%.2f", sale.getFinalAmount()) + " دينار\n\n" +
-                "ملاحظة: ميزة إرسال الرسائل قيد التطوير");
-    }
-
-    @FXML
-    private void handleSendReminders() {
-        int count = pendingTable.getItems().size();
-        if (count == 0) {
-            showInfo("معلومة", "لا توجد مدفوعات معلقة لإرسال تذكيرات");
-            return;
-        }
-        
-        showInfo("إرسال تذكيرات", 
-                "سيتم إرسال تذكيرات إلى " + count + " عميل\n\n" +
-                "ملاحظة: ميزة إرسال الرسائل الجماعية قيد التطوير");
-    }
 
     @FXML
     private void handleDebtReport() {
-        StringBuilder report = new StringBuilder();
-        report.append("=== تقرير الذمم المعلقة ===\n\n");
-        report.append("إجمالي المعلق: ").append(totalPendingLabel.getText()).append("\n");
-        report.append("عدد الفواتير: ").append(invoiceCountLabel.getText()).append("\n");
-        report.append("المتأخر (أكثر من 30 يوم): ").append(overdueLabel.getText()).append("\n\n");
-        
-        report.append("--- التفاصيل ---\n");
-        for (Sale sale : pendingTable.getItems()) {
-            String customerName = sale.getCustomer() != null ? sale.getCustomer().getName() : "-";
-            long days = sale.getSaleDate() != null ? 
-                       ChronoUnit.DAYS.between(sale.getSaleDate().toLocalDate(), LocalDate.now()) : 0;
-            report.append(sale.getSaleCode()).append(" | ")
-                  .append(customerName).append(" | ")
-                  .append(String.format("%.2f", sale.getFinalAmount())).append(" دينار | ")
-                  .append(days).append(" يوم\n");
+        Sale selectedSale = pendingTable.getSelectionModel().getSelectedItem();
+        if (selectedSale == null || selectedSale.getCustomer() == null) {
+            showError("خطأ", "الرجاء اختيار فاتورة أولاً");
+            return;
         }
+
+        try {
+            java.io.File pdfFile = receiptService.generateAccountStatementPdf(
+                selectedSale.getCustomer(),
+                null,
+                null,
+                null,
+                false
+            );
+            if (pdfFile != null && pdfFile.exists()) {
+                if (java.awt.Desktop.isDesktopSupported()) {
+                    java.awt.Desktop.getDesktop().open(pdfFile);
+                } else {
+                    showSuccess("تم بنجاح", "تم إنشاء كشف الحساب:\n" + pdfFile.getAbsolutePath());
+                }
+            }
+        } catch (Exception e) {
+            logger.error("Failed to generate account statement", e);
+            showError("خطأ", "فشل في إنشاء كشف الحساب: " + e.getMessage());
+        }
+    }
+
+    @FXML
+    private void handlePayToCustomer() {
+        Sale selectedSale = pendingTable.getSelectionModel().getSelectedItem();
+        if (selectedSale == null || selectedSale.getCustomer() == null) {
+            showError("خطأ", "الرجاء اختيار فاتورة أولاً");
+            return;
+        }
+
+        Customer customer = selectedSale.getCustomer();
         
-        showInfo("تقرير الذمم", report.toString());
+        if (customer.getCurrentBalance() == null || customer.getCurrentBalance() <= 0) {
+            showError("خطأ", "العميل ليس لديه رصيد دائن (نحن لسنا مدينين له)");
+            return;
+        }
+
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("دفع دين للعميل");
+        dialog.setHeaderText("دفع مبلغ للعميل: " + customer.getName() + 
+                           "\nالرصيد الدائن الحالي: " + currencyFormat.format(customer.getCurrentBalance()) + " د.ع");
+
+        ButtonType payButtonType = new ButtonType("دفع", ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().addAll(payButtonType, ButtonType.CANCEL);
+
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(10);
+        grid.setPadding(new Insets(20, 150, 10, 10));
+
+        TextField amountField = new TextField();
+        amountField.setPromptText("المبلغ");
+        amountField.setText(currencyFormat.format(customer.getCurrentBalance()));
+
+        ComboBox<String> paymentMethodCombo = new ComboBox<>();
+        paymentMethodCombo.getItems().addAll("نقدي", "تحويل بنكي", "شيك");
+        paymentMethodCombo.setValue("نقدي");
+
+        TextArea notesArea = new TextArea();
+        notesArea.setPromptText("ملاحظات (اختياري)");
+        notesArea.setPrefRowCount(3);
+
+        grid.add(new Label("المبلغ:"), 0, 0);
+        grid.add(amountField, 1, 0);
+        grid.add(new Label("طريقة الدفع:"), 0, 1);
+        grid.add(paymentMethodCombo, 1, 1);
+        grid.add(new Label("ملاحظات:"), 0, 2);
+        grid.add(notesArea, 1, 2);
+
+        dialog.getDialogPane().setContent(grid);
+
+        Optional<ButtonType> result = dialog.showAndWait();
+        if (result.isPresent() && result.get() == payButtonType) {
+            try {
+                String amountStr = amountField.getText().replaceAll(",", "");
+                double amount = Double.parseDouble(amountStr);
+                
+                customerService.payToCustomer(
+                    customer.getId(),
+                    amount,
+                    paymentMethodCombo.getValue(),
+                    notesArea.getText(),
+                    "النظام"
+                );
+                
+                loadPendingPayments();
+                showSuccess("تم بنجاح", "تم تسجيل الدفع للعميل بنجاح\nالمبلغ: " + 
+                          currencyFormat.format(amount) + " د.ع");
+            } catch (NumberFormatException e) {
+                showError("خطأ", "المبلغ المدخل غير صحيح");
+            } catch (Exception e) {
+                logger.error("Failed to pay to customer", e);
+                showError("خطأ", "فشل في تسجيل الدفع: " + e.getMessage());
+            }
+        }
     }
 
     @FXML

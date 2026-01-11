@@ -536,11 +536,100 @@ public class Repository<T> {
                 return 0.0;
             }
         }
+
+        public List<SaleReturn> findForAccountStatement(Long customerId,
+                                                        String projectLocation,
+                                                        LocalDateTime from,
+                                                        LocalDateTime to) {
+            try (Session session = DatabaseManager.getSessionFactory().openSession()) {
+                StringBuilder hql = new StringBuilder();
+                hql.append("SELECT DISTINCT r FROM SaleReturn r ");
+                hql.append("LEFT JOIN FETCH r.customer ");
+                hql.append("LEFT JOIN FETCH r.sale ");
+                hql.append("LEFT JOIN FETCH r.returnItems ri ");
+                hql.append("LEFT JOIN FETCH ri.product ");
+                hql.append("WHERE r.customer.id = :customerId ");
+                hql.append("AND r.returnStatus = 'COMPLETED' ");
+
+                if (projectLocation != null && !projectLocation.trim().isEmpty()) {
+                    hql.append("AND r.sale.projectLocation = :projectLocation ");
+                }
+                if (from != null) {
+                    hql.append("AND r.returnDate >= :from ");
+                }
+                if (to != null) {
+                    hql.append("AND r.returnDate <= :to ");
+                }
+                hql.append("ORDER BY r.returnDate DESC");
+
+                Query<SaleReturn> query = session.createQuery(hql.toString(), SaleReturn.class);
+                query.setParameter("customerId", customerId);
+                if (projectLocation != null && !projectLocation.trim().isEmpty()) {
+                    query.setParameter("projectLocation", projectLocation);
+                }
+                if (from != null) {
+                    query.setParameter("from", from);
+                }
+                if (to != null) {
+                    query.setParameter("to", to);
+                }
+                return query.list();
+            } catch (Exception e) {
+                logger.error("Failed to load returns for account statement", e);
+                return List.of();
+            }
+        }
     }
 
     public static class ReturnItemRepository extends Repository<ReturnItem> {
         public ReturnItemRepository() {
             super(ReturnItem.class);
+        }
+    }
+
+    public static class CustomerPaymentRepository extends Repository<com.hisabx.model.CustomerPayment> {
+        public CustomerPaymentRepository() {
+            super(com.hisabx.model.CustomerPayment.class);
+        }
+
+        public List<com.hisabx.model.CustomerPayment> findByCustomerId(Long customerId) {
+            Session session = null;
+            try {
+                session = DatabaseManager.getSessionFactory().openSession();
+                Query<com.hisabx.model.CustomerPayment> query = session.createQuery(
+                    "FROM CustomerPayment cp WHERE cp.customer.id = :customerId ORDER BY cp.paymentDate DESC",
+                    com.hisabx.model.CustomerPayment.class
+                );
+                query.setParameter("customerId", customerId);
+                return query.list();
+            } catch (Exception e) {
+                logger.error("Failed to find payments by customer", e);
+                throw new RuntimeException("Failed to find payments", e);
+            } finally {
+                if (session != null) {
+                    session.close();
+                }
+            }
+        }
+
+        public String generatePaymentCode() {
+            Session session = null;
+            try {
+                session = DatabaseManager.getSessionFactory().openSession();
+                Query<Long> query = session.createQuery(
+                    "SELECT COALESCE(MAX(CAST(SUBSTRING(cp.paymentCode, 4) AS long)), 0) + 1 FROM CustomerPayment cp WHERE cp.paymentCode LIKE 'PAY%'",
+                    Long.class
+                );
+                Long nextNumber = query.uniqueResult();
+                return String.format("PAY%06d", nextNumber);
+            } catch (Exception e) {
+                logger.error("Failed to generate payment code", e);
+                return "PAY" + System.currentTimeMillis();
+            } finally {
+                if (session != null) {
+                    session.close();
+                }
+            }
         }
     }
 }

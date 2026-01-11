@@ -234,6 +234,7 @@ public class InventoryListController {
             stage.setTitle("منتج جديد");
             stage.initModality(Modality.APPLICATION_MODAL);
             stage.setScene(new Scene(root));
+            stage.setMaximized(true);
             
             ProductController controller = loader.getController();
             controller.setDialogStage(stage);
@@ -255,6 +256,7 @@ public class InventoryListController {
             stage.setTitle("تعديل منتج");
             stage.initModality(Modality.APPLICATION_MODAL);
             stage.setScene(new Scene(root));
+            stage.setMaximized(true);
             
             ProductController controller = loader.getController();
             controller.setDialogStage(stage);
@@ -300,6 +302,7 @@ public class InventoryListController {
             stage.setTitle("إدارة الفئات");
             stage.initModality(Modality.APPLICATION_MODAL);
             stage.setScene(new Scene(root));
+            stage.setMaximized(true);
             
             CategoryController controller = loader.getController();
             controller.setDialogStage(stage);

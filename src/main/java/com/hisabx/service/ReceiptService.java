@@ -2,10 +2,13 @@ package com.hisabx.service;
 
 import com.hisabx.database.Repository.ReceiptRepository;
 import com.hisabx.database.Repository.SaleRepository;
+import com.hisabx.database.Repository.SaleReturnRepository;
 import com.hisabx.model.Customer;
 import com.hisabx.model.Receipt;
+import com.hisabx.model.ReturnItem;
 import com.hisabx.model.Sale;
 import com.hisabx.model.SaleItem;
+import com.hisabx.model.SaleReturn;
 import com.itextpdf.text.BaseColor;
 import com.itextpdf.text.Document;
 import com.itextpdf.text.DocumentException;
@@ -39,6 +42,7 @@ public class ReceiptService {
     private static final Logger logger = LoggerFactory.getLogger(ReceiptService.class);
     private final ReceiptRepository receiptRepository;
     private final SaleRepository saleRepository;
+    private final SaleReturnRepository returnRepository;
 
     private static final String PREF_BANNER_PATH = "receipt.banner.path";
     
@@ -49,6 +53,7 @@ public class ReceiptService {
     public ReceiptService() {
         this.receiptRepository = new ReceiptRepository();
         this.saleRepository = new SaleRepository();
+        this.returnRepository = new SaleReturnRepository();
     }
 
     public File generateAccountStatementPdf(Customer customer,
@@ -63,15 +68,17 @@ public class ReceiptService {
         LocalDateTime fromDt = from != null ? from.atStartOfDay() : null;
         LocalDateTime toDt = to != null ? to.atTime(23, 59, 59) : null;
         List<Sale> sales;
+        List<SaleReturn> returns;
         try {
             sales = saleRepository.findForAccountStatement(customer.getId(), projectLocation, fromDt, toDt, includeItems);
+            returns = returnRepository.findForAccountStatement(customer.getId(), projectLocation, fromDt, toDt);
         } catch (Exception e) {
-            logger.error("Failed to load sales for statement", e);
+            logger.error("Failed to load sales/returns for statement", e);
             throw e;
         }
 
         try {
-            byte[] pdfData = generateAccountStatementPDF(customer, projectLocation, from, to, sales, includeItems);
+            byte[] pdfData = generateAccountStatementPDF(customer, projectLocation, from, to, sales, returns, includeItems);
 
             File dir = new File("statements");
             if (!dir.exists()) {
@@ -451,6 +458,7 @@ public class ReceiptService {
                                                LocalDate from,
                                                LocalDate to,
                                                List<Sale> sales,
+                                               List<SaleReturn> returns,
                                                boolean includeItems) throws DocumentException, IOException {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
 
@@ -531,18 +539,22 @@ public class ReceiptService {
 
         double totalFinal = 0.0;
         double totalPaid = 0.0;
+        double totalReturns = 0.0;
         for (Sale s : sales) {
             totalFinal += s.getFinalAmount() != null ? s.getFinalAmount() : 0.0;
             totalPaid += s.getPaidAmount() != null ? s.getPaidAmount() : 0.0;
         }
-        double totalRemaining = totalFinal - totalPaid;
+        for (SaleReturn r : returns) {
+            totalReturns += r.getTotalReturnAmount() != null ? r.getTotalReturnAmount() : 0.0;
+        }
+        double totalRemaining = totalFinal - totalPaid - totalReturns;
 
-        PdfPTable summary = new PdfPTable(3);
+        PdfPTable summary = new PdfPTable(4);
         summary.setWidthPercentage(100);
         summary.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
         summary.setSpacingBefore(6f);
         summary.setSpacingAfter(10f);
-        summary.setWidths(new float[]{1f, 1f, 1f});
+        summary.setWidths(new float[]{1f, 1f, 1f, 1f});
 
         PdfPCell s1 = new PdfPCell(new Phrase("إجمالي الفواتير\n" + formatCurrency(totalFinal), arabicBoldFont));
         s1.setHorizontalAlignment(Element.ALIGN_CENTER);
@@ -555,6 +567,13 @@ public class ReceiptService {
         s2.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
         s2.setPadding(8f);
         summary.addCell(s2);
+
+        PdfPCell s4 = new PdfPCell(new Phrase("إجمالي المرتجعات\n" + formatCurrency(totalReturns), arabicBoldFont));
+        s4.setHorizontalAlignment(Element.ALIGN_CENTER);
+        s4.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+        s4.setPadding(8f);
+        s4.setBackgroundColor(new BaseColor(255, 230, 230));
+        summary.addCell(s4);
 
         PdfPCell s3 = new PdfPCell(new Phrase("إجمالي الدين\n" + formatCurrency(totalRemaining), arabicBoldFont));
         s3.setHorizontalAlignment(Element.ALIGN_CENTER);
@@ -631,6 +650,83 @@ public class ReceiptService {
 
         document.add(salesTable);
 
+        if (!returns.isEmpty()) {
+            PdfPTable returnsHeader = new PdfPTable(1);
+            returnsHeader.setWidthPercentage(100);
+            returnsHeader.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+            returnsHeader.setSpacingBefore(10f);
+
+            PdfPCell returnsTitleCell = new PdfPCell(new Phrase("المرتجعات", sectionTitleFont));
+            returnsTitleCell.setBorder(PdfPCell.NO_BORDER);
+            returnsTitleCell.setHorizontalAlignment(Element.ALIGN_CENTER);
+            returnsTitleCell.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+            returnsTitleCell.setPaddingBottom(4f);
+            returnsTitleCell.setBackgroundColor(new BaseColor(255, 230, 230));
+            returnsHeader.addCell(returnsTitleCell);
+            document.add(returnsHeader);
+
+            PdfPTable returnsTable = new PdfPTable(5);
+            returnsTable.setWidthPercentage(100);
+            returnsTable.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+            returnsTable.setSpacingBefore(5f);
+            returnsTable.setSpacingAfter(10f);
+            returnsTable.setWidths(new float[]{0.6f, 1f, 1f, 1.2f, 1.2f});
+
+            addTableHeader(returnsTable, "ت", arabicBoldFont);
+            addTableHeader(returnsTable, "رقم المرتجع", arabicBoldFont);
+            addTableHeader(returnsTable, "رقم الفاتورة", arabicBoldFont);
+            addTableHeader(returnsTable, "التاريخ", arabicBoldFont);
+            addTableHeader(returnsTable, "المبلغ المرتجع", arabicBoldFont);
+
+            int retRow = 1;
+            for (SaleReturn r : returns) {
+                String retCode = r.getReturnCode() != null ? r.getReturnCode() : "-";
+                String saleCode = r.getSale() != null && r.getSale().getSaleCode() != null ? r.getSale().getSaleCode() : "-";
+                String retDate = r.getReturnDate() != null ? r.getReturnDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")) : "-";
+                double retAmount = r.getTotalReturnAmount() != null ? r.getTotalReturnAmount() : 0.0;
+
+                returnsTable.addCell(createBodyCell(String.valueOf(retRow), arabicFont, Element.ALIGN_CENTER));
+                returnsTable.addCell(createBodyCell(retCode, arabicFont, Element.ALIGN_CENTER));
+                returnsTable.addCell(createBodyCell(saleCode, arabicFont, Element.ALIGN_CENTER));
+                returnsTable.addCell(createBodyCell(retDate, arabicFont, Element.ALIGN_CENTER));
+                returnsTable.addCell(createBodyCell(formatCurrency(retAmount), arabicFont, Element.ALIGN_CENTER));
+                retRow++;
+
+                if (includeItems && r.getReturnItems() != null && !r.getReturnItems().isEmpty()) {
+                    PdfPCell retItemsCell = new PdfPCell();
+                    retItemsCell.setColspan(5);
+                    retItemsCell.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+                    retItemsCell.setPadding(6f);
+                    retItemsCell.setBackgroundColor(new BaseColor(255, 245, 245));
+
+                    PdfPTable retItemsTable = new PdfPTable(4);
+                    retItemsTable.setWidthPercentage(100);
+                    retItemsTable.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+                    retItemsTable.setWidths(new float[]{0.6f, 1.6f, 0.9f, 1f});
+
+                    addTableHeader(retItemsTable, "ت", arabicBoldFont);
+                    addTableHeader(retItemsTable, "المادة", arabicBoldFont);
+                    addTableHeader(retItemsTable, "الكمية", arabicBoldFont);
+                    addTableHeader(retItemsTable, "المبلغ", arabicBoldFont);
+
+                    int ri = 1;
+                    for (ReturnItem item : r.getReturnItems()) {
+                        String itemName = item.getProduct() != null && item.getProduct().getName() != null ? item.getProduct().getName() : "-";
+                        retItemsTable.addCell(createBodyCell(String.valueOf(ri), smallFont, Element.ALIGN_CENTER));
+                        retItemsTable.addCell(createBodyCell(itemName, smallFont, Element.ALIGN_RIGHT));
+                        retItemsTable.addCell(createBodyCell(item.getQuantity() != null ? String.valueOf(item.getQuantity()) : "0", smallFont, Element.ALIGN_CENTER));
+                        retItemsTable.addCell(createBodyCell(formatCurrency(item.getTotalPrice() != null ? item.getTotalPrice() : 0.0), smallFont, Element.ALIGN_CENTER));
+                        ri++;
+                    }
+
+                    retItemsCell.addElement(retItemsTable);
+                    returnsTable.addCell(retItemsCell);
+                }
+            }
+
+            document.add(returnsTable);
+        }
+
         addUnifiedFooter(document, arabicBoldFont, smallFont);
 
         document.close();
@@ -673,7 +769,8 @@ public class ReceiptService {
     
     private String formatAmount(Double value) {
         double v = value != null ? value : 0.0;
-        return String.format("%.2f", v);
+        java.text.DecimalFormat df = new java.text.DecimalFormat("#,##0.00");
+        return df.format(v);
     }
 
     private String formatCurrency(Double value) {

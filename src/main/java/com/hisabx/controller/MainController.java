@@ -27,7 +27,7 @@ import java.util.prefs.Preferences;
 public class MainController {
     private static final Logger logger = LoggerFactory.getLogger(MainController.class);
 
-    private static final DecimalFormat currencyFormat = new DecimalFormat("#,##0");
+    private static final DecimalFormat currencyFormat = new DecimalFormat("#,##0.00");
     
     @FXML private BorderPane mainLayout;
     @FXML private Label todaySalesCountLabel;
@@ -168,6 +168,7 @@ public class MainController {
             stage.initOwner(mainApp.getPrimaryStage());
             Scene scene = new Scene(root);
             stage.setScene(scene);
+            stage.setMaximized(true);
             
             CustomerController controller = loader.getController();
             controller.setDialogStage(stage);
@@ -192,6 +193,7 @@ public class MainController {
             stage.initOwner(mainApp.getPrimaryStage());
             Scene scene = new Scene(root);
             stage.setScene(scene);
+            stage.setMaximized(true);
             
             ProductController controller = loader.getController();
             controller.setDialogStage(stage);
@@ -216,6 +218,7 @@ public class MainController {
             stage.initOwner(mainApp.getPrimaryStage());
             Scene scene = new Scene(root, 1000, 700);
             stage.setScene(scene);
+            stage.setMaximized(true);
             
             SaleFormController controller = loader.getController();
             controller.setDialogStage(stage);
@@ -241,6 +244,7 @@ public class MainController {
             stage.initOwner(mainApp.getPrimaryStage());
             Scene scene = new Scene(root);
             stage.setScene(scene);
+            stage.setMaximized(true);
             registerDashboardRefresh(stage);
             stage.show();
         } catch (IOException e) {
@@ -262,6 +266,7 @@ public class MainController {
             stage.initOwner(mainApp.getPrimaryStage());
             Scene scene = new Scene(root);
             stage.setScene(scene);
+            stage.setMaximized(true);
             
             CustomerSearchController controller = loader.getController();
             controller.setDialogStage(stage);
@@ -287,6 +292,7 @@ public class MainController {
             stage.initOwner(mainApp.getPrimaryStage());
             Scene scene = new Scene(root);
             stage.setScene(scene);
+            stage.setMaximized(true);
             registerDashboardRefresh(stage);
             stage.show();
         } catch (IOException e) {
@@ -308,6 +314,7 @@ public class MainController {
             stage.initOwner(mainApp.getPrimaryStage());
             Scene scene = new Scene(root);
             stage.setScene(scene);
+            stage.setMaximized(true);
             registerDashboardRefresh(stage);
             stage.show();
         } catch (IOException e) {
@@ -328,6 +335,7 @@ public class MainController {
             stage.initOwner(mainApp.getPrimaryStage());
             Scene scene = new Scene(root);
             stage.setScene(scene);
+            stage.setMaximized(true);
             
             com.hisabx.controller.AddStockController controller = loader.getController();
             controller.setDialogStage(stage);
@@ -351,6 +359,7 @@ public class MainController {
             stage.initOwner(mainApp.getPrimaryStage());
             Scene scene = new Scene(root);
             stage.setScene(scene);
+            stage.setMaximized(true);
             
             CategoryController controller = loader.getController();
             controller.setDialogStage(stage);
@@ -374,6 +383,7 @@ public class MainController {
             stage.initOwner(mainApp.getPrimaryStage());
             Scene scene = new Scene(root);
             stage.setScene(scene);
+            stage.setMaximized(true);
             
             SaleListController controller = loader.getController();
             controller.setMainApp(mainApp);
@@ -397,6 +407,7 @@ public class MainController {
             stage.initOwner(mainApp.getPrimaryStage());
             Scene scene = new Scene(root, 950, 650);
             stage.setScene(scene);
+            stage.setMaximized(true);
             
             stage.show();
         } catch (IOException e) {
@@ -418,6 +429,7 @@ public class MainController {
             stage.initOwner(mainApp.getPrimaryStage());
             Scene scene = new Scene(root);
             stage.setScene(scene);
+            stage.setMaximized(true);
             
             stage.show();
         } catch (IOException e) {
@@ -438,6 +450,7 @@ public class MainController {
             stage.initOwner(mainApp.getPrimaryStage());
             Scene scene = new Scene(root);
             stage.setScene(scene);
+            stage.setMaximized(true);
             
             ReturnController controller = loader.getController();
             controller.setDialogStage(stage);
@@ -462,6 +475,7 @@ public class MainController {
             stage.initOwner(mainApp.getPrimaryStage());
             Scene scene = new Scene(root);
             stage.setScene(scene);
+            stage.setMaximized(true);
             
             CreateReceiptController controller = loader.getController();
             controller.setDialogStage(stage);
@@ -487,6 +501,7 @@ public class MainController {
             stage.initOwner(mainApp.getPrimaryStage());
             Scene scene = new Scene(root);
             stage.setScene(scene);
+            stage.setMaximized(true);
             
             ReceiptListController controller = loader.getController();
             controller.setMainApp(mainApp);
@@ -511,6 +526,7 @@ public class MainController {
             stage.initOwner(mainApp.getPrimaryStage());
             Scene scene = new Scene(root);
             stage.setScene(scene);
+            stage.setMaximized(true);
             
             SettingsController controller = loader.getController();
             controller.setDialogStage(stage);

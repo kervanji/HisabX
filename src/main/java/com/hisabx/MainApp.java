@@ -21,6 +21,20 @@ public class MainApp extends Application {
         this.primaryStage = primaryStage;
         this.primaryStage.setTitle("HisabX - نظام إدارة المخازن والمبيعات");
         
+        // Set application icon
+        try {
+            javafx.scene.image.Image icon = new javafx.scene.image.Image(
+                getClass().getResourceAsStream("/images/logo.svg")
+            );
+            this.primaryStage.getIcons().add(icon);
+        } catch (Exception e) {
+            logger.warn("Failed to load application icon", e);
+        }
+        
+        // Enable full screen mode
+        this.primaryStage.setMaximized(true);
+        this.primaryStage.setFullScreen(false); // Maximized instead of true fullscreen for better UX
+        
         try {
             // Initialize database
             DatabaseManager.initialize();

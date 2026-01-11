@@ -238,6 +238,7 @@ public class CustomerListController {
             stage.initModality(Modality.APPLICATION_MODAL);
             Scene scene = new Scene(root);
             stage.setScene(scene);
+            stage.setMaximized(true);
             
             CustomerController controller = loader.getController();
             controller.setDialogStage(stage);

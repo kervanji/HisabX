@@ -179,6 +179,7 @@ public class CustomerSearchController {
             }
             Scene scene = new Scene(root, 1000, 700);
             stage.setScene(scene);
+            stage.setMaximized(true);
             
             SaleFormController controller = loader.getController();
             controller.setDialogStage(stage);

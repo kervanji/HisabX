@@ -14,12 +14,15 @@
 <?import javafx.scene.shape.Circle?>
 <?import javafx.scene.shape.Polygon?>
 <?import javafx.scene.text.Font?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.image.Image?>
 <BorderPane xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
            fx:controller="com.hisabx.controller.MainController" fx:id="mainLayout"
-           style="-fx-background-color: #eef2f7;">
+           stylesheets="@../styles/main.css"
+           style="-fx-background-color: linear-gradient(to bottom, #f8fafc, #eef2f7);">
     <top>
         <VBox>
-            <MenuBar>
+            <MenuBar styleClass="menu-bar">
                 <Menu text="ملف">
                     <MenuItem text="عميل جديد" onAction="#handleNewCustomer"/>
                     <MenuItem text="منتج جديد" onAction="#handleNewProduct"/>
@@ -61,93 +64,117 @@
     </top>
     
     <center>
-        <StackPane style="-fx-padding: 36 32 44 32; -fx-background-color: linear-gradient(to bottom right, #f9fbff, #eef2f7);">
+        <StackPane style="-fx-padding: 30;">
             <Pane StackPane.alignment="CENTER">
-                <Circle radius="180" fill="#d9e8ff" opacity="0.28" layoutX="220" layoutY="210"/>
-                <Circle radius="130" fill="#ffe6d6" opacity="0.32" layoutX="520" layoutY="120"/>
-                <Circle radius="90" fill="#c3f4e7" opacity="0.26" layoutX="420" layoutY="330"/>
-                <Polygon fill="#dfe8ff" opacity="0.5" points="430, 40, 540, 170, 320, 170"/>
-                <Polygon fill="#fff2de" opacity="0.55" points="140, 280, 240, 360, 60, 360"/>
+                <Circle radius="200" fill="#dbeafe" opacity="0.25" layoutX="180" layoutY="200"/>
+                <Circle radius="150" fill="#fef3c7" opacity="0.28" layoutX="600" layoutY="150"/>
+                <Circle radius="100" fill="#d1fae5" opacity="0.22" layoutX="450" layoutY="350"/>
+                <Polygon fill="#e0e7ff" opacity="0.45" points="500, 50, 620, 190, 380, 190"/>
             </Pane>
 
-            <VBox alignment="CENTER" spacing="24">
-                <VBox alignment="CENTER" spacing="8">
-                    <Label text="HisabX" style="-fx-font-size: 46px; -fx-font-weight: bold; -fx-text-fill: #1f3c56;">
-                        <font>
-                            <Font name="Segoe UI Semibold" size="46"/>
-                        </font>
-                    </Label>
-                    <Label fx:id="companyNameLabel" text="" style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #3b82f6;">
-                        <font>
-                            <Font name="Segoe UI" size="16"/>
-                        </font>
-                    </Label>
-                    <Label text="نظام إدارة المخازن والمبيعات" style="-fx-font-size: 20px; -fx-text-fill: #5d6d7e;">
-                        <font>
-                            <Font name="Segoe UI" size="20"/>
-                        </font>
-                    </Label>
+            <VBox alignment="CENTER" spacing="28" StackPane.alignment="CENTER">
+                <!-- Logo and Header Section -->
+                <VBox alignment="CENTER" spacing="16">
+                    <ImageView fitWidth="100" fitHeight="100" preserveRatio="true">
+                        <image>
+                            <Image url="@../templates/HisabX_transparent.png"/>
+                        </image>
+                    </ImageView>
+                    <VBox alignment="CENTER" spacing="6">
+                        <Label text="HisabX" styleClass="label-title" style="-fx-font-size: 52px; -fx-font-weight: bold; -fx-text-fill: #1e293b;">
+                            <font>
+                                <Font name="Segoe UI Bold" size="52"/>
+                            </font>
+                        </Label>
+                        <Label fx:id="companyNameLabel" text="" style="-fx-font-size: 17px; -fx-font-weight: 600; -fx-text-fill: #3b82f6;">
+                            <font>
+                                <Font name="Segoe UI Semibold" size="17"/>
+                            </font>
+                        </Label>
+                    </VBox>
                 </VBox>
 
-                <HBox alignment="CENTER" spacing="14">
-                    <Button text="بدء عملية بيع" mnemonicParsing="false" onAction="#handleNewSale"
-                            style="-fx-background-color: linear-gradient(to right, #2a8cff, #246bff); -fx-text-fill: white; -fx-font-size: 15px; -fx-font-weight: bold; -fx-padding: 12 20; -fx-background-radius: 12; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.12), 12,0,0,4);"/>
-                    <Button text="إضافة عميل" mnemonicParsing="false" onAction="#handleNewCustomer"
-                            style="-fx-background-color: #ffffff; -fx-text-fill: #1f3c56; -fx-font-size: 14px; -fx-font-weight: bold; -fx-padding: 11 18; -fx-background-radius: 12; -fx-border-color: #d5e2f4; -fx-border-radius: 12; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.05), 10,0,0,3);"/>
-                    <Button text="إدارة المخزون" mnemonicParsing="false" onAction="#handleViewInventory"
-                            style="-fx-background-color: #ffffff; -fx-text-fill: #1f3c56; -fx-font-size: 14px; -fx-font-weight: bold; -fx-padding: 11 18; -fx-background-radius: 12; -fx-border-color: #d5e2f4; -fx-border-radius: 12; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.05), 10,0,0,3);"/>
-                </HBox>
+                <!-- Main Action Buttons -->
+                <VBox alignment="CENTER" spacing="16">
+                    <HBox alignment="CENTER" spacing="16">
+                        <Button text="🛒 بيع جديد" mnemonicParsing="false" onAction="#handleNewSale"
+                                styleClass="button-primary"
+                                style="-fx-font-size: 16px; -fx-padding: 16 32; -fx-background-radius: 12; -fx-cursor: hand;"/>
+                        <Button text="📦 إدارة المخزون" mnemonicParsing="false" onAction="#handleViewInventory"
+                                styleClass="button-success"
+                                style="-fx-font-size: 15px; -fx-padding: 14 28; -fx-background-radius: 12; -fx-cursor: hand;"/>
+                        <Button text="👤 إضافة عميل" mnemonicParsing="false" onAction="#handleNewCustomer"
+                                styleClass="button-secondary"
+                                style="-fx-font-size: 15px; -fx-padding: 14 28; -fx-background-radius: 12; -fx-cursor: hand;"/>
+                    </HBox>
+                    <HBox alignment="CENTER" spacing="16">
+                        <Button text="📊 تقارير المبيعات" mnemonicParsing="false" onAction="#handleSalesReport"
+                                styleClass="button-secondary"
+                                style="-fx-font-size: 14px; -fx-padding: 12 24; -fx-background-radius: 10; -fx-cursor: hand;"/>
+                        <Button text="💰 المدفوعات المعلقة" mnemonicParsing="false" onAction="#handlePendingPayments"
+                                styleClass="button-warning"
+                                style="-fx-font-size: 14px; -fx-padding: 12 24; -fx-background-radius: 10; -fx-cursor: hand;"/>
+                        <Button text="🧾 إنشاء إيصال" mnemonicParsing="false" onAction="#handleCreateReceipt"
+                                styleClass="button-secondary"
+                                style="-fx-font-size: 14px; -fx-padding: 12 24; -fx-background-radius: 10; -fx-cursor: hand;"/>
+                        <Button text="↩️ إرجاع مواد" mnemonicParsing="false" onAction="#handleProductReturn"
+                                styleClass="button-secondary"
+                                style="-fx-font-size: 14px; -fx-padding: 12 24; -fx-background-radius: 10; -fx-cursor: hand;"/>
+                    </HBox>
+                </VBox>
 
-                <HBox alignment="CENTER" spacing="16">
-                    <VBox alignment="TOP_RIGHT" spacing="8" prefWidth="220"
-                          style="-fx-background-color: white; -fx-padding: 16; -fx-background-radius: 14; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 14,0,0,6);">
+                <!-- Dashboard Cards -->
+                <HBox alignment="CENTER" spacing="18">
+                    <VBox alignment="TOP_RIGHT" spacing="10" prefWidth="240" styleClass="card"
+                          style="-fx-background-color: white; -fx-padding: 18; -fx-background-radius: 16; -fx-effect: dropshadow(gaussian, rgba(59,130,246,0.15), 16,0,0,6);">
                         <HBox alignment="CENTER_RIGHT" spacing="8">
-                            <MenuButton text="⋮" style="-fx-background-color: transparent; -fx-font-size: 16px;">
+                            <MenuButton text="⋮" style="-fx-background-color: transparent; -fx-font-size: 18px; -fx-cursor: hand;">
                                 <items>
                                     <MenuItem text="عرض كل المبيعات" onAction="#handleViewSales"/>
                                     <MenuItem text="تقرير المبيعات" onAction="#handleSalesReport"/>
                                     <MenuItem text="المدفوعات المعلقة" onAction="#handlePendingPayments"/>
                                 </items>
                             </MenuButton>
-                            <Label text="مبيعات اليوم" style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #1f3c56;" HBox.hgrow="ALWAYS"/>
+                            <Label text="📈 مبيعات اليوم" styleClass="card-header" style="-fx-font-size: 15px; -fx-font-weight: bold; -fx-text-fill: #1e293b;" HBox.hgrow="ALWAYS"/>
                         </HBox>
-                        <Label fx:id="todaySalesCountLabel" text="عدد المبيعات: --" style="-fx-font-size: 12px; -fx-text-fill: #5d6d7e;"/>
-                        <Label fx:id="todaySalesAmountLabel" text="0 د.ع" style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #2a8cff; -fx-background-color: #e8f1ff; -fx-padding: 6 10; -fx-background-radius: 8;"/>
+                        <Label fx:id="todaySalesCountLabel" text="عدد المبيعات: --" style="-fx-font-size: 13px; -fx-text-fill: #64748b;"/>
+                        <Label fx:id="todaySalesAmountLabel" text="0 د.ع" styleClass="badge badge-info" style="-fx-font-size: 15px; -fx-font-weight: bold; -fx-text-fill: #1e40af; -fx-background-color: #dbeafe; -fx-padding: 8 12; -fx-background-radius: 10;"/>
                     </VBox>
-                    <VBox alignment="TOP_RIGHT" spacing="8" prefWidth="220"
-                          style="-fx-background-color: white; -fx-padding: 16; -fx-background-radius: 14; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 14,0,0,6);">
-                        <Label text="تنبيهات المخزون" style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #1f3c56;"/>
-                        <Label fx:id="lowStockDescLabel" text="راقب المنتجات منخفضة المخزون" style="-fx-font-size: 12px; -fx-text-fill: #5d6d7e;"/>
-                        <Label fx:id="lowStockCountLabel" text="لا توجد تنبيهات حالياً" style="-fx-font-size: 12px; -fx-text-fill: #35b585; -fx-background-color: #e6fff4; -fx-padding: 6 10; -fx-background-radius: 8;"/>
+                    <VBox alignment="TOP_RIGHT" spacing="10" prefWidth="240" styleClass="card"
+                          style="-fx-background-color: white; -fx-padding: 18; -fx-background-radius: 16; -fx-effect: dropshadow(gaussian, rgba(239,68,68,0.15), 16,0,0,6);">
+                        <Label text="⚠️ تنبيهات المخزون" styleClass="card-header" style="-fx-font-size: 15px; -fx-font-weight: bold; -fx-text-fill: #1e293b;"/>
+                        <Label fx:id="lowStockDescLabel" text="راقب المنتجات منخفضة المخزون" style="-fx-font-size: 12px; -fx-text-fill: #64748b;"/>
+                        <Label fx:id="lowStockCountLabel" text="لا توجد تنبيهات" styleClass="badge badge-success" style="-fx-font-size: 13px; -fx-font-weight: 600; -fx-text-fill: #065f46; -fx-background-color: #d1fae5; -fx-padding: 8 12; -fx-background-radius: 10;"/>
                     </VBox>
-                    <VBox alignment="TOP_RIGHT" spacing="8" prefWidth="220"
-                          style="-fx-background-color: white; -fx-padding: 16; -fx-background-radius: 14; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 14,0,0,6);">
-                        <Label text="المدفوعات المعلقة" style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #1f3c56;"/>
-                        <Label fx:id="pendingPaymentsDescLabel" text="فواتير تنتظر الدفع" style="-fx-font-size: 12px; -fx-text-fill: #5d6d7e;"/>
-                        <Label fx:id="pendingPaymentsLabel" text="0 فاتورة" style="-fx-font-size: 12px; -fx-text-fill: #ff8c42; -fx-background-color: #fff2e5; -fx-padding: 6 10; -fx-background-radius: 8;"/>
+                    <VBox alignment="TOP_RIGHT" spacing="10" prefWidth="240" styleClass="card"
+                          style="-fx-background-color: white; -fx-padding: 18; -fx-background-radius: 16; -fx-effect: dropshadow(gaussian, rgba(245,158,11,0.15), 16,0,0,6);">
+                        <Label text="💳 المدفوعات المعلقة" styleClass="card-header" style="-fx-font-size: 15px; -fx-font-weight: bold; -fx-text-fill: #1e293b;"/>
+                        <Label fx:id="pendingPaymentsDescLabel" text="فواتير تنتظر الدفع" style="-fx-font-size: 12px; -fx-text-fill: #64748b;"/>
+                        <Label fx:id="pendingPaymentsLabel" text="0 فاتورة" styleClass="badge badge-warning" style="-fx-font-size: 13px; -fx-font-weight: 600; -fx-text-fill: #92400e; -fx-background-color: #fed7aa; -fx-padding: 8 12; -fx-background-radius: 10;"/>
                     </VBox>
                 </HBox>
                 
-                <HBox alignment="CENTER" spacing="16">
-                    <VBox alignment="TOP_RIGHT" spacing="8" prefWidth="170"
-                          style="-fx-background-color: white; -fx-padding: 14; -fx-background-radius: 12; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.06), 10,0,0,4);">
-                        <Label text="العملاء" style="-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #1f3c56;"/>
-                        <Label fx:id="totalCustomersLabel" text="--" style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #6366f1;"/>
+                <!-- Statistics Row -->
+                <HBox alignment="CENTER" spacing="18">
+                    <VBox alignment="TOP_RIGHT" spacing="8" prefWidth="180" styleClass="card"
+                          style="-fx-background-color: white; -fx-padding: 16; -fx-background-radius: 14; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 12,0,0,4);">
+                        <Label text="👥 العملاء" style="-fx-font-size: 13px; -fx-font-weight: 600; -fx-text-fill: #64748b;"/>
+                        <Label fx:id="totalCustomersLabel" text="--" styleClass="card-value" style="-fx-font-size: 26px; -fx-font-weight: bold; -fx-text-fill: #6366f1;"/>
                     </VBox>
-                    <VBox alignment="TOP_RIGHT" spacing="8" prefWidth="170"
-                          style="-fx-background-color: white; -fx-padding: 14; -fx-background-radius: 12; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.06), 10,0,0,4);">
-                        <Label text="المنتجات" style="-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #1f3c56;"/>
-                        <Label fx:id="totalProductsLabel" text="--" style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #10b981;"/>
+                    <VBox alignment="TOP_RIGHT" spacing="8" prefWidth="180" styleClass="card"
+                          style="-fx-background-color: white; -fx-padding: 16; -fx-background-radius: 14; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 12,0,0,4);">
+                        <Label text="📦 المنتجات" style="-fx-font-size: 13px; -fx-font-weight: 600; -fx-text-fill: #64748b;"/>
+                        <Label fx:id="totalProductsLabel" text="--" styleClass="card-value" style="-fx-font-size: 26px; -fx-font-weight: bold; -fx-text-fill: #10b981;"/>
                     </VBox>
-                    <VBox alignment="TOP_RIGHT" spacing="8" prefWidth="170"
-                          style="-fx-background-color: white; -fx-padding: 14; -fx-background-radius: 12; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.06), 10,0,0,4);">
-                        <Label text="إجمالي المبيعات" style="-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #1f3c56;"/>
-                        <Label fx:id="totalSalesLabel" text="--" style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #f59e0b;"/>
+                    <VBox alignment="TOP_RIGHT" spacing="8" prefWidth="180" styleClass="card"
+                          style="-fx-background-color: white; -fx-padding: 16; -fx-background-radius: 14; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 12,0,0,4);">
+                        <Label text="🛍️ إجمالي المبيعات" style="-fx-font-size: 13px; -fx-font-weight: 600; -fx-text-fill: #64748b;"/>
+                        <Label fx:id="totalSalesLabel" text="--" styleClass="card-value" style="-fx-font-size: 26px; -fx-font-weight: bold; -fx-text-fill: #f59e0b;"/>
                     </VBox>
-                    <VBox alignment="TOP_RIGHT" spacing="8" prefWidth="170"
-                          style="-fx-background-color: white; -fx-padding: 14; -fx-background-radius: 12; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.06), 10,0,0,4);">
-                        <Label text="قيمة المخزون" style="-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #1f3c56;"/>
-                        <Label fx:id="inventoryValueLabel" text="--" style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #ef4444;"/>
+                    <VBox alignment="TOP_RIGHT" spacing="8" prefWidth="180" styleClass="card"
+                          style="-fx-background-color: white; -fx-padding: 16; -fx-background-radius: 14; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 12,0,0,4);">
+                        <Label text="💵 قيمة المخزون" style="-fx-font-size: 13px; -fx-font-weight: 600; -fx-text-fill: #64748b;"/>
+                        <Label fx:id="inventoryValueLabel" text="--" styleClass="card-value" style="-fx-font-size: 26px; -fx-font-weight: bold; -fx-text-fill: #ef4444;"/>
                     </VBox>
                 </HBox>
             </VBox>
@@ -155,8 +182,12 @@
     </center>
     
     <bottom>
-        <VBox>
-            <Label text="جاهز" style="-fx-padding: 10px; -fx-background-color: #ecf0f1;"/>
-        </VBox>
+        <HBox alignment="CENTER_RIGHT" spacing="20" style="-fx-padding: 8 16; -fx-background-color: linear-gradient(to right, #f8fafc, #ffffff); -fx-border-color: #e2e8f0; -fx-border-width: 1 0 0 0;">
+            <Label text="© 2025 KervanjiHolding" style="-fx-font-size: 11px; -fx-text-fill: #94a3b8;"/>
+            <Label text="•" style="-fx-font-size: 11px; -fx-text-fill: #cbd5e1;"/>
+            <Label text="HisabX v1.0.0" style="-fx-font-size: 11px; -fx-text-fill: #64748b; -fx-font-weight: 600;"/>
+            <Label text="•" style="-fx-font-size: 11px; -fx-text-fill: #cbd5e1;"/>
+            <Label text="✓ جاهز" style="-fx-font-size: 11px; -fx-text-fill: #22c55e; -fx-font-weight: 600;" HBox.hgrow="ALWAYS"/>
+        </HBox>
     </bottom>
 </BorderPane>

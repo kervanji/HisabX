@@ -167,30 +167,26 @@ public class ReturnListController {
     }
 
     private void handleViewReturn(SaleReturn saleReturn) {
-        StringBuilder details = new StringBuilder();
-        details.append("رقم المرتجع: ").append(saleReturn.getReturnCode()).append("\n");
-        details.append("رقم الفاتورة: ").append(saleReturn.getSale() != null ? saleReturn.getSale().getSaleCode() : "-").append("\n");
-        details.append("العميل: ").append(saleReturn.getCustomer() != null ? saleReturn.getCustomer().getName() : "-").append("\n");
-        details.append("التاريخ: ").append(saleReturn.getReturnDate() != null ? saleReturn.getReturnDate().format(dateFormatter) : "-").append("\n");
-        details.append("السبب: ").append(saleReturn.getReturnReason()).append("\n");
-        details.append("الحالة: ").append(getStatusArabic(saleReturn.getReturnStatus())).append("\n\n");
-        details.append("المبلغ المرتجع: ").append(currencyFormat.format(saleReturn.getTotalReturnAmount())).append(" د.ع\n\n");
-
-        if (saleReturn.getReturnItems() != null && !saleReturn.getReturnItems().isEmpty()) {
-            details.append("--- المواد المرتجعة ---\n");
-            saleReturn.getReturnItems().forEach(item -> {
-                String productName = item.getProduct() != null ? item.getProduct().getName() : "غير معروف";
-                details.append("• ").append(productName)
-                        .append(" × ").append(item.getQuantity())
-                        .append(" = ").append(currencyFormat.format(item.getTotalPrice())).append(" د.ع\n");
-            });
+        try {
+            java.io.File pdfFile = returnService.generateReturnReceiptPdf(saleReturn);
+            if (pdfFile != null && pdfFile.exists()) {
+                if (java.awt.Desktop.isDesktopSupported()) {
+                    java.awt.Desktop.getDesktop().open(pdfFile);
+                } else {
+                    showInfo("تم بنجاح", "تم إنشاء إيصال المرتجع:\n" + pdfFile.getAbsolutePath());
+                }
+            }
+        } catch (Exception e) {
+            showError("خطأ", "فشل في إنشاء إيصال المرتجع: " + e.getMessage());
         }
+    }
 
-        if (saleReturn.getNotes() != null && !saleReturn.getNotes().isEmpty()) {
-            details.append("\nملاحظات: ").append(saleReturn.getNotes());
-        }
-
-        showInfo("تفاصيل المرتجع", details.toString());
+    private void showError(String title, String message) {
+        Alert alert = new Alert(Alert.AlertType.ERROR);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
     }
 
     private String getStatusArabic(String status) {

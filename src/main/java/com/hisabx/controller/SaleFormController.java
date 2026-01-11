@@ -48,7 +48,6 @@ public class SaleFormController {
     @FXML private TableColumn<SaleItemRow, Void> actionColumn;
     @FXML private RadioButton cashRadio;
     @FXML private RadioButton creditRadio;
-    @FXML private RadioButton cardRadio;
     @FXML private ToggleGroup paymentGroup;
     @FXML private TextField additionalDiscountField;
     @FXML private Label subtotalLabel;
@@ -102,7 +101,6 @@ public class SaleFormController {
 
         cashRadio.setToggleGroup(paymentGroup);
         creditRadio.setToggleGroup(paymentGroup);
-        cardRadio.setToggleGroup(paymentGroup);
 
         // Force single selection (and prevent clearing selection)
         if (paymentGroup.getSelectedToggle() == null) {
@@ -110,7 +108,9 @@ public class SaleFormController {
         }
 
         if (paidAmountField != null) {
-            paidAmountField.setDisable(creditRadio.isSelected());
+            // For cash: disable field and auto-fill with total
+            // For debt: enable field for partial payment
+            paidAmountField.setDisable(cashRadio.isSelected());
         }
 
         paymentGroup.selectedToggleProperty().addListener((obs, oldToggle, newToggle) -> {
@@ -119,9 +119,15 @@ public class SaleFormController {
             }
 
             if (paidAmountField != null) {
-                boolean isDebt = creditRadio.isSelected();
-                paidAmountField.setDisable(isDebt);
-                if (isDebt) {
+                boolean isCash = cashRadio.isSelected();
+                paidAmountField.setDisable(isCash);
+                
+                if (isCash) {
+                    // Auto-fill with full amount for cash
+                    double finalTotal = calculateFinalTotal();
+                    paidAmountField.setText(String.valueOf(finalTotal));
+                } else {
+                    // Enable partial payment for debt
                     paidAmountField.setText("0");
                 }
                 handlePaidAmountChange();
@@ -373,6 +379,7 @@ public class SaleFormController {
                 stage.initOwner(dialogStage);
             }
             stage.setScene(new Scene(root));
+            stage.setMaximized(true);
 
             CustomerController controller = loader.getController();
             controller.setDialogStage(stage);
@@ -485,6 +492,17 @@ public class SaleFormController {
         updateTotals();
     }
 
+    private double calculateFinalTotal() {
+        double subtotal = saleItems.stream().mapToDouble(SaleItemRow::getTotalPrice).sum();
+        double additionalDiscount = 0;
+        try {
+            additionalDiscount = Double.parseDouble(additionalDiscountField.getText().trim());
+        } catch (NumberFormatException e) {
+            additionalDiscount = 0;
+        }
+        return subtotal - additionalDiscount;
+    }
+
     private void updateTotals() {
         double subtotal = saleItems.stream().mapToDouble(SaleItemRow::getTotalPrice).sum();
         double itemsDiscount = saleItems.stream().mapToDouble(SaleItemRow::getDiscountAmount).sum();
@@ -503,19 +521,17 @@ public class SaleFormController {
         discountLabel.setText(numberFormatter.format(totalDiscount) + " دينار");
         finalTotalLabel.setText(numberFormatter.format(finalTotal) + " دينار");
         
+        // Auto-update paid amount for cash payment
+        if (cashRadio.isSelected() && paidAmountField != null) {
+            paidAmountField.setText(String.valueOf(finalTotal));
+        }
+        
         updateBalance(finalTotal);
     }
 
     @FXML
     private void handlePaidAmountChange() {
-        double subtotal = saleItems.stream().mapToDouble(SaleItemRow::getTotalPrice).sum();
-        double additionalDiscount = 0;
-        try {
-            additionalDiscount = Double.parseDouble(additionalDiscountField.getText().trim());
-        } catch (NumberFormatException e) {
-            additionalDiscount = 0;
-        }
-        double finalTotal = subtotal - additionalDiscount;
+        double finalTotal = calculateFinalTotal();
         updateBalance(finalTotal);
     }
 
@@ -595,7 +611,6 @@ public class SaleFormController {
 
         String paymentMethod = "CASH";
         if (creditRadio.isSelected()) paymentMethod = "DEBT";
-        else if (cardRadio.isSelected()) paymentMethod = "CARD";
 
         try {
             SalesService.SaleRequest request = new SalesService.SaleRequest();
@@ -606,16 +621,21 @@ public class SaleFormController {
             request.setCreatedBy("System");
 
             double paidAmount = 0;
-            if (!creditRadio.isSelected()) {
-                try {
-                    String paidText = paidAmountField.getText() != null ? paidAmountField.getText().trim().replace(",", "") : "";
-                    if (!paidText.isEmpty()) {
-                        paidAmount = Double.parseDouble(paidText);
-                    }
-                } catch (NumberFormatException e) {
-                    paidAmount = 0;
+            try {
+                String paidText = paidAmountField.getText() != null ? paidAmountField.getText().trim().replace(",", "") : "";
+                if (!paidText.isEmpty()) {
+                    paidAmount = Double.parseDouble(paidText);
                 }
+            } catch (NumberFormatException e) {
+                paidAmount = 0;
             }
+            
+            // For cash payment, ensure full amount is paid
+            if (cashRadio.isSelected()) {
+                double finalTotal = calculateFinalTotal();
+                paidAmount = finalTotal;
+            }
+            
             request.setPaidAmount(paidAmount);
 
             double additionalDiscount = 0;
