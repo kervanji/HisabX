@@ -24,7 +24,7 @@ public class MainApp extends Application {
         // Set application icon
         try {
             javafx.scene.image.Image icon = new javafx.scene.image.Image(
-                getClass().getResourceAsStream("/images/logo.svg")
+                getClass().getResourceAsStream("/templates/HisabX.ico")
             );
             this.primaryStage.getIcons().add(icon);
         } catch (Exception e) {
