@@ -29,14 +29,16 @@
 
             <!-- Customer Selection -->
             <VBox spacing="8">
-                <Label text="اختر العميل:" style="-fx-font-size: 14px; -fx-font-weight: bold;"/>
+                <Label text="اختر العميل: (ابحث بالاسم أو الكود أو رقم الهاتف)" style="-fx-font-size: 14px; -fx-font-weight: bold;"/>
                 <HBox spacing="10" alignment="CENTER_LEFT">
-                    <ComboBox fx:id="customerComboBox" promptText="اختر العميل..." prefWidth="300" HBox.hgrow="ALWAYS"/>
+                    <ComboBox fx:id="customerComboBox" promptText="ابحث عن العميل..." prefWidth="300" HBox.hgrow="ALWAYS"/>
                     <Button text="+ عميل جديد" onAction="#handleNewCustomer" style="-fx-background-color: #27ae60; -fx-text-fill: white;"/>
                 </HBox>
                 <HBox spacing="10" alignment="CENTER_LEFT">
                     <Label text="موقع المشروع:" style="-fx-font-size: 13px; -fx-font-weight: bold;"/>
-                    <ComboBox fx:id="projectLocationComboBox" promptText="اختر موقع المشروع..." prefWidth="300" HBox.hgrow="ALWAYS"/>
+                    <ComboBox fx:id="projectLocationComboBox" promptText="اختر موقع المشروع..." prefWidth="200" HBox.hgrow="ALWAYS"/>
+                    <TextField fx:id="newProjectLocationField" promptText="أو أضف موقع جديد..." prefWidth="150"/>
+                    <Button fx:id="addProjectLocationBtn" text="+ إضافة موقع" onAction="#handleAddProjectLocation" style="-fx-background-color: #9b59b6; -fx-text-fill: white;"/>
                 </HBox>
             </VBox>
 
@@ -44,15 +46,23 @@
 
             <!-- Product Selection -->
             <VBox spacing="8">
-                <Label text="إضافة منتج:" style="-fx-font-size: 14px; -fx-font-weight: bold;"/>
+                <Label text="إضافة منتج: (ابحث بالاسم أو الكود أو الباركود)" style="-fx-font-size: 14px; -fx-font-weight: bold;"/>
                 <HBox spacing="10" alignment="CENTER_LEFT">
-                    <ComboBox fx:id="categoryFilterComboBox" promptText="كل الفئات" prefWidth="160"/>
-                    <ComboBox fx:id="productComboBox" promptText="اختر المنتج..." prefWidth="250"/>
-                    <TextField fx:id="quantityField" promptText="الكمية" prefWidth="80"/>
-                    <TextField fx:id="itemDiscountField" promptText="الخصم %" prefWidth="80"/>
-                    <Button text="+ إضافة" onAction="#handleAddItem" style="-fx-background-color: #3498db; -fx-text-fill: white;"/>
+                    <VBox spacing="2">
+                        <Label text="الفئة" style="-fx-font-size: 10px; -fx-text-fill: #7f8c8d;"/>
+                        <ComboBox fx:id="categoryFilterComboBox" promptText="كل الفئات" prefWidth="140"/>
+                    </VBox>
+                    <VBox spacing="2">
+                        <Label text="المنتج" style="-fx-font-size: 10px; -fx-text-fill: #7f8c8d;"/>
+                        <ComboBox fx:id="productComboBox" promptText="ابحث عن المنتج..." prefWidth="220"/>
+                    </VBox>
+                    <VBox spacing="2">
+                        <Label text="الكمية للبيع" style="-fx-font-size: 10px; -fx-text-fill: #7f8c8d;"/>
+                        <TextField fx:id="quantityField" promptText="1" prefWidth="70"/>
+                    </VBox>
+                    <Button text="+ إضافة" onAction="#handleAddItem" style="-fx-background-color: #3498db; -fx-text-fill: white;" prefHeight="45"/>
                 </HBox>
-                <HBox spacing="5">
+                <HBox spacing="15">
                     <Label fx:id="stockLabel" text="المخزون المتاح: -" style="-fx-text-fill: #7f8c8d;"/>
                     <Label fx:id="priceLabel" text="السعر: -" style="-fx-text-fill: #7f8c8d;"/>
                 </HBox>
@@ -63,13 +73,14 @@
             <!-- Items Table -->
             <VBox spacing="8" VBox.vgrow="ALWAYS">
                 <Label text="المنتجات المضافة:" style="-fx-font-size: 14px; -fx-font-weight: bold;"/>
-                <TableView fx:id="itemsTable" VBox.vgrow="ALWAYS" prefHeight="250">
+                <TableView fx:id="itemsTable" VBox.vgrow="ALWAYS" prefHeight="250" editable="true">
                     <columns>
                         <TableColumn fx:id="productNameColumn" text="المنتج" prefWidth="180"/>
-                        <TableColumn fx:id="quantityColumn" text="الكمية" prefWidth="70"/>
-                        <TableColumn fx:id="unitPriceColumn" text="السعر" prefWidth="80"/>
+                        <TableColumn fx:id="quantityColumn" text="الكمية" prefWidth="80"/>
+                        <TableColumn fx:id="unitPriceColumn" text="السعر" prefWidth="90"/>
                         <TableColumn fx:id="discountColumn" text="الخصم" prefWidth="70"/>
                         <TableColumn fx:id="totalColumn" text="الإجمالي" prefWidth="90"/>
+                        <TableColumn fx:id="editColumn" text="تعديل" prefWidth="60"/>
                         <TableColumn fx:id="actionColumn" text="حذف" prefWidth="60"/>
                     </columns>
                     <placeholder>

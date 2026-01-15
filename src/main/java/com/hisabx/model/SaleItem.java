@@ -18,7 +18,7 @@ public class SaleItem {
     private Product product;
     
     @Column(nullable = false)
-    private Integer quantity;
+    private Double quantity;
     
     @Column(name = "unit_price", nullable = false)
     private Double unitPrice;
@@ -47,8 +47,8 @@ public class SaleItem {
     public Product getProduct() { return product; }
     public void setProduct(Product product) { this.product = product; }
     
-    public Integer getQuantity() { return quantity; }
-    public void setQuantity(Integer quantity) { this.quantity = quantity; }
+    public Double getQuantity() { return quantity; }
+    public void setQuantity(Double quantity) { this.quantity = quantity; }
     
     public Double getUnitPrice() { return unitPrice; }
     public void setUnitPrice(Double unitPrice) { this.unitPrice = unitPrice; }

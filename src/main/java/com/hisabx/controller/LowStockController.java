@@ -2,7 +2,7 @@ package com.hisabx.controller;
 
 import com.hisabx.model.Product;
 import com.hisabx.service.InventoryService;
-import javafx.beans.property.SimpleIntegerProperty;
+import javafx.beans.property.SimpleDoubleProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -21,9 +21,9 @@ public class LowStockController {
     @FXML private TableColumn<Product, String> codeColumn;
     @FXML private TableColumn<Product, String> nameColumn;
     @FXML private TableColumn<Product, String> categoryColumn;
-    @FXML private TableColumn<Product, Integer> currentStockColumn;
-    @FXML private TableColumn<Product, Integer> minimumStockColumn;
-    @FXML private TableColumn<Product, Integer> neededColumn;
+    @FXML private TableColumn<Product, Double> currentStockColumn;
+    @FXML private TableColumn<Product, Double> minimumStockColumn;
+    @FXML private TableColumn<Product, Double> neededColumn;
     @FXML private TableColumn<Product, String> costColumn;
     @FXML private TableColumn<Product, Void> actionsColumn;
     @FXML private Label lowStockCountLabel;
@@ -55,20 +55,24 @@ public class LowStockController {
         
         neededColumn.setCellValueFactory(cellData -> {
             Product p = cellData.getValue();
-            int needed = Math.max(0, p.getMinimumStock() - p.getQuantityInStock());
-            return new SimpleIntegerProperty(needed).asObject();
+            double min = p.getMinimumStock() != null ? p.getMinimumStock() : 0.0;
+            double curr = p.getQuantityInStock() != null ? p.getQuantityInStock() : 0.0;
+            double needed = Math.max(0, min - curr);
+            return new SimpleDoubleProperty(needed).asObject();
         });
         
         costColumn.setCellValueFactory(cellData -> {
             Product p = cellData.getValue();
-            int needed = Math.max(0, p.getMinimumStock() - p.getQuantityInStock());
+            double min = p.getMinimumStock() != null ? p.getMinimumStock() : 0.0;
+            double curr = p.getQuantityInStock() != null ? p.getQuantityInStock() : 0.0;
+            double needed = Math.max(0, min - curr);
             double cost = needed * (p.getCostPrice() != null ? p.getCostPrice() : 0);
             return new SimpleStringProperty(String.format("%s د.ع", numberFormat.format(cost)));
         });
         
         currentStockColumn.setCellFactory(col -> new TableCell<>() {
             @Override
-            protected void updateItem(Integer item, boolean empty) {
+            protected void updateItem(Double item, boolean empty) {
                 super.updateItem(item, empty);
                 if (empty || item == null) {
                     setText(null);
@@ -123,13 +127,15 @@ public class LowStockController {
         double totalRestockCost = 0;
         
         for (Product p : products) {
-            if (p.getQuantityInStock() == 0) {
+            double qty = p.getQuantityInStock() != null ? p.getQuantityInStock() : 0.0;
+            if (qty == 0) {
                 outOfStock++;
             } else {
                 lowStock++;
             }
             
-            int needed = Math.max(0, p.getMinimumStock() - p.getQuantityInStock());
+            double min = p.getMinimumStock() != null ? p.getMinimumStock() : 0.0;
+            double needed = Math.max(0, min - qty);
             totalRestockCost += needed * (p.getCostPrice() != null ? p.getCostPrice() : 0);
         }
         
@@ -144,7 +150,9 @@ public class LowStockController {
     }
     
     private void handleAddStock(Product product) {
-        int needed = Math.max(1, product.getMinimumStock() - product.getQuantityInStock());
+        double min = product.getMinimumStock() != null ? product.getMinimumStock() : 0.0;
+        double curr = product.getQuantityInStock() != null ? product.getQuantityInStock() : 0.0;
+        double needed = Math.max(1, min - curr);
         
         TextInputDialog dialog = new TextInputDialog(String.valueOf(needed));
         dialog.setTitle("إضافة مخزون");
@@ -153,14 +161,14 @@ public class LowStockController {
         
         dialog.showAndWait().ifPresent(quantity -> {
             try {
-                int qty = Integer.parseInt(quantity);
+                double qty = Double.parseDouble(quantity);
                 if (qty > 0) {
                     inventoryService.addStock(product.getId(), qty);
                     loadLowStockProducts();
                     showInfo("تم", "تمت إضافة " + qty + " وحدة إلى مخزون " + product.getName());
                 }
             } catch (NumberFormatException e) {
-                showError("خطأ", "الكمية يجب أن تكون رقماً صحيحاً");
+                showError("خطأ", "الكمية يجب أن تكون رقماً");
             } catch (Exception e) {
                 showError("خطأ", e.getMessage());
             }

@@ -4,7 +4,6 @@ import com.hisabx.model.*;
 import com.hisabx.service.*;
 import com.hisabx.database.Repository.*;
 import javafx.beans.property.SimpleDoubleProperty;
-import javafx.beans.property.SimpleIntegerProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -33,18 +32,22 @@ public class SaleFormController {
 
     @FXML private ComboBox<Customer> customerComboBox;
     @FXML private ComboBox<String> projectLocationComboBox;
+    @FXML private TextField newProjectLocationField;
+    @FXML private Button addProjectLocationBtn;
+    private FilteredList<Customer> filteredCustomers;
+    private String customerSearchQuery = "";
     @FXML private ComboBox<String> categoryFilterComboBox;
     @FXML private ComboBox<Product> productComboBox;
     @FXML private TextField quantityField;
-    @FXML private TextField itemDiscountField;
     @FXML private Label stockLabel;
     @FXML private Label priceLabel;
     @FXML private TableView<SaleItemRow> itemsTable;
     @FXML private TableColumn<SaleItemRow, String> productNameColumn;
-    @FXML private TableColumn<SaleItemRow, Integer> quantityColumn;
+    @FXML private TableColumn<SaleItemRow, Double> quantityColumn;
     @FXML private TableColumn<SaleItemRow, Double> unitPriceColumn;
     @FXML private TableColumn<SaleItemRow, Double> discountColumn;
     @FXML private TableColumn<SaleItemRow, Double> totalColumn;
+    @FXML private TableColumn<SaleItemRow, Void> editColumn;
     @FXML private TableColumn<SaleItemRow, Void> actionColumn;
     @FXML private RadioButton cashRadio;
     @FXML private RadioButton creditRadio;
@@ -187,7 +190,10 @@ public class SaleFormController {
 
     private void setupCustomerComboBox() {
         List<Customer> customers = customerRepository.findAll();
-        customerComboBox.setItems(FXCollections.observableArrayList(customers));
+        filteredCustomers = new FilteredList<>(FXCollections.observableArrayList(customers), c -> true);
+        customerComboBox.setItems(filteredCustomers);
+        customerComboBox.setEditable(true);
+        
         customerComboBox.setConverter(new StringConverter<>() {
             @Override
             public String toString(Customer customer) {
@@ -196,9 +202,56 @@ public class SaleFormController {
 
             @Override
             public Customer fromString(String s) {
-                return null;
+                if (s == null || s.isEmpty()) return null;
+                return filteredCustomers.getSource().stream()
+                        .filter(c -> (c.getName() + " (" + c.getCustomerCode() + ")").equals(s))
+                        .findFirst()
+                        .orElse(null);
             }
         });
+
+        // Enable search in customer ComboBox
+        if (customerComboBox.getEditor() != null) {
+            customerComboBox.getEditor().textProperty().addListener((obs, oldText, newText) -> {
+                if (customerComboBox.getValue() != null) {
+                    String rendered = customerComboBox.getConverter().toString(customerComboBox.getValue());
+                    if (rendered.equals(newText)) {
+                        return;
+                    }
+                }
+
+                // Handle case where selection updates text but valueProperty hasn't fired yet
+                if (newText != null) {
+                    boolean isSelection = filteredCustomers.getSource().stream()
+                            .anyMatch(c -> {
+                                String s = customerComboBox.getConverter().toString(c);
+                                return s != null && s.equals(newText);
+                            });
+                    if (isSelection) {
+                        return;
+                    }
+                }
+
+                customerSearchQuery = newText == null ? "" : newText.trim().toLowerCase();
+                filteredCustomers.setPredicate(c -> {
+                    if (customerSearchQuery.isEmpty()) return true;
+                    
+                    String fullString = (c.getName() + " (" + c.getCustomerCode() + ")").toLowerCase();
+                    String name = c.getName() != null ? c.getName().toLowerCase() : "";
+                    String code = c.getCustomerCode() != null ? c.getCustomerCode().toLowerCase() : "";
+                    String phone = c.getPhoneNumber() != null ? c.getPhoneNumber().toLowerCase() : "";
+                    
+                    return fullString.contains(customerSearchQuery) || 
+                           name.contains(customerSearchQuery) || 
+                           code.contains(customerSearchQuery) || 
+                           phone.contains(customerSearchQuery);
+                });
+
+                if (!customerComboBox.isShowing()) {
+                    customerComboBox.show();
+                }
+            });
+        }
 
         customerComboBox.valueProperty().addListener((obs, oldCustomer, newCustomer) -> {
             updateProjectLocations(newCustomer);
@@ -220,9 +273,12 @@ public class SaleFormController {
             return;
         }
 
+        // Enable ComboBox when customer is selected
+        projectLocationComboBox.setDisable(false);
+
         String locationsText = customer.getProjectLocation();
         if (locationsText == null || locationsText.trim().isEmpty()) {
-            projectLocationComboBox.setDisable(true);
+            // No locations yet, but keep enabled so user can add new ones
             return;
         }
 
@@ -232,7 +288,6 @@ public class SaleFormController {
                 .toList();
 
         projectLocationComboBox.setItems(FXCollections.observableArrayList(locations));
-        projectLocationComboBox.setDisable(locations.isEmpty());
 
         if (locations.size() == 1) {
             projectLocationComboBox.setValue(locations.get(0));
@@ -240,8 +295,9 @@ public class SaleFormController {
     }
 
     private void setupProductComboBox() {
+        // Show all active products including out of stock ones
         List<Product> products = productRepository.findAll().stream()
-                .filter(p -> p.getIsActive() && p.getQuantityInStock() > 0)
+                .filter(Product::getIsActive)
                 .toList();
 
         filteredProducts = new FilteredList<>(FXCollections.observableArrayList(products), p -> true);
@@ -288,7 +344,14 @@ public class SaleFormController {
                 if (unit == null || unit.trim().isEmpty()) {
                     unit = "وحدة";
                 }
-                stockLabel.setText("المخزون المتاح: " + selected.getQuantityInStock() + " " + unit);
+                double stock = selected.getQuantityInStock();
+                if (stock <= 0) {
+                    stockLabel.setText("المخزون المتاح: 0 " + unit + " (نفذ المخزون)");
+                    stockLabel.setStyle("-fx-text-fill: #e74c3c; -fx-font-weight: bold;");
+                } else {
+                    stockLabel.setText("المخزون المتاح: " + stock + " " + unit);
+                    stockLabel.setStyle("-fx-text-fill: #7f8c8d;");
+                }
                 priceLabel.setText("السعر: " + numberFormatter.format(selected.getUnitPrice()) + " دينار");
             }
         });
@@ -296,32 +359,307 @@ public class SaleFormController {
 
     private void setupItemsTable() {
         productNameColumn.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getProductName()));
-        quantityColumn.setCellValueFactory(data -> new SimpleIntegerProperty(data.getValue().getQuantity()).asObject());
+        quantityColumn.setCellValueFactory(data -> new SimpleDoubleProperty(data.getValue().getQuantity()).asObject());
         unitPriceColumn.setCellValueFactory(data -> new SimpleDoubleProperty(data.getValue().getUnitPrice()).asObject());
         discountColumn.setCellValueFactory(data -> new SimpleDoubleProperty(data.getValue().getDiscountAmount()).asObject());
         totalColumn.setCellValueFactory(data -> new SimpleDoubleProperty(data.getValue().getTotalPrice()).asObject());
 
+        // Enable double-click editing for quantity column
+        quantityColumn.setCellFactory(col -> new TableCell<>() {
+            private TextField textField;
+
+            @Override
+            protected void updateItem(Double item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setGraphic(null);
+                } else {
+                    setText(String.valueOf(item));
+                    setGraphic(null);
+                }
+            }
+
+            @Override
+            public void startEdit() {
+                super.startEdit();
+                if (textField == null) {
+                    textField = new TextField();
+                    textField.setOnAction(e -> commitEdit(Double.parseDouble(textField.getText())));
+                    textField.focusedProperty().addListener((obs, wasFocused, isNowFocused) -> {
+                        if (!isNowFocused) {
+                            try {
+                                commitEdit(Double.parseDouble(textField.getText()));
+                            } catch (NumberFormatException ex) {
+                                cancelEdit();
+                            }
+                        }
+                    });
+                }
+                textField.setText(String.valueOf(getItem()));
+                setText(null);
+                setGraphic(textField);
+                textField.selectAll();
+                textField.requestFocus();
+            }
+
+            @Override
+            public void cancelEdit() {
+                super.cancelEdit();
+                setText(String.valueOf(getItem()));
+                setGraphic(null);
+            }
+
+            @Override
+            public void commitEdit(Double newValue) {
+                super.commitEdit(newValue);
+                SaleItemRow row = getTableView().getItems().get(getIndex());
+                // Stock validation removed to allow negative inventory/out of stock sales
+                if (newValue <= 0) {
+                    showError("خطأ", "الكمية يجب أن تكون أكبر من صفر");
+                    cancelEdit();
+                    return;
+                }
+                row.setQuantity(newValue);
+                row.recalculate();
+                itemsTable.refresh();
+                updateTotals();
+            }
+        });
+
+        // Enable double-click editing for unit price column
         unitPriceColumn.setCellFactory(col -> new TableCell<>() {
+            private TextField textField;
+
             @Override
             protected void updateItem(Double item, boolean empty) {
                 super.updateItem(item, empty);
-                setText(empty || item == null ? null : numberFormatter.format(item));
+                if (empty || item == null) {
+                    setText(null);
+                    setGraphic(null);
+                } else {
+                    setText(numberFormatter.format(item));
+                    setGraphic(null);
+                }
+            }
+
+            @Override
+            public void startEdit() {
+                super.startEdit();
+                if (textField == null) {
+                    textField = new TextField();
+                    textField.setOnAction(e -> {
+                        try {
+                            commitEdit(Double.parseDouble(textField.getText().replace(",", "")));
+                        } catch (NumberFormatException ex) {
+                            cancelEdit();
+                        }
+                    });
+                    textField.focusedProperty().addListener((obs, wasFocused, isNowFocused) -> {
+                        if (!isNowFocused) {
+                            try {
+                                commitEdit(Double.parseDouble(textField.getText().replace(",", "")));
+                            } catch (NumberFormatException ex) {
+                                cancelEdit();
+                            }
+                        }
+                    });
+                }
+                textField.setText(String.valueOf(getItem()));
+                setText(null);
+                setGraphic(textField);
+                textField.selectAll();
+                textField.requestFocus();
+            }
+
+            @Override
+            public void cancelEdit() {
+                super.cancelEdit();
+                setText(numberFormatter.format(getItem()));
+                setGraphic(null);
+            }
+
+            @Override
+            public void commitEdit(Double newValue) {
+                super.commitEdit(newValue);
+                if (newValue < 0) {
+                    showError("خطأ", "السعر لا يمكن أن يكون سالب");
+                    cancelEdit();
+                    return;
+                }
+                SaleItemRow row = getTableView().getItems().get(getIndex());
+                row.setUnitPrice(newValue);
+                row.recalculate();
+                itemsTable.refresh();
+                updateTotals();
             }
         });
 
+        // Enable editing for Discount Column
         discountColumn.setCellFactory(col -> new TableCell<>() {
+            private TextField textField;
+
             @Override
             protected void updateItem(Double item, boolean empty) {
                 super.updateItem(item, empty);
                 setText(empty || item == null ? null : numberFormatter.format(item));
+                setGraphic(null);
+            }
+
+            @Override
+            public void startEdit() {
+                super.startEdit();
+                if (textField == null) {
+                    textField = new TextField();
+                    textField.setOnAction(e -> {
+                        try {
+                            commitEdit(Double.parseDouble(textField.getText().replace(",", "")));
+                        } catch (NumberFormatException ex) {
+                            cancelEdit();
+                        }
+                    });
+                    textField.focusedProperty().addListener((obs, wasFocused, isNowFocused) -> {
+                        if (!isNowFocused) {
+                            try {
+                                commitEdit(Double.parseDouble(textField.getText().replace(",", "")));
+                            } catch (NumberFormatException ex) {
+                                cancelEdit();
+                            }
+                        }
+                    });
+                }
+                SaleItemRow row = getTableView().getItems().get(getIndex());
+                textField.setText(String.valueOf(row.getDiscountAmount()));
+                setText(null);
+                setGraphic(textField);
+                textField.selectAll();
+                textField.requestFocus();
+            }
+
+            @Override
+            public void cancelEdit() {
+                super.cancelEdit();
+                setGraphic(null);
+                setText(numberFormatter.format(getItem()));
+            }
+
+            @Override
+            public void commitEdit(Double newDiscountAmount) {
+                super.commitEdit(newDiscountAmount);
+                // Removed negative check to allow negative discount (increasing price)
+                SaleItemRow row = getTableView().getItems().get(getIndex());
+                double gross = row.getUnitPrice() * row.getQuantity();
+                if (gross == 0) return;
+                
+                double newPercent = (newDiscountAmount / gross) * 100.0;
+                row.setDiscountPercent(newPercent);
+                row.recalculate();
+                itemsTable.refresh();
+                updateTotals();
             }
         });
 
+        // Enable editing for Total Column
         totalColumn.setCellFactory(col -> new TableCell<>() {
+            private TextField textField;
+
             @Override
             protected void updateItem(Double item, boolean empty) {
                 super.updateItem(item, empty);
                 setText(empty || item == null ? null : numberFormatter.format(item));
+                setGraphic(null);
+            }
+
+            @Override
+            public void startEdit() {
+                super.startEdit();
+                if (textField == null) {
+                    textField = new TextField();
+                    textField.setOnAction(e -> {
+                        try {
+                            commitEdit(Double.parseDouble(textField.getText().replace(",", "")));
+                        } catch (NumberFormatException ex) {
+                            cancelEdit();
+                        }
+                    });
+                    textField.focusedProperty().addListener((obs, wasFocused, isNowFocused) -> {
+                        if (!isNowFocused) {
+                            try {
+                                commitEdit(Double.parseDouble(textField.getText().replace(",", "")));
+                            } catch (NumberFormatException ex) {
+                                cancelEdit();
+                            }
+                        }
+                    });
+                }
+                textField.setText(String.valueOf(getItem()));
+                setText(null);
+                setGraphic(textField);
+                textField.selectAll();
+                textField.requestFocus();
+            }
+
+            @Override
+            public void cancelEdit() {
+                super.cancelEdit();
+                setGraphic(null);
+                setText(numberFormatter.format(getItem()));
+            }
+
+            @Override
+            public void commitEdit(Double newTotal) {
+                super.commitEdit(newTotal);
+                if (newTotal < 0) {
+                    showError("خطأ", "الإجمالي لا يمكن أن يكون سالب");
+                    cancelEdit();
+                    return;
+                }
+                SaleItemRow row = getTableView().getItems().get(getIndex());
+                
+                // Update Unit Price based on new Total
+                // Total = (UnitPrice * Quantity) - DiscountAmount
+                // We want to keep DiscountAmount same (or 0?) and update UnitPrice.
+                // Or simply: UnitPrice = (Total + DiscountAmount) / Quantity
+                
+                double currentDiscount = row.getDiscountAmount();
+                double newGross = newTotal + currentDiscount;
+                
+                if (row.getQuantity() != 0) {
+                    double newUnitPrice = newGross / row.getQuantity();
+                    row.setUnitPrice(newUnitPrice);
+                    // Discount percent might change relative to new unit price, let's recalculate it or keep amount fixed?
+                    // row.recalculate() calculates discount amount from percent.
+                    // If we want to keep discount AMOUNT fixed:
+                    // newDiscountPercent = (currentDiscount / newGross) * 100
+                    if (newGross != 0) {
+                         row.setDiscountPercent((currentDiscount / newGross) * 100.0);
+                    } else {
+                         row.setDiscountPercent(0);
+                    }
+                }
+                
+                row.recalculate();
+                itemsTable.refresh();
+                updateTotals();
+            }
+        });
+
+        // Edit button column
+        editColumn.setCellFactory(col -> new TableCell<>() {
+            private final Button editBtn = new Button("✏");
+
+            {
+                editBtn.setStyle("-fx-background-color: #3498db; -fx-text-fill: white;");
+                editBtn.setOnAction(e -> {
+                    SaleItemRow row = getTableView().getItems().get(getIndex());
+                    openProductEditForm(row);
+                });
+            }
+
+            @Override
+            protected void updateItem(Void item, boolean empty) {
+                super.updateItem(item, empty);
+                setGraphic(empty ? null : editBtn);
             }
         });
 
@@ -345,12 +683,106 @@ public class SaleFormController {
         });
 
         itemsTable.setItems(saleItems);
+        itemsTable.setEditable(true);
+    }
+
+    private void openProductEditForm(SaleItemRow row) {
+        try {
+            Product product = productRepository.findById(row.getProductId()).orElse(null);
+            if (product == null) {
+                showError("خطأ", "لم يتم العثور على المنتج");
+                return;
+            }
+
+            FXMLLoader loader = new FXMLLoader();
+            loader.setLocation(getClass().getResource("/views/ProductForm.fxml"));
+            Parent root = loader.load();
+
+            Stage stage = new Stage();
+            stage.setTitle("تعديل منتج");
+            stage.initModality(Modality.WINDOW_MODAL);
+            if (dialogStage != null) {
+                stage.initOwner(dialogStage);
+            }
+            stage.setScene(new Scene(root));
+
+            ProductController controller = loader.getController();
+            controller.setDialogStage(stage);
+            controller.setProduct(product);
+
+            stage.showAndWait();
+
+            // Refresh table to reflect any changes
+            itemsTable.refresh();
+            updateTotals();
+
+            // Refresh selected product info if needed
+            if (selectedProduct != null && selectedProduct.getId().equals(product.getId())) {
+                 Product updated = productRepository.findById(product.getId()).orElse(null);
+                 if (updated != null) {
+                     selectedProduct = updated;
+                     // Update labels
+                     String unit = updated.getUnitOfMeasure();
+                     if (unit == null || unit.trim().isEmpty()) unit = "وحدة";
+                     double stock = updated.getQuantityInStock();
+                    if (stock <= 0) {
+                        stockLabel.setText("المخزون المتاح: " + stock + " " + unit + " (نفذ المخزون)");
+                        stockLabel.setStyle("-fx-text-fill: #e74c3c; -fx-font-weight: bold;");
+                    } else {
+                        stockLabel.setText("المخزون المتاح: " + stock + " " + unit);
+                        stockLabel.setStyle("-fx-text-fill: #7f8c8d;");
+                    }
+                     priceLabel.setText("السعر: " + numberFormatter.format(updated.getUnitPrice()) + " دينار");
+                 }
+            }
+        } catch (Exception e) {
+            logger.error("Failed to open product form", e);
+            showError("خطأ", "فشل في فتح نافذة تعديل المنتج");
+        }
+    }
+
+    @FXML
+    private void handleAddProjectLocation() {
+        if (newProjectLocationField == null) return;
+        
+        String newLocation = newProjectLocationField.getText().trim();
+        if (newLocation.isEmpty()) {
+            showError("خطأ", "الرجاء إدخال اسم موقع المشروع");
+            return;
+        }
+
+        Customer customer = customerComboBox.getValue();
+        if (customer == null) {
+            showError("خطأ", "الرجاء اختيار العميل أولاً");
+            return;
+        }
+
+        // Add new location to customer's project locations
+        String existingLocations = customer.getProjectLocation();
+        String updatedLocations;
+        if (existingLocations == null || existingLocations.trim().isEmpty()) {
+            updatedLocations = newLocation;
+        } else {
+            updatedLocations = existingLocations + "\n" + newLocation;
+        }
+        customer.setProjectLocation(updatedLocations);
+        
+        // Save customer with new location
+        try {
+            customerRepository.save(customer);
+            updateProjectLocations(customer);
+            projectLocationComboBox.setValue(newLocation);
+            newProjectLocationField.clear();
+            showSuccess("تم", "تمت إضافة موقع المشروع بنجاح");
+        } catch (Exception e) {
+            logger.error("Failed to save project location", e);
+            showError("خطأ", "فشل في حفظ موقع المشروع");
+        }
     }
 
     private void setupDefaults() {
         cashRadio.setSelected(true);
         quantityField.setText("1");
-        itemDiscountField.setText("0");
         additionalDiscountField.setText("0");
     }
 
@@ -417,28 +849,18 @@ public class SaleFormController {
             return;
         }
 
-        int quantity;
+        double quantity;
         try {
-            quantity = Integer.parseInt(quantityField.getText().trim());
+            quantity = Double.parseDouble(quantityField.getText().trim());
             if (quantity <= 0) throw new NumberFormatException();
         } catch (NumberFormatException e) {
             showError("خطأ", "الرجاء إدخال كمية صحيحة");
             return;
         }
 
-        int availableStock = getAvailableStock(product);
-        if (quantity > availableStock) {
-            showError("خطأ", "الكمية المطلوبة أكبر من المخزون المتاح (" + availableStock + ")");
-            return;
-        }
+        // Stock validation checks removed to allow adding out-of-stock products
 
         double discountPercent = 0;
-        try {
-            discountPercent = Double.parseDouble(itemDiscountField.getText().trim());
-            if (discountPercent < 0 || discountPercent > 100) throw new NumberFormatException();
-        } catch (NumberFormatException e) {
-            discountPercent = 0;
-        }
 
         SaleItemRow existingItem = saleItems.stream()
                 .filter(item -> item.getProductId().equals(product.getId()))
@@ -446,11 +868,7 @@ public class SaleFormController {
                 .orElse(null);
 
         if (existingItem != null) {
-            int newQty = existingItem.getQuantity() + quantity;
-            if (newQty > availableStock) {
-                showError("خطأ", "إجمالي الكمية أكبر من المخزون المتاح");
-                return;
-            }
+            double newQty = existingItem.getQuantity() + quantity;
             existingItem.setQuantity(newQty);
             existingItem.recalculate();
             itemsTable.refresh();
@@ -469,20 +887,11 @@ public class SaleFormController {
         clearProductSelection();
     }
 
-    private int getAvailableStock(Product product) {
-        int inTable = saleItems.stream()
-                .filter(item -> item.getProductId().equals(product.getId()))
-                .mapToInt(SaleItemRow::getQuantity)
-                .sum();
-        return product.getQuantityInStock() - inTable;
-    }
-
     private void clearProductSelection() {
         selectedProduct = null;
         productComboBox.setValue(null);
         productComboBox.getEditor().clear();
         quantityField.setText("1");
-        itemDiscountField.setText("0");
         stockLabel.setText("المخزون المتاح: -");
         priceLabel.setText("السعر: -");
     }
@@ -651,6 +1060,7 @@ public class SaleFormController {
                 SalesService.SaleItemRequest itemRequest = new SalesService.SaleItemRequest();
                 itemRequest.setProductId(row.getProductId());
                 itemRequest.setQuantity(row.getQuantity());
+                itemRequest.setUnitPrice(row.getUnitPrice());
                 itemRequest.setDiscountPercentage(row.getDiscountPercent());
                 items.add(itemRequest);
             }
@@ -698,13 +1108,13 @@ public class SaleFormController {
     public static class SaleItemRow {
         private Long productId;
         private String productName;
-        private int quantity;
+        private double quantity;
         private double unitPrice;
         private double discountPercent;
         private double discountAmount;
         private double totalPrice;
 
-        public SaleItemRow(Long productId, String productName, int quantity, double unitPrice, double discountPercent) {
+        public SaleItemRow(Long productId, String productName, double quantity, double unitPrice, double discountPercent) {
             this.productId = productId;
             this.productName = productName;
             this.quantity = quantity;
@@ -721,10 +1131,12 @@ public class SaleFormController {
 
         public Long getProductId() { return productId; }
         public String getProductName() { return productName; }
-        public int getQuantity() { return quantity; }
-        public void setQuantity(int quantity) { this.quantity = quantity; }
+        public double getQuantity() { return quantity; }
+        public void setQuantity(double quantity) { this.quantity = quantity; }
         public double getUnitPrice() { return unitPrice; }
+        public void setUnitPrice(double unitPrice) { this.unitPrice = unitPrice; }
         public double getDiscountPercent() { return discountPercent; }
+        public void setDiscountPercent(double discountPercent) { this.discountPercent = discountPercent; }
         public double getDiscountAmount() { return discountAmount; }
         public double getTotalPrice() { return totalPrice; }
     }

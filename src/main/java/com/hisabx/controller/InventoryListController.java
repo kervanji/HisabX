@@ -42,7 +42,7 @@ public class InventoryListController {
     @FXML private TableColumn<Product, String> barcodeColumn;
     @FXML private TableColumn<Product, String> costPriceColumn;
     @FXML private TableColumn<Product, String> unitPriceColumn;
-    @FXML private TableColumn<Product, Integer> quantityColumn;
+    @FXML private TableColumn<Product, Double> quantityColumn;
     @FXML private TableColumn<Product, String> statusColumn;
     @FXML private TableColumn<Product, Void> actionsColumn;
     @FXML private Label totalProductsLabel;
@@ -88,15 +88,15 @@ public class InventoryListController {
         });
         
         quantityColumn.setCellValueFactory(cellData -> {
-            Integer quantity = cellData.getValue().getQuantityInStock();
-            return new ReadOnlyObjectWrapper<>(quantity != null ? quantity : 0);
+            Double quantity = cellData.getValue().getQuantityInStock();
+            return new ReadOnlyObjectWrapper<>(quantity != null ? quantity : 0.0);
         });
         
         statusColumn.setCellValueFactory(cellData -> {
             Product p = cellData.getValue();
             boolean active = Boolean.TRUE.equals(p.getIsActive());
-            int qty = p.getQuantityInStock() == null ? 0 : p.getQuantityInStock();
-            int min = p.getMinimumStock() == null ? 0 : p.getMinimumStock();
+            double qty = p.getQuantityInStock() == null ? 0 : p.getQuantityInStock();
+            double min = p.getMinimumStock() == null ? 0 : p.getMinimumStock();
             if (!active) return new SimpleStringProperty("غير نشط");
             if (qty == 0) return new SimpleStringProperty("نفد");
             if (qty <= min) return new SimpleStringProperty("منخفض");
@@ -203,8 +203,8 @@ public class InventoryListController {
     
     private boolean matchesProductStatus(Product p, String status) {
         boolean active = Boolean.TRUE.equals(p.getIsActive());
-        int qty = p.getQuantityInStock() == null ? 0 : p.getQuantityInStock();
-        int min = p.getMinimumStock() == null ? 0 : p.getMinimumStock();
+        double qty = p.getQuantityInStock() == null ? 0 : p.getQuantityInStock();
+        double min = p.getMinimumStock() == null ? 0 : p.getMinimumStock();
         return switch (status) {
             case "متوفر" -> active && qty > min;
             case "منخفض" -> active && qty > 0 && qty <= min;
@@ -277,14 +277,14 @@ public class InventoryListController {
         
         dialog.showAndWait().ifPresent(quantity -> {
             try {
-                int qty = Integer.parseInt(quantity);
+                double qty = Double.parseDouble(quantity);
                 if (qty > 0) {
                     inventoryService.addStock(product.getId(), qty);
                     loadProducts();
                     showInfo("تم", "تمت إضافة " + qty + " وحدة إلى المخزون");
                 }
             } catch (NumberFormatException e) {
-                showError("خطأ", "الكمية يجب أن تكون رقماً صحيحاً");
+                showError("خطأ", "الكمية يجب أن تكون رقماً");
             } catch (Exception e) {
                 showError("خطأ", e.getMessage());
             }

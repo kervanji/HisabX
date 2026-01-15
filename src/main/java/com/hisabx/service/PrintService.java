@@ -177,7 +177,7 @@ public class PrintService {
             // Data rows
             int rowNum = 1;
             double totalValue = 0;
-            int totalStock = 0;
+            double totalStock = 0;
             int lowStockCount = 0;
             
             for (Product product : products) {
@@ -188,17 +188,17 @@ public class PrintService {
                 table.addCell(createBodyCell(DECIMAL_FORMAT.format(product.getUnitPrice() != null ? product.getUnitPrice() : 0), bodyFont, Element.ALIGN_CENTER));
                 table.addCell(createBodyCell(DECIMAL_FORMAT.format(product.getCostPrice() != null ? product.getCostPrice() : 0), bodyFont, Element.ALIGN_CENTER));
                 
-                Integer qty = product.getQuantityInStock();
-                Integer minStock = product.getMinimumStock();
+                Double qty = product.getQuantityInStock();
+                Double minStock = product.getMinimumStock();
                 boolean isLowStock = qty != null && minStock != null && qty <= minStock;
                 
-                PdfPCell qtyCell = createBodyCell(String.valueOf(qty != null ? qty : 0), bodyFont, Element.ALIGN_CENTER);
+                PdfPCell qtyCell = createBodyCell(String.valueOf(qty != null ? qty : 0.0), bodyFont, Element.ALIGN_CENTER);
                 if (isLowStock) {
                     qtyCell.setBackgroundColor(new BaseColor(254, 226, 226));
                     lowStockCount++;
                 }
                 table.addCell(qtyCell);
-                table.addCell(createBodyCell(String.valueOf(minStock != null ? minStock : 0), bodyFont, Element.ALIGN_CENTER));
+                table.addCell(createBodyCell(String.valueOf(minStock != null ? minStock : 0.0), bodyFont, Element.ALIGN_CENTER));
                 
                 if (qty != null && product.getCostPrice() != null) {
                     totalValue += qty * product.getCostPrice();

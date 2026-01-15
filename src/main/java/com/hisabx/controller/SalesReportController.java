@@ -4,7 +4,6 @@ import com.hisabx.model.Sale;
 import com.hisabx.model.SaleItem;
 import com.hisabx.service.SalesService;
 import javafx.beans.property.SimpleDoubleProperty;
-import javafx.beans.property.SimpleIntegerProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
@@ -30,7 +29,7 @@ public class SalesReportController {
     @FXML private VBox paymentBreakdownBox;
     @FXML private TableView<ProductStat> topProductsTable;
     @FXML private TableColumn<ProductStat, String> productNameColumn;
-    @FXML private TableColumn<ProductStat, Integer> quantitySoldColumn;
+    @FXML private TableColumn<ProductStat, Double> quantitySoldColumn;
     @FXML private TableColumn<ProductStat, Double> productTotalColumn;
     @FXML private TableView<CustomerStat> topCustomersTable;
     @FXML private TableColumn<CustomerStat, String> customerNameColumn;
@@ -52,7 +51,7 @@ public class SalesReportController {
 
     private void setupTables() {
         productNameColumn.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getProductName()));
-        quantitySoldColumn.setCellValueFactory(data -> new SimpleIntegerProperty(data.getValue().getQuantitySold()).asObject());
+        quantitySoldColumn.setCellValueFactory(data -> new SimpleDoubleProperty(data.getValue().getQuantitySold()).asObject());
         productTotalColumn.setCellValueFactory(data -> new SimpleDoubleProperty(data.getValue().getTotalAmount()).asObject());
 
         customerNameColumn.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getCustomerName()));
@@ -298,20 +297,20 @@ public class SalesReportController {
 
     public static class ProductStat {
         private final String productName;
-        private int quantitySold = 0;
+        private double quantitySold = 0;
         private double totalAmount = 0;
 
         public ProductStat(String productName) {
             this.productName = productName;
         }
 
-        public void addSale(int quantity, double amount) {
+        public void addSale(double quantity, double amount) {
             this.quantitySold += quantity;
             this.totalAmount += amount;
         }
 
         public String getProductName() { return productName; }
-        public int getQuantitySold() { return quantitySold; }
+        public double getQuantitySold() { return quantitySold; }
         public double getTotalAmount() { return totalAmount; }
     }
 

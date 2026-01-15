@@ -6,7 +6,6 @@ import com.hisabx.service.ReturnService;
 import com.hisabx.service.SalesService;
 import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.property.SimpleDoubleProperty;
-import javafx.beans.property.SimpleIntegerProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -33,10 +32,10 @@ public class ReturnController {
     @FXML private TableView<ReturnableItem> saleItemsTable;
     @FXML private TableColumn<ReturnableItem, Boolean> selectColumn;
     @FXML private TableColumn<ReturnableItem, String> productColumn;
-    @FXML private TableColumn<ReturnableItem, Integer> soldQtyColumn;
-    @FXML private TableColumn<ReturnableItem, Integer> returnedQtyColumn;
-    @FXML private TableColumn<ReturnableItem, Integer> availableQtyColumn;
-    @FXML private TableColumn<ReturnableItem, Integer> returnQtyColumn;
+    @FXML private TableColumn<ReturnableItem, Double> soldQtyColumn;
+    @FXML private TableColumn<ReturnableItem, Double> returnedQtyColumn;
+    @FXML private TableColumn<ReturnableItem, Double> availableQtyColumn;
+    @FXML private TableColumn<ReturnableItem, Double> returnQtyColumn;
     @FXML private TableColumn<ReturnableItem, Double> unitPriceColumn;
     @FXML private TableColumn<ReturnableItem, Double> totalColumn;
     @FXML private ComboBox<String> reasonComboBox;
@@ -50,7 +49,7 @@ public class ReturnController {
     
     private Stage dialogStage;
     private ObservableList<ReturnableItem> returnableItems = FXCollections.observableArrayList();
-    private Map<Long, Integer> previousReturns = new HashMap<>();
+    private Map<Long, Double> previousReturns = new HashMap<>();
 
     public void setDialogStage(Stage dialogStage) {
         this.dialogStage = dialogStage;
@@ -104,21 +103,21 @@ public class ReturnController {
         selectColumn.setCellFactory(col -> new CheckBoxTableCell<>());
         
         productColumn.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getProductName()));
-        soldQtyColumn.setCellValueFactory(data -> new SimpleIntegerProperty(data.getValue().getSoldQuantity()).asObject());
-        returnedQtyColumn.setCellValueFactory(data -> new SimpleIntegerProperty(data.getValue().getReturnedQuantity()).asObject());
-        availableQtyColumn.setCellValueFactory(data -> new SimpleIntegerProperty(data.getValue().getAvailableQuantity()).asObject());
+        soldQtyColumn.setCellValueFactory(data -> new SimpleDoubleProperty(data.getValue().getSoldQuantity()).asObject());
+        returnedQtyColumn.setCellValueFactory(data -> new SimpleDoubleProperty(data.getValue().getReturnedQuantity()).asObject());
+        availableQtyColumn.setCellValueFactory(data -> new SimpleDoubleProperty(data.getValue().getAvailableQuantity()).asObject());
         unitPriceColumn.setCellValueFactory(data -> new SimpleDoubleProperty(data.getValue().getUnitPrice()).asObject());
         
         // Return quantity column with editable spinner
         returnQtyColumn.setCellValueFactory(data -> data.getValue().returnQuantityProperty().asObject());
         returnQtyColumn.setCellFactory(col -> new TableCell<>() {
-            private final Spinner<Integer> spinner = new Spinner<>(0, 9999, 0);
+            private final Spinner<Double> spinner = new Spinner<>(0.0, 9999.0, 0.0, 0.5);
             {
                 spinner.setEditable(true);
                 spinner.valueProperty().addListener((obs, oldVal, newVal) -> {
                     ReturnableItem item = getTableRow().getItem();
                     if (item != null && newVal != null) {
-                        int max = item.getAvailableQuantity();
+                        double max = item.getAvailableQuantity();
                         if (newVal > max) {
                             spinner.getValueFactory().setValue(max);
                         } else {
@@ -130,7 +129,7 @@ public class ReturnController {
             }
 
             @Override
-            protected void updateItem(Integer item, boolean empty) {
+            protected void updateItem(Double item, boolean empty) {
                 super.updateItem(item, empty);
                 if (empty) {
                     setGraphic(null);
@@ -138,7 +137,7 @@ public class ReturnController {
                     ReturnableItem returnableItem = getTableRow().getItem();
                     if (returnableItem != null) {
                         spinner.getValueFactory().setValue(returnableItem.getReturnQuantity());
-                        ((SpinnerValueFactory.IntegerSpinnerValueFactory) spinner.getValueFactory())
+                        ((SpinnerValueFactory.DoubleSpinnerValueFactory) spinner.getValueFactory())
                                 .setMax(returnableItem.getAvailableQuantity());
                     }
                     setGraphic(spinner);
@@ -194,7 +193,7 @@ public class ReturnController {
                         continue;
                     }
                     Long productId = ri.getProduct().getId();
-                    int quantity = ri.getQuantity() != null ? ri.getQuantity() : 0;
+                    double quantity = ri.getQuantity() != null ? ri.getQuantity() : 0.0;
                     previousReturns.merge(productId, quantity, (existing, addition) -> existing + addition);
                 }
             }
@@ -203,8 +202,8 @@ public class ReturnController {
         // Create returnable items from sale items
         if (sale.getSaleItems() != null) {
             for (SaleItem item : sale.getSaleItems()) {
-                int returned = previousReturns.getOrDefault(item.getProduct().getId(), 0);
-                int available = item.getQuantity() - returned;
+                double returned = previousReturns.getOrDefault(item.getProduct().getId(), 0.0);
+                double available = item.getQuantity() - returned;
                 if (available > 0) {
                     ReturnableItem ri = new ReturnableItem(
                             item,
@@ -373,15 +372,15 @@ public class ReturnController {
     public static class ReturnableItem {
         private final SaleItem saleItem;
         private final String productName;
-        private final int soldQuantity;
-        private final int returnedQuantity;
-        private final int availableQuantity;
+        private final double soldQuantity;
+        private final double returnedQuantity;
+        private final double availableQuantity;
         private final double unitPrice;
         private final SimpleBooleanProperty selected = new SimpleBooleanProperty(false);
-        private final SimpleIntegerProperty returnQuantity = new SimpleIntegerProperty(0);
+        private final SimpleDoubleProperty returnQuantity = new SimpleDoubleProperty(0.0);
 
-        public ReturnableItem(SaleItem saleItem, String productName, int soldQuantity, 
-                              int returnedQuantity, int availableQuantity, double unitPrice) {
+        public ReturnableItem(SaleItem saleItem, String productName, double soldQuantity, 
+                              double returnedQuantity, double availableQuantity, double unitPrice) {
             this.saleItem = saleItem;
             this.productName = productName;
             this.soldQuantity = soldQuantity;
@@ -392,17 +391,17 @@ public class ReturnController {
 
         public SaleItem getSaleItem() { return saleItem; }
         public String getProductName() { return productName; }
-        public int getSoldQuantity() { return soldQuantity; }
-        public int getReturnedQuantity() { return returnedQuantity; }
-        public int getAvailableQuantity() { return availableQuantity; }
+        public double getSoldQuantity() { return soldQuantity; }
+        public double getReturnedQuantity() { return returnedQuantity; }
+        public double getAvailableQuantity() { return availableQuantity; }
         public double getUnitPrice() { return unitPrice; }
         
         public boolean isSelected() { return selected.get(); }
         public void setSelected(boolean value) { selected.set(value); }
         public SimpleBooleanProperty selectedProperty() { return selected; }
         
-        public int getReturnQuantity() { return returnQuantity.get(); }
-        public void setReturnQuantity(int value) { returnQuantity.set(value); }
-        public SimpleIntegerProperty returnQuantityProperty() { return returnQuantity; }
+        public double getReturnQuantity() { return returnQuantity.get(); }
+        public void setReturnQuantity(double value) { returnQuantity.set(value); }
+        public SimpleDoubleProperty returnQuantityProperty() { return returnQuantity; }
     }
 }

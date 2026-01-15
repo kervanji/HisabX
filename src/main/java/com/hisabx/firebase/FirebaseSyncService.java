@@ -204,9 +204,9 @@ public class FirebaseSyncService {
         product.setCategory((String) map.get("category"));
         product.setUnitPrice((Double) map.get("unitPrice"));
         product.setCostPrice((Double) map.get("costPrice"));
-        product.setQuantityInStock(((Number) map.get("quantityInStock")).intValue());
-        product.setMinimumStock(((Number) map.get("minimumStock")).intValue());
-        product.setMaximumStock(((Number) map.get("maximumStock")).intValue());
+        product.setQuantityInStock(((Number) map.get("quantityInStock")).doubleValue());
+        product.setMinimumStock(((Number) map.get("minimumStock")).doubleValue());
+        product.setMaximumStock(((Number) map.get("maximumStock")).doubleValue());
         product.setUnitOfMeasure((String) map.get("unitOfMeasure"));
         product.setBarcode((String) map.get("barcode"));
         product.setIsActive((Boolean) map.get("isActive"));

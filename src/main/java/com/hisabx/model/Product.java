@@ -30,13 +30,13 @@ public class Product {
     private Double costPrice;
     
     @Column(name = "quantity_in_stock")
-    private Integer quantityInStock;
+    private Double quantityInStock;
     
     @Column(name = "minimum_stock")
-    private Integer minimumStock;
+    private Double minimumStock;
     
     @Column(name = "maximum_stock")
-    private Integer maximumStock;
+    private Double maximumStock;
     
     @Column(name = "unit_of_measure")
     private String unitOfMeasure;
@@ -59,8 +59,8 @@ public class Product {
     public Product() {
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
-        this.quantityInStock = 0;
-        this.minimumStock = 0;
+        this.quantityInStock = 0.0;
+        this.minimumStock = 0.0;
         this.isActive = true;
     }
 
@@ -86,14 +86,14 @@ public class Product {
     public Double getCostPrice() { return costPrice; }
     public void setCostPrice(Double costPrice) { this.costPrice = costPrice; }
     
-    public Integer getQuantityInStock() { return quantityInStock; }
-    public void setQuantityInStock(Integer quantityInStock) { this.quantityInStock = quantityInStock; }
+    public Double getQuantityInStock() { return quantityInStock; }
+    public void setQuantityInStock(Double quantityInStock) { this.quantityInStock = quantityInStock; }
     
-    public Integer getMinimumStock() { return minimumStock; }
-    public void setMinimumStock(Integer minimumStock) { this.minimumStock = minimumStock; }
+    public Double getMinimumStock() { return minimumStock; }
+    public void setMinimumStock(Double minimumStock) { this.minimumStock = minimumStock; }
     
-    public Integer getMaximumStock() { return maximumStock; }
-    public void setMaximumStock(Integer maximumStock) { this.maximumStock = maximumStock; }
+    public Double getMaximumStock() { return maximumStock; }
+    public void setMaximumStock(Double maximumStock) { this.maximumStock = maximumStock; }
     
     public String getUnitOfMeasure() { return unitOfMeasure; }
     public void setUnitOfMeasure(String unitOfMeasure) { this.unitOfMeasure = unitOfMeasure; }

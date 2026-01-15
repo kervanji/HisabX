@@ -73,11 +73,15 @@ public class SalesService {
             saleItem.setSale(sale);
             saleItem.setProduct(product);
             saleItem.setQuantity(itemRequest.getQuantity());
-            saleItem.setUnitPrice(product.getUnitPrice());
+            
+            // Use price from request, fallback to product price if null (though it should be provided)
+            double unitPrice = itemRequest.getUnitPrice() != null ? itemRequest.getUnitPrice() : product.getUnitPrice();
+            saleItem.setUnitPrice(unitPrice);
+            
             saleItem.setDiscountPercentage(itemRequest.getDiscountPercentage());
             
             // Calculate total price with discount
-            double itemTotal = product.getUnitPrice() * itemRequest.getQuantity();
+            double itemTotal = unitPrice * itemRequest.getQuantity();
             double discountAmount = itemTotal * (itemRequest.getDiscountPercentage() / 100.0);
             saleItem.setDiscountAmount(discountAmount);
             saleItem.setTotalPrice(itemTotal - discountAmount);
@@ -246,15 +250,19 @@ public class SalesService {
     
     public static class SaleItemRequest {
         private Long productId;
-        private Integer quantity;
+        private Double quantity;
+        private Double unitPrice;
         private Double discountPercentage;
         
         // Getters and Setters
         public Long getProductId() { return productId; }
         public void setProductId(Long productId) { this.productId = productId; }
         
-        public Integer getQuantity() { return quantity; }
-        public void setQuantity(Integer quantity) { this.quantity = quantity; }
+        public Double getQuantity() { return quantity; }
+        public void setQuantity(Double quantity) { this.quantity = quantity; }
+        
+        public Double getUnitPrice() { return unitPrice; }
+        public void setUnitPrice(Double unitPrice) { this.unitPrice = unitPrice; }
         
         public Double getDiscountPercentage() { return discountPercentage; }
         public void setDiscountPercentage(Double discountPercentage) { this.discountPercentage = discountPercentage; }

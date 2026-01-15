@@ -203,9 +203,9 @@ public class ProductController {
             product.setBarcode(barcodeField.getText().trim());
             product.setCostPrice(parseDouble(costPriceField.getText()));
             product.setUnitPrice(parseDouble(unitPriceField.getText()));
-            product.setQuantityInStock(parseInt(quantityField.getText()));
-            product.setMinimumStock(parseInt(minimumStockField.getText()));
-            product.setMaximumStock(parseIntOrNull(maximumStockField.getText()));
+            product.setQuantityInStock(parseDouble(quantityField.getText()));
+            product.setMinimumStock(parseDouble(minimumStockField.getText()));
+            product.setMaximumStock(parseDoubleOrNull(maximumStockField.getText()));
             product.setUnitOfMeasure(unitOfMeasureComboBox.getValue());
             product.setIsActive(isActiveCheckBox.isSelected());
             
@@ -278,14 +278,9 @@ public class ProductController {
         return Double.parseDouble(value.trim().replace(",", ""));
     }
     
-    private int parseInt(String value) {
-        if (value == null || value.trim().isEmpty()) return 0;
-        return Integer.parseInt(value.trim());
-    }
-    
-    private Integer parseIntOrNull(String value) {
+    private Double parseDoubleOrNull(String value) {
         if (value == null || value.trim().isEmpty()) return null;
-        return Integer.parseInt(value.trim());
+        return Double.parseDouble(value.trim().replace(",", ""));
     }
     
     private String generateProductCode() {

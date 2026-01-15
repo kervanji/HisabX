@@ -70,8 +70,8 @@ public class AddStockController {
         Product selected = productComboBox.getValue();
         if (selected != null) {
             try {
-                int quantity = Integer.parseInt(quantityField.getText().trim());
-                int newStock = selected.getQuantityInStock() + quantity;
+                double quantity = Double.parseDouble(quantityField.getText().trim());
+                double newStock = selected.getQuantityInStock() + quantity;
                 newStockLabel.setText(String.valueOf(newStock));
                 
                 if (newStock > selected.getMinimumStock()) {
@@ -112,7 +112,7 @@ public class AddStockController {
         }
         
         try {
-            int quantity = Integer.parseInt(quantityText);
+            double quantity = Double.parseDouble(quantityText);
             if (quantity <= 0) {
                 showError("خطأ", "الكمية يجب أن تكون أكبر من صفر");
                 return;
@@ -123,7 +123,7 @@ public class AddStockController {
             dialogStage.close();
             
         } catch (NumberFormatException e) {
-            showError("خطأ", "الكمية يجب أن تكون رقماً صحيحاً");
+            showError("خطأ", "الكمية يجب أن تكون رقماً");
         } catch (Exception e) {
             showError("خطأ", e.getMessage());
         }

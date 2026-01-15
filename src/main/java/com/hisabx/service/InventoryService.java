@@ -87,7 +87,7 @@ public class InventoryService {
         productRepository.delete(product);
     }
     
-    public Product addStock(Long productId, Integer quantity) {
+    public Product addStock(Long productId, Double quantity) {
         if (quantity <= 0) {
             throw new IllegalArgumentException("الكمية يجب أن تكون أكبر من صفر");
         }
@@ -102,7 +102,7 @@ public class InventoryService {
         throw new IllegalArgumentException("المنتج غير موجود");
     }
     
-    public Product removeStock(Long productId, Integer quantity) {
+    public Product removeStock(Long productId, Double quantity) {
         if (quantity <= 0) {
             throw new IllegalArgumentException("الكمية يجب أن تكون أكبر من صفر");
         }
@@ -122,7 +122,7 @@ public class InventoryService {
         throw new IllegalArgumentException("المنتج غير موجود");
     }
     
-    public boolean isStockAvailable(Long productId, Integer requiredQuantity) {
+    public boolean isStockAvailable(Long productId, Double requiredQuantity) {
         Optional<Product> productOpt = productRepository.findById(productId);
         return productOpt.isPresent() && 
                productOpt.get().getQuantityInStock() >= requiredQuantity &&
@@ -133,7 +133,7 @@ public class InventoryService {
         return "PROD-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
     }
     
-    private void validateProduct(Product product) {
+    public void validateProduct(Product product) {
         if (product.getName() == null || product.getName().trim().isEmpty()) {
             throw new IllegalArgumentException("اسم المنتج مطلوب");
         }
@@ -175,8 +175,8 @@ public class InventoryService {
         return productRepository.findAll().stream()
                 .filter(product -> Boolean.TRUE.equals(product.getIsActive()))
                 .filter(product -> {
-                    int qty = product.getQuantityInStock() == null ? 0 : product.getQuantityInStock();
-                    int min = product.getMinimumStock() == null ? 0 : product.getMinimumStock();
+                    double qty = product.getQuantityInStock() == null ? 0 : product.getQuantityInStock();
+                    double min = product.getMinimumStock() == null ? 0 : product.getMinimumStock();
                     return qty <= min;
                 })
                 .toList();
@@ -186,17 +186,17 @@ public class InventoryService {
         return productRepository.findAll().stream()
                 .filter(p -> Boolean.TRUE.equals(p.getIsActive()))
                 .mapToDouble(product -> {
-                    int qty = product.getQuantityInStock() == null ? 0 : product.getQuantityInStock();
+                    double qty = product.getQuantityInStock() == null ? 0 : product.getQuantityInStock();
                     double cost = product.getCostPrice() == null ? 0.0 : product.getCostPrice();
                     return qty * cost;
                 })
                 .sum();
     }
     
-    public int getTotalStockCount() {
+    public double getTotalStockCount() {
         return productRepository.findAll().stream()
                 .filter(p -> Boolean.TRUE.equals(p.getIsActive()))
-                .mapToInt(p -> p.getQuantityInStock() == null ? 0 : p.getQuantityInStock())
+                .mapToDouble(p -> p.getQuantityInStock() == null ? 0 : p.getQuantityInStock())
                 .sum();
     }
 }

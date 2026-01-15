@@ -22,7 +22,7 @@ public class ReturnItem {
     private SaleItem originalSaleItem;
     
     @Column(nullable = false)
-    private Integer quantity;
+    private Double quantity;
     
     @Column(name = "unit_price", nullable = false)
     private Double unitPrice;
@@ -53,8 +53,8 @@ public class ReturnItem {
     public SaleItem getOriginalSaleItem() { return originalSaleItem; }
     public void setOriginalSaleItem(SaleItem originalSaleItem) { this.originalSaleItem = originalSaleItem; }
     
-    public Integer getQuantity() { return quantity; }
-    public void setQuantity(Integer quantity) { this.quantity = quantity; }
+    public Double getQuantity() { return quantity; }
+    public void setQuantity(Double quantity) { this.quantity = quantity; }
     
     public Double getUnitPrice() { return unitPrice; }
     public void setUnitPrice(Double unitPrice) { this.unitPrice = unitPrice; }

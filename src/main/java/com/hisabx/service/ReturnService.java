@@ -263,9 +263,9 @@ public class ReturnService {
 
         List<ReturnItem> items = saleReturn.getReturnItems();
         int row = 1;
-        int totalOriginalQty = 0;
-        int totalReturnedQty = 0;
-        int totalRemainingQty = 0;
+        double totalOriginalQty = 0;
+        double totalReturnedQty = 0;
+        double totalRemainingQty = 0;
         
         List<SaleReturn> allReturnsForSale = returnRepository.findBySaleId(sale != null ? sale.getId() : null);
         allReturnsForSale.sort((r1, r2) -> r1.getReturnDate().compareTo(r2.getReturnDate()));
@@ -273,13 +273,13 @@ public class ReturnService {
         if (items != null) {
             for (ReturnItem item : items) {
                 String productName = item.getProduct() != null && item.getProduct().getName() != null ? item.getProduct().getName() : "-";
-                int returnedQty = item.getQuantity() != null ? item.getQuantity() : 0;
-                int originalQty = 0;
+                double returnedQty = item.getQuantity() != null ? item.getQuantity() : 0;
+                double originalQty = 0;
                 if (item.getOriginalSaleItem() != null && item.getOriginalSaleItem().getQuantity() != null) {
                     originalQty = item.getOriginalSaleItem().getQuantity();
                 }
                 
-                int totalReturnedBeforeThis = 0;
+                double totalReturnedBeforeThis = 0;
                 if (item.getOriginalSaleItem() != null) {
                     Long saleItemId = item.getOriginalSaleItem().getId();
                     for (SaleReturn ret : allReturnsForSale) {
@@ -297,7 +297,7 @@ public class ReturnService {
                     }
                 }
                 
-                int remainingQty = originalQty - totalReturnedBeforeThis - returnedQty;
+                double remainingQty = originalQty - totalReturnedBeforeThis - returnedQty;
                 double unitPrice = item.getUnitPrice() != null ? item.getUnitPrice() : 0.0;
                 double total = item.getTotalPrice() != null ? item.getTotalPrice() : 0.0;
 
@@ -518,19 +518,19 @@ public class ReturnService {
 
             List<ReturnItem> items = saleReturn.getReturnItems();
             int row = 1;
-            int totalOriginalQty = 0;
-            int totalReturnedQty = 0;
-            int totalRemainingQty = 0;
+            double totalOriginalQty = 0;
+            double totalReturnedQty = 0;
+            double totalRemainingQty = 0;
             if (items != null) {
                 for (ReturnItem item : items) {
                     String productName = item.getProduct() != null && item.getProduct().getName() != null ? item.getProduct().getName() : "-";
-                    int returnedQty = item.getQuantity() != null ? item.getQuantity() : 0;
-                    int originalQty = 0;
+                    double returnedQty = item.getQuantity() != null ? item.getQuantity() : 0;
+                    double originalQty = 0;
                     if (item.getOriginalSaleItem() != null && item.getOriginalSaleItem().getQuantity() != null) {
                         originalQty = item.getOriginalSaleItem().getQuantity();
                     }
                     
-                    int totalReturnedBeforeThis = 0;
+                    double totalReturnedBeforeThis = 0;
                     if (item.getOriginalSaleItem() != null) {
                         Long saleItemId = item.getOriginalSaleItem().getId();
                         for (SaleReturn ret : returns) {
@@ -548,7 +548,7 @@ public class ReturnService {
                         }
                     }
                     
-                    int remainingQty = originalQty - totalReturnedBeforeThis - returnedQty;
+                    double remainingQty = originalQty - totalReturnedBeforeThis - returnedQty;
                     double unitPrice = item.getUnitPrice() != null ? item.getUnitPrice() : 0.0;
                     double total = item.getTotalPrice() != null ? item.getTotalPrice() : 0.0;
 
