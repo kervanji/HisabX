@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.Insets?>
+
+<VBox xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.hisabx.controller.AddStockController"
+      spacing="16" prefWidth="400" prefHeight="350"
+      style="-fx-background-color: #f8fafc; -fx-padding: 24;">
+    
+    <Label text="إضافة مخزون" 
+           style="-fx-font-size: 22px; -fx-font-weight: bold; -fx-text-fill: #1f3c56;"/>
+    
+    <VBox spacing="8">
+        <Label text="المنتج:" style="-fx-font-size: 14px; -fx-text-fill: #374151;"/>
+        <ComboBox fx:id="productComboBox" maxWidth="Infinity" promptText="اختر المنتج"
+                  style="-fx-background-radius: 8; -fx-border-radius: 8;"/>
+    </VBox>
+    
+    <HBox spacing="16">
+        <VBox spacing="4" HBox.hgrow="ALWAYS">
+            <Label text="المخزون الحالي:" style="-fx-font-size: 13px; -fx-text-fill: #6b7280;"/>
+            <Label fx:id="currentStockLabel" text="0" style="-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: #1f3c56;"/>
+        </VBox>
+        <VBox spacing="4" HBox.hgrow="ALWAYS">
+            <Label text="الحد الأدنى:" style="-fx-font-size: 13px; -fx-text-fill: #6b7280;"/>
+            <Label fx:id="minimumStockLabel" text="0" style="-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: #ef4444;"/>
+        </VBox>
+    </HBox>
+    
+    <VBox spacing="8">
+        <Label text="الكمية المراد إضافتها:*" style="-fx-font-size: 14px; -fx-text-fill: #374151;"/>
+        <TextField fx:id="quantityField" promptText="أدخل الكمية"
+                   style="-fx-background-radius: 8; -fx-border-radius: 8; -fx-padding: 12; -fx-font-size: 16px;"/>
+    </VBox>
+    
+    <VBox spacing="4" style="-fx-background-color: #f0fdf4; -fx-padding: 12; -fx-background-radius: 8;">
+        <Label text="المخزون بعد الإضافة:" style="-fx-font-size: 13px; -fx-text-fill: #16a34a;"/>
+        <Label fx:id="newStockLabel" text="0" style="-fx-font-size: 24px; -fx-font-weight: bold; -fx-text-fill: #16a34a;"/>
+    </VBox>
+    
+    <Region VBox.vgrow="ALWAYS"/>
+    
+    <HBox spacing="12" alignment="CENTER_LEFT">
+        <Button text="إضافة" onAction="#handleAdd" prefWidth="120"
+                style="-fx-background-color: linear-gradient(to right, #10b981, #059669); -fx-text-fill: white; -fx-font-size: 14px; -fx-font-weight: bold; -fx-padding: 12 24; -fx-background-radius: 10;"/>
+        <Button text="إلغاء" onAction="#handleCancel" prefWidth="100"
+                style="-fx-background-color: #e5e7eb; -fx-text-fill: #374151; -fx-font-size: 14px; -fx-padding: 12 24; -fx-background-radius: 10;"/>
+    </HBox>
+</VBox>

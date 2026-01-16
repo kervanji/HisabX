@@ -13,6 +13,7 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.control.*;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import javafx.stage.Modality;
 import javafx.util.StringConverter;
@@ -21,6 +22,8 @@ import org.slf4j.LoggerFactory;
 
 import java.awt.Desktop;
 import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.util.ArrayList;
@@ -291,6 +294,27 @@ public class SaleFormController {
 
         if (locations.size() == 1) {
             projectLocationComboBox.setValue(locations.get(0));
+        }
+    }
+
+    private File chooseSaveLocation(File sourceFile) {
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("حفظ الفاتورة PDF");
+        fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("PDF Files", "*.pdf"));
+        fileChooser.setInitialFileName(sourceFile.getName());
+
+        File targetFile = dialogStage != null ? fileChooser.showSaveDialog(dialogStage) : fileChooser.showSaveDialog(null);
+        if (targetFile == null) {
+            return sourceFile;
+        }
+
+        try {
+            Files.copy(sourceFile.toPath(), targetFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            return targetFile;
+        } catch (Exception e) {
+            logger.error("Failed to save receipt PDF to selected location", e);
+            showError("خطأ", "فشل في حفظ الفاتورة في المسار المحدد");
+            return sourceFile;
         }
     }
 
@@ -986,10 +1010,12 @@ public class SaleFormController {
                 if (receipt.getFilePath() != null) {
                     File pdfFile = new File(receipt.getFilePath());
                     if (pdfFile.exists()) {
+                        File savedFile = chooseSaveLocation(pdfFile);
+                        File previewFile = savedFile != null ? savedFile : pdfFile;
                         if (mainApp != null) {
-                            mainApp.showPdfPreview(pdfFile);
+                            mainApp.showPdfPreview(previewFile);
                         } else if (Desktop.isDesktopSupported()) {
-                            Desktop.getDesktop().open(pdfFile);
+                            Desktop.getDesktop().open(previewFile);
                         }
                     }
                 }
