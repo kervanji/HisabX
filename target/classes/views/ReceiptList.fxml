@@ -69,8 +69,6 @@
     <HBox spacing="10" alignment="CENTER">
         <Button text="📑 كشف حساب" onAction="#handleAccountStatement" prefHeight="35"
                 style="-fx-background-color: #27ae60; -fx-text-fill: white; -fx-font-weight: bold;"/>
-        <Button text="⚙️ إعدادات القوالب" onAction="#handleTemplateSettings" prefHeight="35"
-                style="-fx-background-color: #9b59b6; -fx-text-fill: white; -fx-font-weight: bold;"/>
         <Button text="❌ إغلاق" onAction="#handleClose" prefHeight="35"
                 style="-fx-background-color: #95a5a6; -fx-text-fill: white;"/>
     </HBox>
