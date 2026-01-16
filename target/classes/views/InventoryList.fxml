@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.Insets?>
+
+<VBox xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.hisabx.controller.InventoryListController"
+      spacing="16" prefWidth="950" prefHeight="650"
+      style="-fx-background-color: #f8fafc; -fx-padding: 24;">
+    
+    <HBox alignment="CENTER_LEFT" spacing="16">
+        <Label text="إدارة المخزون" 
+               style="-fx-font-size: 24px; -fx-font-weight: bold; -fx-text-fill: #1f3c56;"/>
+        <Region HBox.hgrow="ALWAYS"/>
+        <Button text="+ إضافة منتج" onAction="#handleAddProduct"
+                style="-fx-background-color: linear-gradient(to right, #2a8cff, #246bff); -fx-text-fill: white; -fx-font-size: 14px; -fx-font-weight: bold; -fx-padding: 10 20; -fx-background-radius: 10;"/>
+        <Button text="إدارة الفئات" onAction="#handleManageCategories"
+                style="-fx-background-color: #ffffff; -fx-text-fill: #1f3c56; -fx-font-size: 14px; -fx-padding: 10 16; -fx-background-radius: 10; -fx-border-color: #d5e2f4; -fx-border-radius: 10;"/>
+    </HBox>
+    
+    <HBox spacing="12" alignment="CENTER_LEFT">
+        <HBox spacing="8" alignment="CENTER_LEFT" HBox.hgrow="ALWAYS">
+            <Label text="بحث:" style="-fx-font-size: 14px;"/>
+            <TextField fx:id="searchField" promptText="ابحث بالاسم أو الكود أو الباركود..." prefWidth="300"
+                       style="-fx-background-radius: 8; -fx-border-radius: 8; -fx-padding: 8;"/>
+        </HBox>
+        <HBox spacing="8" alignment="CENTER_LEFT">
+            <Label text="الفئة:" style="-fx-font-size: 14px;"/>
+            <ComboBox fx:id="categoryFilter" promptText="الكل" prefWidth="150"
+                      style="-fx-background-radius: 8; -fx-border-radius: 8;"/>
+        </HBox>
+        <HBox spacing="8" alignment="CENTER_LEFT">
+            <Label text="الحالة:" style="-fx-font-size: 14px;"/>
+            <ComboBox fx:id="statusFilter" promptText="الكل" prefWidth="120"
+                      style="-fx-background-radius: 8; -fx-border-radius: 8;"/>
+        </HBox>
+        <Button text="تحديث" onAction="#handleRefresh"
+                style="-fx-background-color: #10b981; -fx-text-fill: white; -fx-font-size: 13px; -fx-padding: 8 16; -fx-background-radius: 8;"/>
+    </HBox>
+    
+    <HBox spacing="16">
+        <VBox alignment="CENTER" spacing="4" prefWidth="180"
+              style="-fx-background-color: white; -fx-padding: 16; -fx-background-radius: 12; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 10,0,0,4);">
+            <Label text="إجمالي المنتجات" style="-fx-font-size: 13px; -fx-text-fill: #6b7280;"/>
+            <Label fx:id="totalProductsLabel" text="0" style="-fx-font-size: 28px; -fx-font-weight: bold; -fx-text-fill: #1f3c56;"/>
+        </VBox>
+        <VBox alignment="CENTER" spacing="4" prefWidth="180"
+              style="-fx-background-color: white; -fx-padding: 16; -fx-background-radius: 12; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 10,0,0,4);">
+            <Label text="إجمالي المخزون" style="-fx-font-size: 13px; -fx-text-fill: #6b7280;"/>
+            <Label fx:id="totalStockLabel" text="0" style="-fx-font-size: 28px; -fx-font-weight: bold; -fx-text-fill: #2a8cff;"/>
+        </VBox>
+        <VBox alignment="CENTER" spacing="4" prefWidth="180"
+              style="-fx-background-color: white; -fx-padding: 16; -fx-background-radius: 12; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 10,0,0,4);">
+            <Label text="قيمة المخزون" style="-fx-font-size: 13px; -fx-text-fill: #6b7280;"/>
+            <Label fx:id="inventoryValueLabel" text="0.00 د.ع" style="-fx-font-size: 22px; -fx-font-weight: bold; -fx-text-fill: #10b981;"/>
+        </VBox>
+        <VBox alignment="CENTER" spacing="4" prefWidth="180"
+              style="-fx-background-color: white; -fx-padding: 16; -fx-background-radius: 12; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 10,0,0,4);">
+            <Label text="منخفض المخزون" style="-fx-font-size: 13px; -fx-text-fill: #6b7280;"/>
+            <Label fx:id="lowStockLabel" text="0" style="-fx-font-size: 28px; -fx-font-weight: bold; -fx-text-fill: #ef4444;"/>
+        </VBox>
+    </HBox>
+    
+    <TableView fx:id="productsTable" VBox.vgrow="ALWAYS"
+               style="-fx-background-radius: 12; -fx-border-radius: 12;">
+        <columns>
+            <TableColumn fx:id="codeColumn" text="الكود" prefWidth="100"/>
+            <TableColumn fx:id="nameColumn" text="اسم المنتج" prefWidth="180"/>
+            <TableColumn fx:id="categoryColumn" text="الفئة" prefWidth="100"/>
+            <TableColumn fx:id="barcodeColumn" text="الباركود" prefWidth="110"/>
+            <TableColumn fx:id="costPriceColumn" text="التكلفة" prefWidth="90"/>
+            <TableColumn fx:id="unitPriceColumn" text="سعر البيع" prefWidth="90"/>
+            <TableColumn fx:id="quantityColumn" text="الكمية" prefWidth="70"/>
+            <TableColumn fx:id="statusColumn" text="الحالة" prefWidth="80"/>
+            <TableColumn fx:id="actionsColumn" text="إجراءات" prefWidth="100"/>
+        </columns>
+        <placeholder>
+            <Label text="لا توجد منتجات" style="-fx-font-size: 16px; -fx-text-fill: #9ca3af;"/>
+        </placeholder>
+    </TableView>
+    
+    <HBox alignment="CENTER_RIGHT" spacing="12">
+        <Button text="طباعة التقرير" onAction="#handlePrint"
+                style="-fx-background-color: #6366f1; -fx-text-fill: white; -fx-font-size: 13px; -fx-padding: 8 16; -fx-background-radius: 8;"/>
+        <Label fx:id="statusLabel" text="جاهز" style="-fx-font-size: 13px; -fx-text-fill: #6b7280;"/>
+    </HBox>
+</VBox>

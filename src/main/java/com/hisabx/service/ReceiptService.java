@@ -310,10 +310,10 @@ public class ReceiptService {
 
         document.add(infoTable);
 
-        PdfPTable table = new PdfPTable(6);
+        PdfPTable table = new PdfPTable(7);
         table.setWidthPercentage(100);
         table.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
-        table.setWidths(new float[]{0.6f, 1f, 1f, 1f, 1f, 1f});
+        table.setWidths(new float[]{1f, 1f, 1f, 0.6f, 1f, 0.8f, 0.2f});
         table.setSpacingBefore(5f);
         table.setSpacingAfter(10f);
 
@@ -322,6 +322,7 @@ public class ReceiptService {
         addTableHeader(table, "العدد", arabicBoldFont);
         addTableHeader(table, "التعبئة", arabicBoldFont);
         addTableHeader(table, "السعر", arabicBoldFont);
+        addTableHeader(table, "السعر بعد الخصم", arabicBoldFont);
         addTableHeader(table, "المجموع ع", arabicBoldFont);
 
         List<SaleItem> items = sale.getSaleItems() != null ? sale.getSaleItems() : Collections.emptyList();
@@ -335,6 +336,11 @@ public class ReceiptService {
             table.addCell(createBodyCell(item.getQuantity() != null ? String.valueOf(item.getQuantity()) : "0", arabicFont, Element.ALIGN_CENTER));
             table.addCell(createBodyCell(unitOfMeasure, arabicFont, Element.ALIGN_CENTER));
             table.addCell(createBodyCell(formatAmount(item.getUnitPrice()), arabicFont, Element.ALIGN_CENTER));
+            Double quantity = item.getQuantity() != null ? item.getQuantity() : 0.0;
+            Double discountAmount = item.getDiscountAmount() != null ? item.getDiscountAmount() : 0.0;
+            double discountPerUnit = quantity > 0 ? discountAmount / quantity : 0.0;
+            double unitPriceAfterDiscount = (item.getUnitPrice() != null ? item.getUnitPrice() : 0.0) - discountPerUnit;
+            table.addCell(createBodyCell(formatAmount(unitPriceAfterDiscount), arabicFont, Element.ALIGN_CENTER));
             table.addCell(createBodyCell(formatAmount(item.getTotalPrice()), arabicFont, Element.ALIGN_CENTER));
             rowNo++;
         }
@@ -367,8 +373,14 @@ public class ReceiptService {
         innerTotals.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
         
         addTotalRowBordered(innerTotals, "المجموع", formatCurrency(sale.getTotalAmount()), arabicFont, arabicBoldFont);
+        double itemsDiscount = items.stream()
+                .mapToDouble(item -> item.getDiscountAmount() != null ? item.getDiscountAmount() : 0.0)
+                .sum();
+        if (itemsDiscount > 0) {
+            addTotalRowBordered(innerTotals, "خصم المواد", formatCurrency(itemsDiscount), arabicFont, arabicBoldFont);
+        }
         if (sale.getDiscountAmount() != null && sale.getDiscountAmount() > 0) {
-            addTotalRowBordered(innerTotals, "الخصم", formatCurrency(sale.getDiscountAmount()), arabicFont, arabicBoldFont);
+            addTotalRowBordered(innerTotals, "خصم إضافي", formatCurrency(sale.getDiscountAmount()), arabicFont, arabicBoldFont);
         }
         addTotalRowBordered(innerTotals, "الإجمالي", formatCurrency(sale.getFinalAmount()), arabicBoldFont, arabicBoldFont);
         
