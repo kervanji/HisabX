@@ -334,7 +334,7 @@ public class PrintService {
     
     private Image loadBannerImage() {
         try {
-            Preferences prefs = Preferences.userNodeForPackage(PrintService.class);
+            Preferences prefs = Preferences.userNodeForPackage(ReceiptService.class);
             String bannerPath = prefs.get(PREF_BANNER_PATH, null);
             if (bannerPath != null && !bannerPath.trim().isEmpty()) {
                 File f = new File(bannerPath);

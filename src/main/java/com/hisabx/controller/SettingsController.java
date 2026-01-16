@@ -53,7 +53,7 @@ public class SettingsController {
         backupPathField.setText(System.getProperty("user.home") + File.separator + "HisabX_Backups");
         
         // Load preferences
-        Preferences prefs = Preferences.userNodeForPackage(SettingsController.class);
+        Preferences prefs = Preferences.userNodeForPackage(ReceiptService.class);
         String bannerPath = prefs.get(PREF_BANNER_PATH, "");
         bannerPathField.setText(bannerPath);
         
@@ -214,7 +214,7 @@ public class SettingsController {
     @FXML
     private void handleSaveBanner() {
         String bannerPath = bannerPathField.getText().trim();
-        Preferences prefs = Preferences.userNodeForPackage(SettingsController.class);
+        Preferences prefs = Preferences.userNodeForPackage(ReceiptService.class);
         
         if (bannerPath.isEmpty()) {
             prefs.remove(PREF_BANNER_PATH);
@@ -232,7 +232,7 @@ public class SettingsController {
     
     @FXML
     private void handleRemoveBanner() {
-        Preferences prefs = Preferences.userNodeForPackage(SettingsController.class);
+        Preferences prefs = Preferences.userNodeForPackage(ReceiptService.class);
         prefs.remove(PREF_BANNER_PATH);
         bannerPathField.clear();
         showSuccess("تم", "تم إزالة الشعار");

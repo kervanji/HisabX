@@ -11,7 +11,6 @@ import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.geometry.Insets;
 import javafx.scene.control.*;
-import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,11 +21,9 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.prefs.Preferences;
 
 public class ReceiptListController {
     private static final Logger logger = LoggerFactory.getLogger(ReceiptListController.class);
-    private static final String PREF_BANNER_PATH = "receipt.banner.path";
 
     @FXML private TextField searchField;
     @FXML private DatePicker fromDatePicker;
@@ -478,43 +475,6 @@ public class ReceiptListController {
             } catch (Exception e) {
                 logger.error("Failed to generate account statement", e);
                 showError("خطأ", "فشل في إنشاء كشف الحساب: " + e.getMessage());
-            }
-        });
-    }
-
-    @FXML
-    private void handleTemplateSettings() {
-        Preferences prefs = Preferences.userNodeForPackage(com.hisabx.service.ReceiptService.class);
-        String current = prefs.get(PREF_BANNER_PATH, null);
-        String currentLabel = (current != null && !current.trim().isEmpty()) ? current : "لا يوجد";
-
-        ButtonType chooseBtn = new ButtonType("اختيار بانر", ButtonBar.ButtonData.OK_DONE);
-        ButtonType clearBtn = new ButtonType("حذف البانر", ButtonBar.ButtonData.OTHER);
-        ButtonType cancelBtn = new ButtonType("إلغاء", ButtonBar.ButtonData.CANCEL_CLOSE);
-
-        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-        alert.setTitle("إعدادات القوالب");
-        alert.setHeaderText("تخصيص بانر/لوغو الوصل");
-        alert.setContentText("المسار الحالي: " + currentLabel);
-        alert.getButtonTypes().setAll(chooseBtn, clearBtn, cancelBtn);
-
-        alert.showAndWait().ifPresent(result -> {
-            if (result == chooseBtn) {
-                FileChooser fileChooser = new FileChooser();
-                fileChooser.setTitle("اختر صورة البانر");
-                fileChooser.getExtensionFilters().addAll(
-                    new FileChooser.ExtensionFilter("Images", "*.png", "*.jpg", "*.jpeg")
-                );
-
-                Stage owner = (Stage) receiptsTable.getScene().getWindow();
-                File selected = fileChooser.showOpenDialog(owner);
-                if (selected != null) {
-                    prefs.put(PREF_BANNER_PATH, selected.getAbsolutePath());
-                    showSuccess("تم الحفظ", "تم تعيين البانر بنجاح. سيتم استخدامه في الوصولات الجديدة.");
-                }
-            } else if (result == clearBtn) {
-                prefs.remove(PREF_BANNER_PATH);
-                showSuccess("تم", "تم حذف البانر وسيتم استخدام اللوغو الافتراضي.");
             }
         });
     }

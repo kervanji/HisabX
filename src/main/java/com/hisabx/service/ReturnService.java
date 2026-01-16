@@ -685,7 +685,7 @@ public class ReturnService {
 
     private Image loadBannerImage() {
         try {
-            Preferences prefs = Preferences.userNodeForPackage(ReturnService.class);
+            Preferences prefs = Preferences.userNodeForPackage(ReceiptService.class);
             String bannerPath = prefs.get("receipt.banner.path", null);
             if (bannerPath != null && !bannerPath.trim().isEmpty()) {
                 File bannerFile = new File(bannerPath);
