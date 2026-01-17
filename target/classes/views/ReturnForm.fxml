@@ -55,40 +55,14 @@
     <!-- Return Details -->
     <HBox spacing="20" style="-fx-background-color: white; -fx-background-radius: 8; -fx-padding: 15;">
         <VBox spacing="10" HBox.hgrow="ALWAYS">
-            <Label text="سبب الإرجاع:" style="-fx-font-weight: bold;"/>
-            <ComboBox fx:id="reasonComboBox" prefWidth="250">
-                <items>
-                    <FXCollections fx:factory="observableArrayList">
-                        <String fx:value="عيب في المنتج"/>
-                        <String fx:value="خطأ في الطلب"/>
-                        <String fx:value="زيادة في الكمية"/>
-                        <String fx:value="تغيير رأي العميل"/>
-                        <String fx:value="أخرى"/>
-                    </FXCollections>
-                </items>
-            </ComboBox>
-            
             <Label text="ملاحظات:" style="-fx-font-weight: bold;"/>
             <TextArea fx:id="notesArea" prefHeight="60" promptText="أضف ملاحظات إضافية..."/>
         </VBox>
-        
+
         <VBox spacing="10" alignment="CENTER_RIGHT" style="-fx-min-width: 250;">
             <HBox spacing="10" alignment="CENTER_RIGHT">
                 <Label text="إجمالي المرتجع:" style="-fx-font-weight: bold; -fx-font-size: 16px;"/>
                 <Label fx:id="totalReturnLabel" text="0.00 د.ع" style="-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: #e74c3c;"/>
-            </HBox>
-            
-            <HBox spacing="10" alignment="CENTER_RIGHT">
-                <Label text="حالة المواد:" style="-fx-font-weight: bold;"/>
-                <ComboBox fx:id="conditionComboBox" prefWidth="150">
-                    <items>
-                        <FXCollections fx:factory="observableArrayList">
-                            <String fx:value="بحالة جيدة"/>
-                            <String fx:value="تالف"/>
-                            <String fx:value="معيب"/>
-                        </FXCollections>
-                    </items>
-                </ComboBox>
             </HBox>
         </VBox>
     </HBox>

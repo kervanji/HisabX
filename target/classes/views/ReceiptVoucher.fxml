@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.Insets?>
+
+<VBox xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.hisabx.controller.ReceiptVoucherController"
+      spacing="16" style="-fx-background-color: linear-gradient(to bottom, #e8f5e9, #f1f8e9); -fx-padding: 20;">
+    
+    <!-- Header -->
+    <HBox alignment="CENTER" style="-fx-background-color: #2e7d32; -fx-padding: 16; -fx-background-radius: 12;">
+        <Label text="سند قبض" style="-fx-font-size: 28px; -fx-font-weight: bold; -fx-text-fill: white;"/>
+    </HBox>
+    
+    <!-- Main Content -->
+    <HBox spacing="20" HBox.hgrow="ALWAYS">
+        <!-- Left Panel - Balance Info -->
+        <VBox spacing="12" style="-fx-background-color: white; -fx-padding: 16; -fx-background-radius: 12; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 10, 0, 0, 4);"
+              prefWidth="220">
+            <Label text="الرصيد بالعملات الأخرى" style="-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #1b5e20;"/>
+            
+            <HBox spacing="8" alignment="CENTER_RIGHT">
+                <Label text="الطلب السابق" style="-fx-font-size: 12px; -fx-text-fill: #666;"/>
+                <Label fx:id="previousBalanceLabel" text="0" style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #2e7d32; -fx-background-color: #e8f5e9; -fx-padding: 6 12; -fx-background-radius: 6;"/>
+            </HBox>
+            
+            <HBox spacing="8" alignment="CENTER_RIGHT">
+                <Label text="الطلب الحالي" style="-fx-font-size: 12px; -fx-text-fill: #666;"/>
+                <Label fx:id="currentBalanceLabel" text="0" style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #1565c0; -fx-background-color: #e3f2fd; -fx-padding: 6 12; -fx-background-radius: 6;"/>
+            </HBox>
+            
+            <Separator/>
+            
+            <TableView fx:id="balanceTable" prefHeight="120" style="-fx-font-size: 12px;">
+                <columns>
+                    <TableColumn fx:id="currencyCol" text="العملة" prefWidth="80"/>
+                    <TableColumn fx:id="balanceCol" text="المبلغ" prefWidth="100"/>
+                </columns>
+            </TableView>
+        </VBox>
+        
+        <!-- Right Panel - Form -->
+        <VBox spacing="14" HBox.hgrow="ALWAYS" style="-fx-background-color: white; -fx-padding: 20; -fx-background-radius: 12; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 10, 0, 0, 4);">
+            
+            <!-- Row 1: Voucher Number & Date -->
+            <HBox spacing="20" alignment="CENTER_RIGHT">
+                <HBox spacing="8" alignment="CENTER_RIGHT">
+                    <TextField fx:id="voucherNumberField" editable="false" prefWidth="120"
+                               style="-fx-background-color: #f5f5f5; -fx-padding: 10; -fx-background-radius: 8; -fx-font-size: 14px; -fx-font-weight: bold;"/>
+                    <Label text="رقم المستند" style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #333;"/>
+                </HBox>
+                
+                <HBox spacing="8" alignment="CENTER_RIGHT" HBox.hgrow="ALWAYS">
+                    <DatePicker fx:id="voucherDatePicker" prefWidth="180"
+                                style="-fx-background-radius: 8;"/>
+                    <Label text="التاريخ" style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #333;"/>
+                </HBox>
+            </HBox>
+            
+            <!-- Row 2: Currency -->
+            <HBox spacing="20" alignment="CENTER_RIGHT">
+                <HBox spacing="8" alignment="CENTER_RIGHT">
+                    <ComboBox fx:id="currencyCombo" prefWidth="120" style="-fx-background-radius: 8;"/>
+                    <Label text="العملة" style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #333;"/>
+                </HBox>
+            </HBox>
+            
+            <!-- Row 3: Account Name -->
+            <HBox spacing="8" alignment="CENTER_RIGHT">
+                <ComboBox fx:id="customerCombo" prefWidth="300" editable="true"
+                          promptText="اختر أو ابحث عن حساب..."
+                          style="-fx-background-radius: 8;"/>
+                <Label text="اسم الحساب" style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #333;"/>
+            </HBox>
+            
+            <!-- Row 4: Cash Account -->
+            <HBox spacing="8" alignment="CENTER_RIGHT">
+                <ComboBox fx:id="cashAccountCombo" prefWidth="200"
+                          style="-fx-background-radius: 8;">
+                </ComboBox>
+                <Label text="حساب الصندوق" style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #333;"/>
+            </HBox>
+            
+            <!-- Row 5: Amount -->
+            <HBox spacing="8" alignment="CENTER_RIGHT" style="-fx-background-color: #e8f5e9; -fx-padding: 12; -fx-background-radius: 8;">
+                <Label fx:id="currencyLabel" text="دينار" style="-fx-font-size: 14px; -fx-text-fill: #2e7d32;"/>
+                <TextField fx:id="amountField" prefWidth="200" promptText="0"
+                           style="-fx-padding: 12; -fx-background-radius: 8; -fx-font-size: 18px; -fx-font-weight: bold;"/>
+                <Label text="المبلغ" style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #1b5e20;"/>
+            </HBox>
+            
+            <!-- Row 6: Discount -->
+            <HBox spacing="20" alignment="CENTER_RIGHT">
+                <HBox spacing="8" alignment="CENTER_RIGHT">
+                    <Label text="%%" style="-fx-font-size: 12px; -fx-text-fill: #666;"/>
+                    <TextField fx:id="discountPercentField" prefWidth="80" text="0"
+                               style="-fx-padding: 8; -fx-background-radius: 8;"/>
+                </HBox>
+                <Label text="الخصم الممنوح" style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #333;"/>
+            </HBox>
+            
+            <!-- Row 7: Description -->
+            <HBox spacing="8" alignment="CENTER_RIGHT">
+                <TextArea fx:id="descriptionArea" prefHeight="60" prefWidth="400"
+                          promptText="البيان / الوصف"
+                          style="-fx-background-radius: 8;"/>
+                <Label text="البيان" style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #333;"/>
+            </HBox>
+            
+        </VBox>
+    </HBox>
+    
+    <!-- Previous Vouchers Button -->
+    <HBox alignment="CENTER_RIGHT">
+        <Button fx:id="previousVouchersBtn" text="السندات السابقة" onAction="#handlePreviousVouchers"
+                style="-fx-background-color: #1565c0; -fx-text-fill: white; -fx-font-size: 13px; -fx-padding: 10 20; -fx-background-radius: 8; -fx-cursor: hand;"/>
+    </HBox>
+    
+    <!-- Action Buttons -->
+    <HBox alignment="CENTER" spacing="16" style="-fx-padding: 10;">
+        <Button fx:id="newBtn" text="➕ جديد" onAction="#handleNew"
+                style="-fx-background-color: #43a047; -fx-text-fill: white; -fx-font-size: 14px; -fx-font-weight: bold; -fx-padding: 12 24; -fx-background-radius: 8; -fx-cursor: hand;"/>
+        <Button fx:id="saveBtn" text="💾 حفظ" onAction="#handleSave"
+                style="-fx-background-color: #1976d2; -fx-text-fill: white; -fx-font-size: 14px; -fx-font-weight: bold; -fx-padding: 12 24; -fx-background-radius: 8; -fx-cursor: hand;"/>
+        <Button fx:id="printBtn" text="🖨️ طباعة" onAction="#handlePrint"
+                style="-fx-background-color: #7b1fa2; -fx-text-fill: white; -fx-font-size: 14px; -fx-font-weight: bold; -fx-padding: 12 24; -fx-background-radius: 8; -fx-cursor: hand;"/>
+        <Button text="إلغاء" onAction="#handleCancel"
+                style="-fx-background-color: #e0e0e0; -fx-text-fill: #333; -fx-font-size: 14px; -fx-font-weight: bold; -fx-padding: 12 24; -fx-background-radius: 8; -fx-cursor: hand;"/>
+    </HBox>
+</VBox>

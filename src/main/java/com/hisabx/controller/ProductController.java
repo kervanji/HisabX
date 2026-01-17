@@ -37,6 +37,7 @@ public class ProductController {
     private Stage dialogStage;
     private Product product;
     private boolean isEditMode = false;
+    private boolean tabMode = false;
     private final InventoryService inventoryService = new InventoryService();
     private final CategoryService categoryService = new CategoryService();
     private final DecimalFormat numberFormat;
@@ -137,6 +138,10 @@ public class ProductController {
         this.dialogStage = stage;
     }
     
+    public void setTabMode(boolean tabMode) {
+        this.tabMode = tabMode;
+    }
+    
     public void setProduct(Product product) {
         this.product = product;
         this.isEditMode = true;
@@ -217,7 +222,7 @@ public class ProductController {
                 showInfo("تم الإضافة", "تم إضافة المنتج بنجاح");
             }
             
-            dialogStage.close();
+            closeForm();
         } catch (Exception e) {
             showError("خطأ", e.getMessage());
         }
@@ -225,7 +230,15 @@ public class ProductController {
     
     @FXML
     private void handleCancel() {
-        dialogStage.close();
+        closeForm();
+    }
+    
+    private void closeForm() {
+        if (tabMode) {
+            com.hisabx.util.TabManager.getInstance().closeTab("new-product");
+        } else if (dialogStage != null) {
+            dialogStage.close();
+        }
     }
     
     @FXML
@@ -240,7 +253,7 @@ public class ProductController {
                 try {
                     inventoryService.deleteProduct(product);
                     showInfo("تم الحذف", "تم حذف المنتج بنجاح");
-                    dialogStage.close();
+                    closeForm();
                 } catch (Exception e) {
                     showError("خطأ", "فشل في حذف المنتج: " + e.getMessage());
                 }

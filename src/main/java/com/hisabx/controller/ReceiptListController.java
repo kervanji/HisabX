@@ -375,6 +375,10 @@ public class ReceiptListController {
 
         CheckBox includeItems = new CheckBox("إظهار تفاصيل المواد داخل كل فاتورة");
 
+        ComboBox<String> currencyCombo = new ComboBox<>(FXCollections.observableArrayList("الكل", "دينار", "دولار"));
+        currencyCombo.setPrefWidth(150);
+        currencyCombo.setValue("الكل");
+
         Runnable updateProjects = () -> {
             Customer c = customerCombo.getValue();
             projectCombo.getItems().clear();
@@ -427,6 +431,9 @@ public class ReceiptListController {
         grid.add(new Label("مدى:"), 0, r);
         grid.add(rangeBox, 1, r++);
 
+        grid.add(new Label("العملة:"), 0, r);
+        grid.add(currencyCombo, 1, r++);
+
         grid.add(includeItems, 1, r);
 
         dialog.getDialogPane().setContent(grid);
@@ -463,8 +470,11 @@ public class ReceiptListController {
                 }
             }
 
+            String selectedCurrency = currencyCombo.getValue();
+            String currencyFilter = "الكل".equals(selectedCurrency) ? null : selectedCurrency;
+
             try {
-                File pdfFile = receiptService.generateAccountStatementPdf(c, project, fromDate, toDate, includeItems.isSelected());
+                File pdfFile = receiptService.generateAccountStatementPdf(c, project, fromDate, toDate, includeItems.isSelected(), currencyFilter);
                 if (pdfFile != null && pdfFile.exists()) {
                     if (mainApp != null) {
                         mainApp.showPdfPreview(pdfFile);

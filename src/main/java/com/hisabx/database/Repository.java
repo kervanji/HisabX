@@ -8,6 +8,7 @@ import com.hisabx.model.SaleItem;
 import com.hisabx.model.Receipt;
 import com.hisabx.model.SaleReturn;
 import com.hisabx.model.ReturnItem;
+import com.hisabx.model.Voucher;
 import org.hibernate.Session;
 import org.hibernate.Transaction;
 import org.hibernate.query.Query;
@@ -629,6 +630,107 @@ public class Repository<T> {
                 if (session != null) {
                     session.close();
                 }
+            }
+        }
+    }
+
+    public static class VoucherRepository extends Repository<Voucher> {
+        public VoucherRepository() {
+            super(Voucher.class);
+        }
+
+        public long getNextVoucherNumber(Voucher.VoucherType type) {
+            try (Session session = DatabaseManager.getSessionFactory().openSession()) {
+                Query<Long> query = session.createQuery(
+                    "SELECT COALESCE(MAX(id), 0) FROM Voucher WHERE voucherType = :type", Long.class);
+                query.setParameter("type", type);
+                Long maxId = query.uniqueResult();
+                return (maxId == null ? 0L : maxId) + 1L;
+            } catch (Exception e) {
+                logger.error("Failed to generate next voucher number", e);
+                throw new RuntimeException("Failed to generate next voucher number", e);
+            }
+        }
+
+        public String generateVoucherNumber(Voucher.VoucherType type) {
+            try (Session session = DatabaseManager.getSessionFactory().openSession()) {
+                String prefix = type == Voucher.VoucherType.RECEIPT ? "RV" : "PV";
+                Query<Long> query = session.createQuery(
+                    "SELECT COALESCE(MAX(id), 0) FROM Voucher WHERE voucherType = :type", Long.class);
+                query.setParameter("type", type);
+                Long maxId = query.uniqueResult();
+                long next = (maxId == null ? 0L : maxId) + 1L;
+                return String.format("%s-%06d", prefix, next);
+            } catch (Exception e) {
+                logger.error("Failed to generate voucher number", e);
+                return (type == Voucher.VoucherType.RECEIPT ? "RV-" : "PV-") + System.currentTimeMillis();
+            }
+        }
+
+        public Optional<Voucher> findByVoucherNumber(String voucherNumber) {
+            try (Session session = DatabaseManager.getSessionFactory().openSession()) {
+                Query<Voucher> query = session.createQuery(
+                    "FROM Voucher WHERE voucherNumber = :voucherNumber", Voucher.class);
+                query.setParameter("voucherNumber", voucherNumber);
+                return query.uniqueResultOptional();
+            } catch (Exception e) {
+                logger.error("Failed to find voucher by number: {}", voucherNumber, e);
+                return Optional.empty();
+            }
+        }
+
+        public List<Voucher> findByType(Voucher.VoucherType type) {
+            try (Session session = DatabaseManager.getSessionFactory().openSession()) {
+                Query<Voucher> query = session.createQuery(
+                    "SELECT DISTINCT v FROM Voucher v " +
+                    "LEFT JOIN FETCH v.customer " +
+                    "WHERE v.voucherType = :type ORDER BY v.voucherDate DESC", Voucher.class);
+                query.setParameter("type", type);
+                return query.list();
+            } catch (Exception e) {
+                logger.error("Failed to find vouchers by type: {}", type, e);
+                throw new RuntimeException("Failed to find vouchers by type", e);
+            }
+        }
+
+        public List<Voucher> findByCustomerId(Long customerId) {
+            try (Session session = DatabaseManager.getSessionFactory().openSession()) {
+                Query<Voucher> query = session.createQuery(
+                    "FROM Voucher WHERE customer.id = :customerId ORDER BY voucherDate DESC", Voucher.class);
+                query.setParameter("customerId", customerId);
+                return query.list();
+            } catch (Exception e) {
+                logger.error("Failed to find vouchers by customer: {}", customerId, e);
+                throw new RuntimeException("Failed to find vouchers by customer", e);
+            }
+        }
+
+        public List<Voucher> findAllWithDetails() {
+            try (Session session = DatabaseManager.getSessionFactory().openSession()) {
+                Query<Voucher> query = session.createQuery(
+                    "SELECT DISTINCT v FROM Voucher v " +
+                    "LEFT JOIN FETCH v.customer " +
+                    "ORDER BY v.voucherDate DESC", Voucher.class);
+                return query.list();
+            } catch (Exception e) {
+                logger.error("Failed to find all vouchers with details", e);
+                throw new RuntimeException("Failed to find all vouchers with details", e);
+            }
+        }
+
+        public List<Voucher> findByDateRange(LocalDateTime from, LocalDateTime to) {
+            try (Session session = DatabaseManager.getSessionFactory().openSession()) {
+                Query<Voucher> query = session.createQuery(
+                    "SELECT DISTINCT v FROM Voucher v " +
+                    "LEFT JOIN FETCH v.customer " +
+                    "WHERE v.voucherDate >= :from AND v.voucherDate <= :to " +
+                    "ORDER BY v.voucherDate DESC", Voucher.class);
+                query.setParameter("from", from);
+                query.setParameter("to", to);
+                return query.list();
+            } catch (Exception e) {
+                logger.error("Failed to find vouchers by date range", e);
+                throw new RuntimeException("Failed to find vouchers by date range", e);
             }
         }
     }

@@ -37,10 +37,14 @@ public class CustomerListController {
     @FXML private TableColumn<Customer, String> addressColumn;
     @FXML private TableColumn<Customer, String> projectLocationColumn;
     @FXML private TableColumn<Customer, String> balanceColumn;
+    @FXML private TableColumn<Customer, String> balanceIqdColumn;
+    @FXML private TableColumn<Customer, String> balanceUsdColumn;
     @FXML private TableColumn<Customer, Void> actionsColumn;
     @FXML private Label totalCustomersLabel;
     @FXML private Label totalDebtLabel;
     @FXML private Label totalCreditLabel;
+    @FXML private Label totalDebtIqdLabel;
+    @FXML private Label totalDebtUsdLabel;
     
     private final CustomerService customerService = new CustomerService();
     private ObservableList<Customer> allCustomers;
@@ -89,6 +93,62 @@ public class CustomerListController {
                 }
             }
         });
+
+        if (balanceIqdColumn != null) {
+            balanceIqdColumn.setCellValueFactory(cellData -> {
+                Customer customer = cellData.getValue();
+                return new SimpleStringProperty(currencyFormat.format(customer.getBalanceIqd()));
+            });
+            balanceIqdColumn.setCellFactory(col -> new TableCell<>() {
+                @Override
+                protected void updateItem(String item, boolean empty) {
+                    super.updateItem(item, empty);
+                    if (empty || item == null) {
+                        setText(null);
+                        setStyle("");
+                    } else {
+                        setText(item + " د.ع");
+                        Customer customer = getTableView().getItems().get(getIndex());
+                        double balance = customer.getBalanceIqd();
+                        if (balance < 0) {
+                            setStyle("-fx-text-fill: #ef4444; -fx-font-weight: bold;");
+                        } else if (balance > 0) {
+                            setStyle("-fx-text-fill: #10b981; -fx-font-weight: bold;");
+                        } else {
+                            setStyle("-fx-text-fill: #6b7280;");
+                        }
+                    }
+                }
+            });
+        }
+
+        if (balanceUsdColumn != null) {
+            balanceUsdColumn.setCellValueFactory(cellData -> {
+                Customer customer = cellData.getValue();
+                return new SimpleStringProperty(currencyFormat.format(customer.getBalanceUsd()));
+            });
+            balanceUsdColumn.setCellFactory(col -> new TableCell<>() {
+                @Override
+                protected void updateItem(String item, boolean empty) {
+                    super.updateItem(item, empty);
+                    if (empty || item == null) {
+                        setText(null);
+                        setStyle("");
+                    } else {
+                        setText(item + " $");
+                        Customer customer = getTableView().getItems().get(getIndex());
+                        double balance = customer.getBalanceUsd();
+                        if (balance < 0) {
+                            setStyle("-fx-text-fill: #ef4444; -fx-font-weight: bold;");
+                        } else if (balance > 0) {
+                            setStyle("-fx-text-fill: #10b981; -fx-font-weight: bold;");
+                        } else {
+                            setStyle("-fx-text-fill: #6b7280;");
+                        }
+                    }
+                }
+            });
+        }
         
         setupActionsColumn();
     }
@@ -137,18 +197,35 @@ public class CustomerListController {
     private void updateStatistics(List<Customer> customers) {
         totalCustomersLabel.setText("إجمالي العملاء: " + customers.size());
         
-        double totalDebt = customers.stream()
-                .filter(c -> c.getCurrentBalance() != null && c.getCurrentBalance() < 0)
-                .mapToDouble(c -> Math.abs(c.getCurrentBalance()))
+        double totalDebtIqd = customers.stream()
+                .filter(c -> c.getBalanceIqd() < 0)
+                .mapToDouble(c -> Math.abs(c.getBalanceIqd()))
                 .sum();
         
-        double totalCredit = customers.stream()
-                .filter(c -> c.getCurrentBalance() != null && c.getCurrentBalance() > 0)
-                .mapToDouble(Customer::getCurrentBalance)
+        double totalDebtUsd = customers.stream()
+                .filter(c -> c.getBalanceUsd() < 0)
+                .mapToDouble(c -> Math.abs(c.getBalanceUsd()))
                 .sum();
         
-        totalDebtLabel.setText(currencyFormat.format(totalDebt) + " د.ع");
-        totalCreditLabel.setText(currencyFormat.format(totalCredit) + " د.ع");
+        double totalCreditIqd = customers.stream()
+                .filter(c -> c.getBalanceIqd() > 0)
+                .mapToDouble(Customer::getBalanceIqd)
+                .sum();
+        
+        double totalCreditUsd = customers.stream()
+                .filter(c -> c.getBalanceUsd() > 0)
+                .mapToDouble(Customer::getBalanceUsd)
+                .sum();
+        
+        totalDebtLabel.setText(currencyFormat.format(totalDebtIqd) + " د.ع");
+        totalCreditLabel.setText(currencyFormat.format(totalCreditIqd) + " د.ع");
+        
+        if (totalDebtIqdLabel != null) {
+            totalDebtIqdLabel.setText(currencyFormat.format(totalDebtIqd) + " د.ع");
+        }
+        if (totalDebtUsdLabel != null) {
+            totalDebtUsdLabel.setText(currencyFormat.format(totalDebtUsd) + " $");
+        }
     }
     
     @FXML
@@ -197,7 +274,8 @@ public class CustomerListController {
         details.append("\n");
         details.append("العنوان: ").append(customer.getAddress() != null ? customer.getAddress() : "-").append("\n");
         details.append("مواقع المشاريع:\n").append(customer.getProjectLocation() != null ? customer.getProjectLocation() : "-").append("\n\n");
-        details.append("الرصيد الحالي: ").append(currencyFormat.format(customer.getCurrentBalance() != null ? customer.getCurrentBalance() : 0)).append(" د.ع");
+        details.append("رصيد الدينار: ").append(currencyFormat.format(customer.getBalanceIqd())).append(" د.ع\n");
+        details.append("رصيد الدولار: ").append(currencyFormat.format(customer.getBalanceUsd())).append(" $");
         
         alert.setContentText(details.toString());
         alert.showAndWait();
@@ -238,7 +316,7 @@ public class CustomerListController {
             stage.initModality(Modality.APPLICATION_MODAL);
             Scene scene = new Scene(root);
             stage.setScene(scene);
-            stage.setMaximized(true);
+            stage.setMaximized(false);
             
             CustomerController controller = loader.getController();
             controller.setDialogStage(stage);

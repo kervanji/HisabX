@@ -31,6 +31,7 @@ public class CategoryController {
     private final CategoryService categoryService = new CategoryService();
     private final InventoryService inventoryService = new InventoryService();
     private Category editingCategory = null;
+    private boolean tabMode = false;
     
     @FXML
     private void initialize() {
@@ -112,6 +113,10 @@ public class CategoryController {
         this.dialogStage = stage;
     }
     
+    public void setTabMode(boolean tabMode) {
+        this.tabMode = tabMode;
+    }
+    
     @FXML
     private void handleAddCategory() {
         String name = categoryNameField.getText().trim();
@@ -180,7 +185,11 @@ public class CategoryController {
     
     @FXML
     private void handleClose() {
-        dialogStage.close();
+        if (tabMode) {
+            com.hisabx.util.TabManager.getInstance().closeTab("categories");
+        } else if (dialogStage != null) {
+            dialogStage.close();
+        }
     }
     
     private void showError(String title, String message) {

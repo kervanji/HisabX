@@ -48,6 +48,7 @@ public class SalesService {
         sale.setCustomer(customer);
         sale.setProjectLocation(saleRequest.getProjectLocation());
         sale.setPaymentMethod(saleRequest.getPaymentMethod());
+        sale.setCurrency(saleRequest.getCurrency() != null ? saleRequest.getCurrency() : "دينار");
         sale.setNotes(saleRequest.getNotes());
         sale.setCreatedBy(saleRequest.getCreatedBy());
         
@@ -112,7 +113,11 @@ public class SalesService {
 
         // Update customer balance by the difference (credit/debt)
         // current_balance > 0 => credit for customer (we owe), < 0 => debt on customer
-        customerService.updateCustomerBalance(customer.getId(), paidAmount - sale.getFinalAmount());
+        customerService.updateCustomerBalanceByCurrency(
+            customer.getId(),
+            paidAmount - sale.getFinalAmount(),
+            sale.getCurrency()
+        );
         
         logger.info("Sale created successfully: {}", savedSale.getSaleCode());
         return savedSale;
@@ -158,7 +163,11 @@ public class SalesService {
             
             // Revert customer balance effect of this sale
             double paid = sale.getPaidAmount() != null ? sale.getPaidAmount() : 0.0;
-            customerService.updateCustomerBalance(sale.getCustomer().getId(), sale.getFinalAmount() - paid);
+            customerService.updateCustomerBalanceByCurrency(
+                sale.getCustomer().getId(),
+                sale.getFinalAmount() - paid,
+                sale.getCurrency()
+            );
             
             saleRepository.delete(sale);
             logger.info("Sale deleted: {}", id);
@@ -216,6 +225,7 @@ public class SalesService {
         private Long customerId;
         private String projectLocation;
         private String paymentMethod;
+        private String currency;
         private String notes;
         private String createdBy;
         private Double additionalDiscount;
@@ -231,6 +241,9 @@ public class SalesService {
         
         public String getPaymentMethod() { return paymentMethod; }
         public void setPaymentMethod(String paymentMethod) { this.paymentMethod = paymentMethod; }
+
+        public String getCurrency() { return currency; }
+        public void setCurrency(String currency) { this.currency = currency; }
         
         public String getNotes() { return notes; }
         public void setNotes(String notes) { this.notes = notes; }

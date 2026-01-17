@@ -27,7 +27,7 @@ public class ReturnController {
     private static final DecimalFormat currencyFormat = new DecimalFormat("#,##0.00");
 
     @FXML private ComboBox<Customer> customerComboBox;
-    @FXML private ComboBox<Sale> saleComboBox;
+    @FXML private ComboBox<String> saleComboBox;
     @FXML private Label projectLabel;
     @FXML private TableView<ReturnableItem> saleItemsTable;
     @FXML private TableColumn<ReturnableItem, Boolean> selectColumn;
@@ -38,10 +38,8 @@ public class ReturnController {
     @FXML private TableColumn<ReturnableItem, Double> returnQtyColumn;
     @FXML private TableColumn<ReturnableItem, Double> unitPriceColumn;
     @FXML private TableColumn<ReturnableItem, Double> totalColumn;
-    @FXML private ComboBox<String> reasonComboBox;
     @FXML private TextArea notesArea;
     @FXML private Label totalReturnLabel;
-    @FXML private ComboBox<String> conditionComboBox;
 
     private final CustomerService customerService = new CustomerService();
     private final SalesService salesService = new SalesService();
@@ -50,9 +48,16 @@ public class ReturnController {
     private Stage dialogStage;
     private ObservableList<ReturnableItem> returnableItems = FXCollections.observableArrayList();
     private Map<Long, Double> previousReturns = new HashMap<>();
+    private Map<String, List<Sale>> projectSalesMap = new HashMap<>();
+    private static final String NO_PROJECT_LABEL = "بدون مشروع";
+    private boolean tabMode = false;
 
     public void setDialogStage(Stage dialogStage) {
         this.dialogStage = dialogStage;
+    }
+
+    public void setTabMode(boolean tabMode) {
+        this.tabMode = tabMode;
     }
 
     @FXML
@@ -82,20 +87,7 @@ public class ReturnController {
     }
 
     private void setupSaleComboBox() {
-        saleComboBox.setCellFactory(lv -> new ListCell<>() {
-            @Override
-            protected void updateItem(Sale item, boolean empty) {
-                super.updateItem(item, empty);
-                setText(empty || item == null ? null : item.getSaleCode());
-            }
-        });
-        saleComboBox.setButtonCell(new ListCell<>() {
-            @Override
-            protected void updateItem(Sale item, boolean empty) {
-                super.updateItem(item, empty);
-                setText(empty || item == null ? null : item.getSaleCode());
-            }
-        });
+        saleComboBox.setItems(FXCollections.observableArrayList());
     }
 
     private void setupTable() {
@@ -155,8 +147,6 @@ public class ReturnController {
     }
 
     private void setupDefaults() {
-        reasonComboBox.setValue("خطأ في الطلب");
-        conditionComboBox.setValue("بحالة جيدة");
     }
 
     @FXML
@@ -164,7 +154,8 @@ public class ReturnController {
         Customer selected = customerComboBox.getValue();
         if (selected != null) {
             List<Sale> customerSales = salesService.getSalesByCustomerId(selected.getId());
-            saleComboBox.setItems(FXCollections.observableArrayList(customerSales));
+            projectSalesMap = buildProjectSalesMap(customerSales);
+            saleComboBox.setItems(FXCollections.observableArrayList(projectSalesMap.keySet()));
             saleComboBox.setValue(null);
             returnableItems.clear();
             projectLabel.setText("-");
@@ -173,47 +164,63 @@ public class ReturnController {
 
     @FXML
     private void handleSaleChange() {
-        Sale selected = saleComboBox.getValue();
-        if (selected != null) {
-            projectLabel.setText(selected.getProjectLocation() != null ? selected.getProjectLocation() : "-");
-            loadSaleItems(selected);
+        String selectedProject = saleComboBox.getValue();
+        if (selectedProject != null) {
+            projectLabel.setText(selectedProject);
+            loadSaleItemsForProject(projectSalesMap.getOrDefault(selectedProject, List.of()));
         }
     }
 
-    private void loadSaleItems(Sale sale) {
+    private Map<String, List<Sale>> buildProjectSalesMap(List<Sale> sales) {
+        Map<String, List<Sale>> grouped = new HashMap<>();
+        if (sales != null) {
+            for (Sale sale : sales) {
+                String project = sale.getProjectLocation();
+                if (project == null || project.isBlank()) {
+                    project = NO_PROJECT_LABEL;
+                }
+                grouped.computeIfAbsent(project, key -> new ArrayList<>()).add(sale);
+            }
+        }
+        return grouped;
+    }
+
+    private void loadSaleItemsForProject(List<Sale> sales) {
         returnableItems.clear();
         previousReturns.clear();
 
-        // Get previous returns for this sale
-        List<SaleReturn> existingReturns = returnService.getReturnsBySale(sale.getId());
-        for (SaleReturn ret : existingReturns) {
-            if (ret.getReturnItems() != null) {
-                for (ReturnItem ri : ret.getReturnItems()) {
-                    if (ri.getProduct() == null) {
-                        continue;
+        if (sales != null) {
+            for (Sale sale : sales) {
+                List<SaleReturn> existingReturns = returnService.getReturnsBySale(sale.getId());
+                for (SaleReturn ret : existingReturns) {
+                    if (ret.getReturnItems() != null) {
+                        for (ReturnItem ri : ret.getReturnItems()) {
+                            if (ri.getOriginalSaleItem() == null || ri.getOriginalSaleItem().getId() == null) {
+                                continue;
+                            }
+                            Long saleItemId = ri.getOriginalSaleItem().getId();
+                            double quantity = ri.getQuantity() != null ? ri.getQuantity() : 0.0;
+                            previousReturns.merge(saleItemId, quantity, Double::sum);
+                        }
                     }
-                    Long productId = ri.getProduct().getId();
-                    double quantity = ri.getQuantity() != null ? ri.getQuantity() : 0.0;
-                    previousReturns.merge(productId, quantity, (existing, addition) -> existing + addition);
                 }
-            }
-        }
 
-        // Create returnable items from sale items
-        if (sale.getSaleItems() != null) {
-            for (SaleItem item : sale.getSaleItems()) {
-                double returned = previousReturns.getOrDefault(item.getProduct().getId(), 0.0);
-                double available = item.getQuantity() - returned;
-                if (available > 0) {
-                    ReturnableItem ri = new ReturnableItem(
-                            item,
-                            item.getProduct().getName(),
-                            item.getQuantity(),
-                            returned,
-                            available,
-                            item.getUnitPrice()
-                    );
-                    returnableItems.add(ri);
+                if (sale.getSaleItems() != null) {
+                    for (SaleItem item : sale.getSaleItems()) {
+                        double returned = previousReturns.getOrDefault(item.getId(), 0.0);
+                        double available = item.getQuantity() - returned;
+                        if (available > 0) {
+                            ReturnableItem ri = new ReturnableItem(
+                                    item,
+                                    item.getProduct().getName(),
+                                    item.getQuantity(),
+                                    returned,
+                                    available,
+                                    item.getUnitPrice()
+                            );
+                            returnableItems.add(ri);
+                        }
+                    }
                 }
             }
         }
@@ -230,13 +237,13 @@ public class ReturnController {
 
     @FXML
     private void handleConfirmReturn() {
-        Sale sale = saleComboBox.getValue();
-        if (sale == null) {
-            showError("خطأ", "الرجاء اختيار فاتورة");
+        String selectedProject = saleComboBox.getValue();
+        if (selectedProject == null) {
+            showError("خطأ", "الرجاء اختيار مشروع");
             return;
         }
 
-        List<ReturnItem> itemsToReturn = new ArrayList<>();
+        Map<Sale, List<ReturnItem>> returnsBySale = new HashMap<>();
         for (ReturnableItem ri : returnableItems) {
             if (ri.getReturnQuantity() > 0) {
                 ReturnItem returnItem = new ReturnItem();
@@ -244,32 +251,38 @@ public class ReturnController {
                 returnItem.setOriginalSaleItem(ri.getSaleItem());
                 returnItem.setQuantity(ri.getReturnQuantity());
                 returnItem.setUnitPrice(ri.getUnitPrice());
-                returnItem.setConditionStatus(getConditionCode(conditionComboBox.getValue()));
-                returnItem.setReturnReason(reasonComboBox.getValue());
-                itemsToReturn.add(returnItem);
+                returnItem.setConditionStatus("GOOD");
+                returnItem.setReturnReason(getNotesReason());
+                Sale sale = ri.getSaleItem().getSale();
+                returnsBySale.computeIfAbsent(sale, key -> new ArrayList<>()).add(returnItem);
             }
         }
 
-        if (itemsToReturn.isEmpty()) {
+        if (returnsBySale.isEmpty()) {
             showError("خطأ", "الرجاء تحديد كمية للإرجاع");
             return;
         }
 
         try {
-            String reason = reasonComboBox.getValue();
-            if (notesArea.getText() != null && !notesArea.getText().trim().isEmpty()) {
-                reason += " - " + notesArea.getText().trim();
+            String reason = getNotesReason();
+
+            double totalReturned = 0.0;
+            List<String> returnCodes = new ArrayList<>();
+            for (Map.Entry<Sale, List<ReturnItem>> entry : returnsBySale.entrySet()) {
+                SaleReturn savedReturn = returnService.createReturn(entry.getKey(), entry.getValue(), reason, "System");
+                totalReturned += savedReturn.getTotalReturnAmount() != null ? savedReturn.getTotalReturnAmount() : 0.0;
+                if (savedReturn.getReturnCode() != null) {
+                    returnCodes.add(savedReturn.getReturnCode());
+                }
             }
 
-            SaleReturn savedReturn = returnService.createReturn(sale, itemsToReturn, reason, "System");
-            
-            showSuccess("تم بنجاح", 
-                    "تم إنشاء مرتجع بنجاح\n" +
-                    "رقم المرتجع: " + savedReturn.getReturnCode() + "\n" +
-                    "المبلغ المرتجع: " + currencyFormat.format(savedReturn.getTotalReturnAmount()) + " د.ع");
+            showSuccess("تم بنجاح",
+                    "تم إنشاء المرتجع بنجاح\n" +
+                    "أرقام المرتجع: " + String.join(", ", returnCodes) + "\n" +
+                    "المبلغ المرتجع: " + currencyFormat.format(totalReturned) + " د.ع");
 
-            // Reload sale items to show updated available quantities
-            loadSaleItems(sale);
+            // Reload items to show updated available quantities
+            loadSaleItemsForProject(projectSalesMap.getOrDefault(selectedProject, List.of()));
 
         } catch (Exception e) {
             logger.error("Failed to create return", e);
@@ -277,43 +290,13 @@ public class ReturnController {
         }
     }
 
-    private String getConditionCode(String condition) {
-        if (condition == null) return "GOOD";
-        return switch (condition) {
-            case "بحالة جيدة" -> "GOOD";
-            case "تالف" -> "DAMAGED";
-            case "معيب" -> "DEFECTIVE";
-            default -> "GOOD";
-        };
+    private String getNotesReason() {
+        return notesArea.getText() == null ? "" : notesArea.getText().trim();
     }
 
     @FXML
     private void handlePrintReturnReceipt() {
-        Sale sale = saleComboBox.getValue();
-        if (sale == null) {
-            showError("خطأ", "الرجاء اختيار فاتورة أولاً");
-            return;
-        }
-        
-        List<SaleReturn> returns = returnService.getReturnsBySale(sale.getId());
-        if (returns.isEmpty()) {
-            showInfo("معلومة", "لا توجد مرتجعات لهذه الفاتورة");
-            return;
-        }
-        
-        try {
-            java.io.File pdfFile = returnService.generateAllReturnsReceiptPdf(sale);
-            if (pdfFile != null && pdfFile.exists()) {
-                if (java.awt.Desktop.isDesktopSupported()) {
-                    java.awt.Desktop.getDesktop().open(pdfFile);
-                } else {
-                    showSuccess("تم بنجاح", "تم إنشاء إيصال المرتجعات:\n" + pdfFile.getAbsolutePath());
-                }
-            }
-        } catch (Exception e) {
-            logger.error("Failed to generate returns receipt PDF", e);
-            showError("خطأ", "فشل في إنشاء إيصال المرتجعات: " + e.getMessage());
-        }
+        showInfo("معلومة", "يرجى طباعة إيصال المرتجع من شاشة الفواتير لكل فاتورة على حدة.");
     }
 
     @FXML
@@ -339,7 +322,9 @@ public class ReturnController {
 
     @FXML
     private void handleClose() {
-        if (dialogStage != null) {
+        if (tabMode) {
+            com.hisabx.util.TabManager.getInstance().closeTab("product-return");
+        } else if (dialogStage != null) {
             dialogStage.close();
         }
     }

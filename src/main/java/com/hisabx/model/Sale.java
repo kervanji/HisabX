@@ -21,6 +21,9 @@ public class Sale {
     @Column(name = "sale_date")
     private LocalDateTime saleDate;
     
+    @Column(name = "currency")
+    private String currency;
+    
     @Column(name = "project_location")
     private String projectLocation;
     
@@ -71,6 +74,7 @@ public class Sale {
         this.taxAmount = 0.0;
         this.paymentStatus = "PENDING";
         this.paidAmount = 0.0;
+        this.currency = "دينار";
     }
 
     // Getters and Setters
@@ -85,6 +89,9 @@ public class Sale {
     
     public LocalDateTime getSaleDate() { return saleDate; }
     public void setSaleDate(LocalDateTime saleDate) { this.saleDate = saleDate; }
+
+    public String getCurrency() { return currency; }
+    public void setCurrency(String currency) { this.currency = currency; }
     
     public String getProjectLocation() { return projectLocation; }
     public void setProjectLocation(String projectLocation) { this.projectLocation = projectLocation; }

@@ -19,6 +19,7 @@ public class AddStockController {
     
     private Stage dialogStage;
     private final InventoryService inventoryService = new InventoryService();
+    private boolean tabMode = false;
     
     @FXML
     private void initialize() {
@@ -89,6 +90,10 @@ public class AddStockController {
         this.dialogStage = stage;
     }
     
+    public void setTabMode(boolean tabMode) {
+        this.tabMode = tabMode;
+    }
+    
     public void setProduct(Product product) {
         productComboBox.setValue(product);
         productComboBox.setDisable(true);
@@ -120,7 +125,7 @@ public class AddStockController {
             
             inventoryService.addStock(selected.getId(), quantity);
             showInfo("تم", "تمت إضافة " + quantity + " وحدة إلى مخزون " + selected.getName());
-            dialogStage.close();
+            closeForm();
             
         } catch (NumberFormatException e) {
             showError("خطأ", "الكمية يجب أن تكون رقماً");
@@ -131,7 +136,15 @@ public class AddStockController {
     
     @FXML
     private void handleCancel() {
-        dialogStage.close();
+        closeForm();
+    }
+    
+    private void closeForm() {
+        if (tabMode) {
+            com.hisabx.util.TabManager.getInstance().closeTab("add-stock");
+        } else if (dialogStage != null) {
+            dialogStage.close();
+        }
     }
     
     private void showError(String title, String message) {

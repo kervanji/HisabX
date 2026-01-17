@@ -23,6 +23,7 @@ public class CustomerController {
     private final CustomerService customerService = new CustomerService();
     private Customer editingCustomer = null;
     private boolean saved = false;
+    private boolean tabMode = false;
     
     @FXML
     private void initialize() {
@@ -43,6 +44,10 @@ public class CustomerController {
 
     public void setDialogStage(Stage stage) {
         this.dialogStage = stage;
+    }
+    
+    public void setTabMode(boolean tabMode) {
+        this.tabMode = tabMode;
     }
     
     public void setCustomer(Customer customer) {
@@ -117,7 +122,7 @@ public class CustomerController {
             }
             
             saved = true;
-            dialogStage.close();
+            closeForm();
             
         } catch (IllegalArgumentException e) {
             showError("خطأ في البيانات", e.getMessage());
@@ -129,7 +134,15 @@ public class CustomerController {
     
     @FXML
     private void handleCancel() {
-        dialogStage.close();
+        closeForm();
+    }
+    
+    private void closeForm() {
+        if (tabMode) {
+            com.hisabx.util.TabManager.getInstance().closeTab("new-customer");
+        } else if (dialogStage != null) {
+            dialogStage.close();
+        }
     }
     
     private void showError(String title, String message) {
