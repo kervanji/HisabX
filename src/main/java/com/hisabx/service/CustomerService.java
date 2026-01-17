@@ -111,6 +111,24 @@ public class CustomerService {
         if (customerOpt.isPresent()) {
             Customer customer = customerOpt.get();
             customer.setCurrentBalance(customer.getCurrentBalance() + amount);
+            // Also update IQD balance for backward compatibility (sales are in IQD)
+            customer.setBalanceIqd(customer.getBalanceIqd() + amount);
+            return customerRepository.save(customer);
+        }
+        throw new IllegalArgumentException("العميل غير موجود");
+    }
+    
+    public Customer updateCustomerBalanceByCurrency(Long customerId, Double amount, String currency) {
+        Optional<Customer> customerOpt = customerRepository.findById(customerId);
+        if (customerOpt.isPresent()) {
+            Customer customer = customerOpt.get();
+            if ("دولار".equals(currency) || "USD".equalsIgnoreCase(currency)) {
+                customer.setBalanceUsd(customer.getBalanceUsd() + amount);
+            } else {
+                customer.setBalanceIqd(customer.getBalanceIqd() + amount);
+                // Also update legacy current_balance for IQD
+                customer.setCurrentBalance(customer.getCurrentBalance() + amount);
+            }
             return customerRepository.save(customer);
         }
         throw new IllegalArgumentException("العميل غير موجود");
@@ -118,13 +136,37 @@ public class CustomerService {
     
     public List<Customer> getCustomersWithDebt() {
         return customerRepository.findAll().stream()
-                .filter(customer -> customer.getCurrentBalance() < 0)
+                .filter(customer -> customer.getBalanceIqd() < 0 || customer.getBalanceUsd() < 0)
                 .toList();
     }
     
     public List<Customer> getCustomersWithCredit() {
         return customerRepository.findAll().stream()
-                .filter(customer -> customer.getCurrentBalance() > 0)
+                .filter(customer -> customer.getBalanceIqd() > 0 || customer.getBalanceUsd() > 0)
+                .toList();
+    }
+    
+    public List<Customer> getCustomersWithDebtByCurrency(String currency) {
+        return customerRepository.findAll().stream()
+                .filter(customer -> {
+                    if ("دولار".equals(currency) || "USD".equalsIgnoreCase(currency)) {
+                        return customer.getBalanceUsd() < 0;
+                    } else {
+                        return customer.getBalanceIqd() < 0;
+                    }
+                })
+                .toList();
+    }
+    
+    public List<Customer> getCustomersWithCreditByCurrency(String currency) {
+        return customerRepository.findAll().stream()
+                .filter(customer -> {
+                    if ("دولار".equals(currency) || "USD".equalsIgnoreCase(currency)) {
+                        return customer.getBalanceUsd() > 0;
+                    } else {
+                        return customer.getBalanceIqd() > 0;
+                    }
+                })
                 .toList();
     }
     

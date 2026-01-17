@@ -46,6 +46,7 @@ public class CreateReceiptController {
     private Stage dialogStage;
     private MainApp mainApp;
     private Sale selectedSale;
+    private boolean tabMode = false;
     
     @FXML
     private void initialize() {
@@ -190,6 +191,10 @@ public class CreateReceiptController {
         this.mainApp = mainApp;
     }
     
+    public void setTabMode(boolean tabMode) {
+        this.tabMode = tabMode;
+    }
+    
     @FXML
     private void handleSearchSale() {
         String searchText = saleSearchField.getText().trim().toLowerCase();
@@ -263,7 +268,9 @@ public class CreateReceiptController {
     
     @FXML
     private void handleClose() {
-        if (dialogStage != null) {
+        if (tabMode) {
+            com.hisabx.util.TabManager.getInstance().closeTab("create-receipt");
+        } else if (dialogStage != null) {
             dialogStage.close();
         }
     }

@@ -53,9 +53,35 @@ public class SalesReportController {
         productNameColumn.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getProductName()));
         quantitySoldColumn.setCellValueFactory(data -> new SimpleDoubleProperty(data.getValue().getQuantitySold()).asObject());
         productTotalColumn.setCellValueFactory(data -> new SimpleDoubleProperty(data.getValue().getTotalAmount()).asObject());
+        quantitySoldColumn.setCellFactory(col -> new TableCell<>() {
+            @Override
+            protected void updateItem(Double value, boolean empty) {
+                super.updateItem(value, empty);
+                setText(empty || value == null ? null : formatNumber(value));
+            }
+        });
+        productTotalColumn.setCellFactory(col -> new TableCell<>() {
+            @Override
+            protected void updateItem(Double value, boolean empty) {
+                super.updateItem(value, empty);
+                setText(empty || value == null ? null : formatNumber(value));
+            }
+        });
 
         customerNameColumn.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getCustomerName()));
         customerTotalColumn.setCellValueFactory(data -> new SimpleDoubleProperty(data.getValue().getTotalAmount()).asObject());
+        customerTotalColumn.setCellFactory(col -> new TableCell<>() {
+            @Override
+            protected void updateItem(Double value, boolean empty) {
+                super.updateItem(value, empty);
+                setText(empty || value == null ? null : formatNumber(value));
+            }
+        });
+    }
+
+    private String formatNumber(double value) {
+        java.text.DecimalFormat df = new java.text.DecimalFormat("#,##0.00");
+        return df.format(value);
     }
 
     private void setupDefaults() {

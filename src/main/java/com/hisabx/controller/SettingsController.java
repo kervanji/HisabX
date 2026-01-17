@@ -46,6 +46,7 @@ public class SettingsController {
     private final SalesService salesService = new SalesService();
     private final ReceiptService receiptService = new ReceiptService();
     private Stage dialogStage;
+    private boolean tabMode = false;
     
     @FXML
     private void initialize() {
@@ -69,6 +70,10 @@ public class SettingsController {
     
     public void setDialogStage(Stage dialogStage) {
         this.dialogStage = dialogStage;
+    }
+    
+    public void setTabMode(boolean tabMode) {
+        this.tabMode = tabMode;
     }
     
     @FXML

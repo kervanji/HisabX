@@ -58,10 +58,10 @@ public class PrintService {
                     smallFont, 15f);
             
             // Table
-            PdfPTable table = new PdfPTable(6);
+            PdfPTable table = new PdfPTable(7);
             table.setWidthPercentage(100);
             table.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
-            table.setWidths(new float[]{1.25f, 0.75f, 1.45f, 1.2f, 0.30f, 0.25f});
+            table.setWidths(new float[]{1.1f, 0.6f, 1.3f, 1.0f, 0.25f, 0.35f, 0.35f});
             
             // Headers
             addTableHeader(table, "ت", headerFont);
@@ -69,12 +69,15 @@ public class PrintService {
             addTableHeader(table, "الاسم", headerFont);
             addTableHeader(table, "الهاتف", headerFont);
             addTableHeader(table, "العنوان", headerFont);
-            addTableHeader(table, "الرصيد", headerFont);
+            addTableHeader(table, "رصيد دينار", headerFont);
+            addTableHeader(table, "رصيد دولار", headerFont);
             
             // Data rows
             int rowNum = 1;
-            double totalDebt = 0;
-            double totalCredit = 0;
+            double totalDebtIqd = 0;
+            double totalDebtUsd = 0;
+            double totalCreditIqd = 0;
+            double totalCreditUsd = 0;
             
             for (Customer customer : customers) {
                 table.addCell(createBodyCell(String.valueOf(rowNum), bodyFont, Element.ALIGN_CENTER));
@@ -83,17 +86,30 @@ public class PrintService {
                 table.addCell(createBodyCell(customer.getPhoneNumber(), bodyFont, Element.ALIGN_CENTER));
                 table.addCell(createBodyCell(customer.getAddress(), bodyFont, Element.ALIGN_RIGHT));
                 
-                Double balance = customer.getCurrentBalance();
-                String balanceStr = DECIMAL_FORMAT.format(balance != null ? balance : 0);
-                PdfPCell balanceCell = createBodyCell(balanceStr, bodyFont, Element.ALIGN_CENTER);
-                if (balance != null && balance < 0) {
-                    balanceCell.setBackgroundColor(new BaseColor(254, 226, 226));
-                    totalDebt += Math.abs(balance);
-                } else if (balance != null && balance > 0) {
-                    balanceCell.setBackgroundColor(new BaseColor(220, 252, 231));
-                    totalCredit += balance;
+                double balanceIqd = customer.getBalanceIqd() != null ? customer.getBalanceIqd() : 0;
+                double balanceUsd = customer.getBalanceUsd() != null ? customer.getBalanceUsd() : 0;
+                
+                String balanceIqdStr = DECIMAL_FORMAT.format(balanceIqd);
+                PdfPCell balanceIqdCell = createBodyCell(balanceIqdStr, bodyFont, Element.ALIGN_CENTER);
+                if (balanceIqd < 0) {
+                    balanceIqdCell.setBackgroundColor(new BaseColor(254, 226, 226));
+                    totalDebtIqd += Math.abs(balanceIqd);
+                } else if (balanceIqd > 0) {
+                    balanceIqdCell.setBackgroundColor(new BaseColor(220, 252, 231));
+                    totalCreditIqd += balanceIqd;
                 }
-                table.addCell(balanceCell);
+                table.addCell(balanceIqdCell);
+                
+                String balanceUsdStr = DECIMAL_FORMAT.format(balanceUsd);
+                PdfPCell balanceUsdCell = createBodyCell(balanceUsdStr, bodyFont, Element.ALIGN_CENTER);
+                if (balanceUsd < 0) {
+                    balanceUsdCell.setBackgroundColor(new BaseColor(254, 226, 226));
+                    totalDebtUsd += Math.abs(balanceUsd);
+                } else if (balanceUsd > 0) {
+                    balanceUsdCell.setBackgroundColor(new BaseColor(220, 252, 231));
+                    totalCreditUsd += balanceUsd;
+                }
+                table.addCell(balanceUsdCell);
                 
                 rowNum++;
             }
@@ -108,8 +124,10 @@ public class PrintService {
             summaryTable.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
             
             addSummaryRow(summaryTable, "إجمالي العملاء:", String.valueOf(customers.size()), headerFont, bodyFont);
-            addSummaryRow(summaryTable, "إجمالي الديون:", DECIMAL_FORMAT.format(totalDebt) + " د.ع", headerFont, bodyFont);
-            addSummaryRow(summaryTable, "إجمالي الأرصدة:", DECIMAL_FORMAT.format(totalCredit) + " د.ع", headerFont, bodyFont);
+            addSummaryRow(summaryTable, "ديون دينار:", DECIMAL_FORMAT.format(totalDebtIqd) + " د.ع", headerFont, bodyFont);
+            addSummaryRow(summaryTable, "ديون دولار:", DECIMAL_FORMAT.format(totalDebtUsd) + " $", headerFont, bodyFont);
+            addSummaryRow(summaryTable, "أرصدة دينار:", DECIMAL_FORMAT.format(totalCreditIqd) + " د.ع", headerFont, bodyFont);
+            addSummaryRow(summaryTable, "أرصدة دولار:", DECIMAL_FORMAT.format(totalCreditUsd) + " $", headerFont, bodyFont);
             
             document.add(summaryTable);
             

@@ -31,9 +31,12 @@ public class MainApp extends Application {
             logger.warn("Failed to load application icon", e);
         }
         
-        // Enable full screen mode
+        // Window size (main window maximized only)
+        this.primaryStage.setWidth(900);
+        this.primaryStage.setHeight(700);
+        this.primaryStage.setResizable(true);
         this.primaryStage.setMaximized(true);
-        this.primaryStage.setFullScreen(false); // Maximized instead of true fullscreen for better UX
+        this.primaryStage.setFullScreen(false);
         
         try {
             // Initialize database

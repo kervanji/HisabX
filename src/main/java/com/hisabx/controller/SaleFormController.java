@@ -55,11 +55,14 @@ public class SaleFormController {
     @FXML private RadioButton cashRadio;
     @FXML private RadioButton creditRadio;
     @FXML private ToggleGroup paymentGroup;
+    @FXML private ComboBox<String> currencyComboBox;
     @FXML private TextField additionalDiscountField;
+    @FXML private Label additionalDiscountCurrencyLabel;
     @FXML private Label subtotalLabel;
     @FXML private Label discountLabel;
     @FXML private Label finalTotalLabel;
     @FXML private TextField paidAmountField;
+    @FXML private Label paidAmountCurrencyLabel;
     @FXML private Label balanceLabel;
     @FXML private Label balanceStatusLabel;
     @FXML private TextArea notesArea;
@@ -75,6 +78,7 @@ public class SaleFormController {
     private Product selectedProduct = null;
     private final DecimalFormat numberFormatter;
     private com.hisabx.MainApp mainApp;
+    private boolean tabMode = false;
 
     public void setMainApp(com.hisabx.MainApp mainApp) {
         this.mainApp = mainApp;
@@ -94,10 +98,35 @@ public class SaleFormController {
     @FXML
     private void initialize() {
         setupPaymentToggleGroup();
+        setupCurrencyComboBox();
         setupCustomerComboBox();
         setupProductComboBox();
         setupItemsTable();
         setupDefaults();
+    }
+
+    private void setupCurrencyComboBox() {
+        if (currencyComboBox == null) {
+            return;
+        }
+
+        currencyComboBox.setItems(FXCollections.observableArrayList("دينار", "دولار"));
+        currencyComboBox.setValue("دينار");
+        updateCurrencyLabels("دينار");
+        currencyComboBox.valueProperty().addListener((obs, oldVal, newVal) -> {
+            updateCurrencyLabels(newVal);
+            updateTotals();
+        });
+    }
+
+    private void updateCurrencyLabels(String currency) {
+        String label = currency != null ? currency : "دينار";
+        if (additionalDiscountCurrencyLabel != null) {
+            additionalDiscountCurrencyLabel.setText(label);
+        }
+        if (paidAmountCurrencyLabel != null) {
+            paidAmountCurrencyLabel.setText(label);
+        }
     }
 
     private void setupPaymentToggleGroup() {
@@ -814,6 +843,10 @@ public class SaleFormController {
         this.dialogStage = dialogStage;
     }
 
+    public void setTabMode(boolean tabMode) {
+        this.tabMode = tabMode;
+    }
+
     public void setSelectedCustomer(Customer customer) {
         if (customer != null) {
             customerComboBox.setValue(customer);
@@ -835,7 +868,7 @@ public class SaleFormController {
                 stage.initOwner(dialogStage);
             }
             stage.setScene(new Scene(root));
-            stage.setMaximized(true);
+            stage.setMaximized(false);
 
             CustomerController controller = loader.getController();
             controller.setDialogStage(stage);
@@ -950,9 +983,10 @@ public class SaleFormController {
         double totalDiscount = itemsDiscount + additionalDiscount;
         double finalTotal = subtotal - additionalDiscount;
 
-        subtotalLabel.setText(numberFormatter.format(subtotal + itemsDiscount) + " دينار");
-        discountLabel.setText(numberFormatter.format(totalDiscount) + " دينار");
-        finalTotalLabel.setText(numberFormatter.format(finalTotal) + " دينار");
+        String currency = currencyComboBox != null ? currencyComboBox.getValue() : "دينار";
+        subtotalLabel.setText(numberFormatter.format(subtotal + itemsDiscount) + " " + currency);
+        discountLabel.setText(numberFormatter.format(totalDiscount) + " " + currency);
+        finalTotalLabel.setText(numberFormatter.format(finalTotal) + " " + currency);
         
         // Auto-update paid amount for cash payment
         if (cashRadio.isSelected() && paidAmountField != null) {
@@ -980,19 +1014,20 @@ public class SaleFormController {
         }
 
         double balance = paidAmount - finalTotal;
+        String currency = currencyComboBox != null ? currencyComboBox.getValue() : "دينار";
 
         if (balance > 0) {
-            balanceLabel.setText(numberFormatter.format(balance) + " دينار");
+            balanceLabel.setText(numberFormatter.format(balance) + " " + currency);
             balanceLabel.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #27ae60;");
             balanceStatusLabel.setText("✅ العميل دفع زيادة - نحن مدينون له بهذا المبلغ");
             balanceStatusLabel.setStyle("-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #27ae60;");
         } else if (balance < 0) {
-            balanceLabel.setText(numberFormatter.format(Math.abs(balance)) + " دينار");
+            balanceLabel.setText(numberFormatter.format(Math.abs(balance)) + " " + currency);
             balanceLabel.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #e74c3c;");
             balanceStatusLabel.setText("⚠️ العميل مدين لنا بهذا المبلغ");
             balanceStatusLabel.setStyle("-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #e74c3c;");
         } else {
-            balanceLabel.setText("0 دينار");
+            balanceLabel.setText("0 " + currency);
             balanceLabel.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #2c3e50;");
             balanceStatusLabel.setText("✔️ تم الدفع بالكامل");
             balanceStatusLabel.setStyle("-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #2c3e50;");
@@ -1047,11 +1082,14 @@ public class SaleFormController {
         String paymentMethod = "CASH";
         if (creditRadio.isSelected()) paymentMethod = "DEBT";
 
+        String currency = currencyComboBox != null ? currencyComboBox.getValue() : "دينار";
+
         try {
             SalesService.SaleRequest request = new SalesService.SaleRequest();
             request.setCustomerId(customerComboBox.getValue().getId());
             request.setProjectLocation(projectLocationComboBox.getValue().trim());
             request.setPaymentMethod(paymentMethod);
+            request.setCurrency(currency);
             request.setNotes(notesArea.getText());
             request.setCreatedBy("System");
 
@@ -1103,7 +1141,11 @@ public class SaleFormController {
 
     @FXML
     private void handleCancel() {
-        dialogStage.close();
+        if (tabMode) {
+            com.hisabx.util.TabManager.getInstance().closeTab("new-sale");
+        } else if (dialogStage != null) {
+            dialogStage.close();
+        }
     }
 
     private void showError(String title, String message) {

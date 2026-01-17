@@ -6,6 +6,8 @@ import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Label;
+import javafx.scene.control.Tab;
+import javafx.scene.control.TabPane;
 import javafx.scene.layout.BorderPane;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
@@ -15,6 +17,7 @@ import com.hisabx.model.Sale;
 import com.hisabx.service.CustomerService;
 import com.hisabx.service.InventoryService;
 import com.hisabx.service.SalesService;
+import com.hisabx.util.TabManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,6 +33,8 @@ public class MainController {
     private static final DecimalFormat currencyFormat = new DecimalFormat("#,##0.00");
     
     @FXML private BorderPane mainLayout;
+    @FXML private TabPane mainTabPane;
+    @FXML private Tab dashboardTab;
     @FXML private Label todaySalesCountLabel;
     @FXML private Label todaySalesAmountLabel;
     @FXML private Label lowStockDescLabel;
@@ -53,6 +58,12 @@ public class MainController {
     private void initialize() {
         loadCompanyName();
         refreshDashboard();
+        
+        // تهيئة مدير التبويبات
+        if (mainTabPane != null && dashboardTab != null) {
+            TabManager.getInstance().initialize(mainTabPane, dashboardTab, mainApp);
+            TabManager.getInstance().setDashboardRefreshCallback(this::refreshDashboard);
+        }
     }
     
     private void loadCompanyName() {
@@ -70,6 +81,12 @@ public class MainController {
     public void setMainApp(MainApp mainApp) {
         this.mainApp = mainApp;
         refreshDashboard();
+        
+        // تحديث مرجع MainApp في TabManager
+        if (mainTabPane != null && dashboardTab != null) {
+            TabManager.getInstance().initialize(mainTabPane, dashboardTab, mainApp);
+            TabManager.getInstance().setDashboardRefreshCallback(this::refreshDashboard);
+        }
     }
     
     private void registerDashboardRefresh(Stage stage) {
@@ -157,391 +174,189 @@ public class MainController {
     
     @FXML
     private void handleNewCustomer() {
-        try {
-            FXMLLoader loader = new FXMLLoader();
-            loader.setLocation(MainApp.class.getResource("/views/CustomerForm.fxml"));
-            Parent root = loader.load();
-            
-            Stage stage = new Stage();
-            stage.setTitle("عميل جديد");
-            stage.initModality(Modality.WINDOW_MODAL);
-            stage.initOwner(mainApp.getPrimaryStage());
-            Scene scene = new Scene(root);
-            stage.setScene(scene);
-            stage.setMaximized(true);
-            
-            CustomerController controller = loader.getController();
-            controller.setDialogStage(stage);
-            registerDashboardRefresh(stage);
-            stage.showAndWait();
-        } catch (IOException e) {
-            logger.error("Failed to open new customer window", e);
-            showError("خطأ", "فشل في فتح نافذة العميل الجديد");
-        }
+        TabManager.getInstance().openTab(
+            "new-customer",
+            "👤 عميل جديد",
+            "/views/CustomerForm.fxml",
+            (CustomerController controller) -> controller.setTabMode(true)
+        );
     }
     
     @FXML
     private void handleNewProduct() {
-        try {
-            FXMLLoader loader = new FXMLLoader();
-            loader.setLocation(MainApp.class.getResource("/views/ProductForm.fxml"));
-            Parent root = loader.load();
-            
-            Stage stage = new Stage();
-            stage.setTitle("منتج جديد");
-            stage.initModality(Modality.WINDOW_MODAL);
-            stage.initOwner(mainApp.getPrimaryStage());
-            Scene scene = new Scene(root);
-            stage.setScene(scene);
-            stage.setMaximized(true);
-            
-            ProductController controller = loader.getController();
-            controller.setDialogStage(stage);
-            registerDashboardRefresh(stage);
-            stage.showAndWait();
-        } catch (IOException e) {
-            logger.error("Failed to open new product window", e);
-            showError("خطأ", "فشل في فتح نافذة المنتج الجديد");
-        }
+        TabManager.getInstance().openTab(
+            "new-product",
+            "📦 منتج جديد",
+            "/views/ProductForm.fxml",
+            (ProductController controller) -> controller.setTabMode(true)
+        );
     }
     
     @FXML
     private void handleNewSale() {
-        try {
-            FXMLLoader loader = new FXMLLoader();
-            loader.setLocation(MainApp.class.getResource("/views/SaleForm.fxml"));
-            Parent root = loader.load();
-            
-            Stage stage = new Stage();
-            stage.setTitle("بيع جديد");
-            stage.initModality(Modality.WINDOW_MODAL);
-            stage.initOwner(mainApp.getPrimaryStage());
-            Scene scene = new Scene(root, 1000, 700);
-            stage.setScene(scene);
-            stage.setMaximized(true);
-            
-            SaleFormController controller = loader.getController();
-            controller.setDialogStage(stage);
-            controller.setMainApp(mainApp);
-            registerDashboardRefresh(stage);
-            stage.showAndWait();
-        } catch (IOException e) {
-            logger.error("Failed to open new sale window", e);
-            showError("خطأ", "فشل في فتح نافذة البيع الجديد");
-        }
+        TabManager.getInstance().openTab(
+            "new-sale",
+            "🛒 بيع جديد",
+            "/views/SaleForm.fxml",
+            (SaleFormController controller) -> {
+                controller.setMainApp(mainApp);
+                controller.setTabMode(true);
+            }
+        );
     }
     
     @FXML
     private void handleViewCustomers() {
-        try {
-            FXMLLoader loader = new FXMLLoader();
-            loader.setLocation(MainApp.class.getResource("/views/CustomerList.fxml"));
-            Parent root = loader.load();
-            
-            Stage stage = new Stage();
-            stage.setTitle("عرض العملاء");
-            stage.initModality(Modality.WINDOW_MODAL);
-            stage.initOwner(mainApp.getPrimaryStage());
-            Scene scene = new Scene(root);
-            stage.setScene(scene);
-            stage.setMaximized(true);
-            registerDashboardRefresh(stage);
-            stage.show();
-        } catch (IOException e) {
-            logger.error("Failed to open customer list window", e);
-            showError("خطأ", "فشل في فتح نافذة عرض العملاء");
-        }
+        TabManager.getInstance().openTab(
+            "customer-list",
+            "👥 عرض العملاء",
+            "/views/CustomerList.fxml"
+        );
     }
     
     @FXML
     private void handleSearchCustomer() {
-        try {
-            FXMLLoader loader = new FXMLLoader();
-            loader.setLocation(MainApp.class.getResource("/views/CustomerSearch.fxml"));
-            Parent root = loader.load();
-            
-            Stage stage = new Stage();
-            stage.setTitle("البحث عن عميل");
-            stage.initModality(Modality.WINDOW_MODAL);
-            stage.initOwner(mainApp.getPrimaryStage());
-            Scene scene = new Scene(root);
-            stage.setScene(scene);
-            stage.setMaximized(true);
-            
-            CustomerSearchController controller = loader.getController();
-            controller.setDialogStage(stage);
-            controller.setMainApp(mainApp);
-            registerDashboardRefresh(stage);
-            stage.show();
-        } catch (IOException e) {
-            logger.error("Failed to open customer search window", e);
-            showError("خطأ", "فشل في فتح نافذة البحث عن العملاء");
-        }
+        TabManager.getInstance().openTab(
+            "customer-search",
+            "🔍 البحث عن عميل",
+            "/views/CustomerSearch.fxml",
+            (CustomerSearchController controller) -> controller.setMainApp(mainApp)
+        );
     }
     
     @FXML
     private void handleViewInventory() {
-        try {
-            FXMLLoader loader = new FXMLLoader();
-            loader.setLocation(MainApp.class.getResource("/views/InventoryList.fxml"));
-            Parent root = loader.load();
-            
-            Stage stage = new Stage();
-            stage.setTitle("عرض المخزون");
-            stage.initModality(Modality.WINDOW_MODAL);
-            stage.initOwner(mainApp.getPrimaryStage());
-            Scene scene = new Scene(root);
-            stage.setScene(scene);
-            stage.setMaximized(true);
-            registerDashboardRefresh(stage);
-            stage.show();
-        } catch (IOException e) {
-            logger.error("Failed to open inventory window", e);
-            showError("خطأ", "فشل في فتح نافذة عرض المخزون");
-        }
+        TabManager.getInstance().openTab(
+            "inventory-list",
+            "📦 عرض المخزون",
+            "/views/InventoryList.fxml"
+        );
     }
     
     @FXML
     private void handleLowStock() {
-        try {
-            FXMLLoader loader = new FXMLLoader();
-            loader.setLocation(MainApp.class.getResource("/views/LowStockList.fxml"));
-            Parent root = loader.load();
-            
-            Stage stage = new Stage();
-            stage.setTitle("المنتجات منخفضة المخزون");
-            stage.initModality(Modality.WINDOW_MODAL);
-            stage.initOwner(mainApp.getPrimaryStage());
-            Scene scene = new Scene(root);
-            stage.setScene(scene);
-            stage.setMaximized(true);
-            registerDashboardRefresh(stage);
-            stage.show();
-        } catch (IOException e) {
-            showError("خطأ", "فشل في فتح نافذة المنتجات منخفضة المخزون");
-        }
+        TabManager.getInstance().openTab(
+            "low-stock",
+            "⚠️ منتجات منخفضة",
+            "/views/LowStockList.fxml"
+        );
     }
     
     @FXML
     private void handleAddStock() {
-        try {
-            FXMLLoader loader = new FXMLLoader();
-            loader.setLocation(MainApp.class.getResource("/views/AddStockDialog.fxml"));
-            Parent root = loader.load();
-            
-            Stage stage = new Stage();
-            stage.setTitle("إضافة مخزون");
-            stage.initModality(Modality.WINDOW_MODAL);
-            stage.initOwner(mainApp.getPrimaryStage());
-            Scene scene = new Scene(root);
-            stage.setScene(scene);
-            stage.setMaximized(true);
-            
-            com.hisabx.controller.AddStockController controller = loader.getController();
-            controller.setDialogStage(stage);
-            registerDashboardRefresh(stage);
-            stage.showAndWait();
-        } catch (IOException e) {
-            showError("خطأ", "فشل في فتح نافذة إضافة المخزون");
-        }
+        TabManager.getInstance().openTab(
+            "add-stock",
+            "➕ إضافة مخزون",
+            "/views/AddStockDialog.fxml",
+            (AddStockController controller) -> controller.setTabMode(true)
+        );
     }
     
     @FXML
     private void handleManageCategories() {
-        try {
-            FXMLLoader loader = new FXMLLoader();
-            loader.setLocation(MainApp.class.getResource("/views/CategoryManager.fxml"));
-            Parent root = loader.load();
-            
-            Stage stage = new Stage();
-            stage.setTitle("إدارة الفئات");
-            stage.initModality(Modality.WINDOW_MODAL);
-            stage.initOwner(mainApp.getPrimaryStage());
-            Scene scene = new Scene(root);
-            stage.setScene(scene);
-            stage.setMaximized(true);
-            
-            CategoryController controller = loader.getController();
-            controller.setDialogStage(stage);
-            registerDashboardRefresh(stage);
-            stage.showAndWait();
-        } catch (IOException e) {
-            showError("خطأ", "فشل في فتح نافذة إدارة الفئات");
-        }
+        TabManager.getInstance().openTab(
+            "categories",
+            "📁 إدارة الفئات",
+            "/views/CategoryManager.fxml",
+            (CategoryController controller) -> controller.setTabMode(true)
+        );
     }
     
     @FXML
     private void handleViewSales() {
-        try {
-            FXMLLoader loader = new FXMLLoader();
-            loader.setLocation(MainApp.class.getResource("/views/SaleList.fxml"));
-            Parent root = loader.load();
-            
-            Stage stage = new Stage();
-            stage.setTitle("عرض المبيعات");
-            stage.initModality(Modality.WINDOW_MODAL);
-            stage.initOwner(mainApp.getPrimaryStage());
-            Scene scene = new Scene(root);
-            stage.setScene(scene);
-            stage.setMaximized(true);
-            
-            SaleListController controller = loader.getController();
-            controller.setMainApp(mainApp);
-            registerDashboardRefresh(stage);
-            stage.show();
-        } catch (IOException e) {
-            showError("خطأ", "فشل في فتح نافذة عرض المبيعات");
-        }
+        TabManager.getInstance().openTab(
+            "sales-list",
+            "🛒 عرض المبيعات",
+            "/views/SaleList.fxml",
+            (SaleListController controller) -> controller.setMainApp(mainApp)
+        );
     }
     
     @FXML
     private void handleSalesReport() {
-        try {
-            FXMLLoader loader = new FXMLLoader();
-            loader.setLocation(MainApp.class.getResource("/views/SalesReport.fxml"));
-            Parent root = loader.load();
-            
-            Stage stage = new Stage();
-            stage.setTitle("تقارير المبيعات");
-            stage.initModality(Modality.WINDOW_MODAL);
-            stage.initOwner(mainApp.getPrimaryStage());
-            Scene scene = new Scene(root, 950, 650);
-            stage.setScene(scene);
-            stage.setMaximized(true);
-            
-            stage.show();
-        } catch (IOException e) {
-            logger.error("Failed to open sales report window", e);
-            showError("خطأ", "فشل في فتح نافذة تقارير المبيعات");
-        }
+        TabManager.getInstance().openTab(
+            "sales-report",
+            "📊 تقارير المبيعات",
+            "/views/SalesReport.fxml"
+        );
     }
     
     @FXML
     private void handlePendingPayments() {
-        try {
-            FXMLLoader loader = new FXMLLoader();
-            loader.setLocation(MainApp.class.getResource("/views/PendingPayments.fxml"));
-            Parent root = loader.load();
-            
-            Stage stage = new Stage();
-            stage.setTitle("المدفوعات المعلقة");
-            stage.initModality(Modality.WINDOW_MODAL);
-            stage.initOwner(mainApp.getPrimaryStage());
-            Scene scene = new Scene(root);
-            stage.setScene(scene);
-            stage.setMaximized(true);
-            
-            stage.show();
-        } catch (IOException e) {
-            showError("خطأ", "فشل في فتح نافذة المدفوعات المعلقة");
-        }
+        TabManager.getInstance().openTab(
+            "pending-payments",
+            "💳 المدفوعات المعلقة",
+            "/views/PendingPayments.fxml"
+        );
     }
     
     @FXML
     private void handleProductReturn() {
-        try {
-            FXMLLoader loader = new FXMLLoader();
-            loader.setLocation(MainApp.class.getResource("/views/ReturnForm.fxml"));
-            Parent root = loader.load();
-            
-            Stage stage = new Stage();
-            stage.setTitle("إرجاع مواد مباعة");
-            stage.initModality(Modality.WINDOW_MODAL);
-            stage.initOwner(mainApp.getPrimaryStage());
-            Scene scene = new Scene(root);
-            stage.setScene(scene);
-            stage.setMaximized(true);
-            
-            ReturnController controller = loader.getController();
-            controller.setDialogStage(stage);
-            registerDashboardRefresh(stage);
-            stage.show();
-        } catch (IOException e) {
-            logger.error("Failed to open product return window", e);
-            showError("خطأ", "فشل في فتح نافذة إرجاع المواد");
-        }
+        TabManager.getInstance().openTab(
+            "product-return",
+            "↩️ إرجاع مواد",
+            "/views/ReturnForm.fxml",
+            (ReturnController controller) -> controller.setTabMode(true)
+        );
     }
     
     @FXML
     private void handleCreateReceipt() {
-        try {
-            FXMLLoader loader = new FXMLLoader();
-            loader.setLocation(MainApp.class.getResource("/views/CreateReceipt.fxml"));
-            Parent root = loader.load();
-            
-            Stage stage = new Stage();
-            stage.setTitle("إنشاء إيصال جديد");
-            stage.initModality(Modality.WINDOW_MODAL);
-            stage.initOwner(mainApp.getPrimaryStage());
-            Scene scene = new Scene(root);
-            stage.setScene(scene);
-            stage.setMaximized(true);
-            
-            CreateReceiptController controller = loader.getController();
-            controller.setDialogStage(stage);
-            controller.setMainApp(mainApp);
-            registerDashboardRefresh(stage);
-            stage.show();
-        } catch (IOException e) {
-            logger.error("Failed to open create receipt window", e);
-            showError("خطأ", "فشل في فتح نافذة إنشاء الإيصال");
-        }
+        TabManager.getInstance().openTab(
+            "create-receipt",
+            "🧾 إنشاء إيصال",
+            "/views/CreateReceipt.fxml",
+            (CreateReceiptController controller) -> {
+                controller.setMainApp(mainApp);
+                controller.setTabMode(true);
+            }
+        );
     }
     
     @FXML
     private void handleViewReceipts() {
-        try {
-            FXMLLoader loader = new FXMLLoader();
-            loader.setLocation(MainApp.class.getResource("/views/ReceiptList.fxml"));
-            Parent root = loader.load();
-            
-            Stage stage = new Stage();
-            stage.setTitle("عرض الإيصالات");
-            stage.initModality(Modality.WINDOW_MODAL);
-            stage.initOwner(mainApp.getPrimaryStage());
-            Scene scene = new Scene(root);
-            stage.setScene(scene);
-            stage.setMaximized(true);
-            
-            ReceiptListController controller = loader.getController();
-            controller.setMainApp(mainApp);
-            registerDashboardRefresh(stage);
-            stage.show();
-        } catch (IOException e) {
-            logger.error("Failed to open receipts list window", e);
-            showError("خطأ", "فشل في فتح نافذة عرض الإيصالات");
-        }
+        TabManager.getInstance().openTab(
+            "receipts-list",
+            "🧾 عرض الإيصالات",
+            "/views/ReceiptList.fxml",
+            (ReceiptListController controller) -> controller.setMainApp(mainApp)
+        );
     }
     
     @FXML
     private void handleSettings() {
-        try {
-            FXMLLoader loader = new FXMLLoader();
-            loader.setLocation(MainApp.class.getResource("/views/Settings.fxml"));
-            Parent root = loader.load();
-            
-            Stage stage = new Stage();
-            stage.setTitle("إعدادات النظام");
-            stage.initModality(Modality.WINDOW_MODAL);
-            stage.initOwner(mainApp.getPrimaryStage());
-            Scene scene = new Scene(root);
-            stage.setScene(scene);
-            stage.setMaximized(true);
-            
-            SettingsController controller = loader.getController();
-            controller.setDialogStage(stage);
-            registerDashboardRefresh(stage);
-            stage.show();
-        } catch (IOException e) {
-            logger.error("Failed to open settings window", e);
-            showError("خطأ", "فشل في فتح نافذة الإعدادات");
-        }
+        TabManager.getInstance().openTab(
+            "settings",
+            "⚙️ الإعدادات",
+            "/views/Settings.fxml",
+            (SettingsController controller) -> controller.setTabMode(true)
+        );
     }
     
     @FXML
     private void handleFirebaseSync() {
         // TODO: Implement Firebase sync
         showInfo("قريباً", "ميزة المزامنة مع فايربيس قيد التطوير");
+    }
+    
+    @FXML
+    private void handleReceiptVoucher() {
+        TabManager.getInstance().openTab(
+            "receipt-voucher",
+            "📥 سند قبض",
+            "/views/ReceiptVoucher.fxml",
+            (ReceiptVoucherController controller) -> controller.setTabMode(true)
+        );
+    }
+    
+    @FXML
+    private void handlePaymentVoucher() {
+        TabManager.getInstance().openTab(
+            "payment-voucher",
+            "📤 سند دفع",
+            "/views/PaymentVoucher.fxml",
+            (PaymentVoucherController controller) -> controller.setTabMode(true)
+        );
     }
     
     @FXML

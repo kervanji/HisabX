@@ -311,10 +311,6 @@ public class PendingPaymentsController {
         amountField.setPromptText("المبلغ");
         amountField.setText(currencyFormat.format(customer.getCurrentBalance()));
 
-        ComboBox<String> paymentMethodCombo = new ComboBox<>();
-        paymentMethodCombo.getItems().addAll("نقدي", "تحويل بنكي", "شيك");
-        paymentMethodCombo.setValue("نقدي");
-
         TextArea notesArea = new TextArea();
         notesArea.setPromptText("ملاحظات (اختياري)");
         notesArea.setPrefRowCount(3);
@@ -322,7 +318,7 @@ public class PendingPaymentsController {
         grid.add(new Label("المبلغ:"), 0, 0);
         grid.add(amountField, 1, 0);
         grid.add(new Label("طريقة الدفع:"), 0, 1);
-        grid.add(paymentMethodCombo, 1, 1);
+        grid.add(new Label("نقدي"), 1, 1);
         grid.add(new Label("ملاحظات:"), 0, 2);
         grid.add(notesArea, 1, 2);
 
@@ -337,7 +333,7 @@ public class PendingPaymentsController {
                 customerService.payToCustomer(
                     customer.getId(),
                     amount,
-                    paymentMethodCombo.getValue(),
+                    "نقدي",
                     notesArea.getText(),
                     "النظام"
                 );

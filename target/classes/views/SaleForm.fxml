@@ -108,6 +108,11 @@
                 </fx:define>
             </VBox>
 
+            <VBox spacing="8">
+                <Label text="عملة الدفع:" style="-fx-font-size: 14px; -fx-font-weight: bold;"/>
+                <ComboBox fx:id="currencyComboBox" prefWidth="150"/>
+            </VBox>
+
             <Separator/>
 
             <!-- Additional Discount -->
@@ -115,7 +120,7 @@
                 <Label text="خصم إضافي:" style="-fx-font-size: 14px; -fx-font-weight: bold;"/>
                 <HBox spacing="10" alignment="CENTER_LEFT">
                     <TextField fx:id="additionalDiscountField" promptText="0.00" prefWidth="100" onKeyReleased="#handleDiscountChange"/>
-                    <Label text="دينار"/>
+                    <Label fx:id="additionalDiscountCurrencyLabel" text="دينار"/>
                 </HBox>
             </VBox>
 
@@ -150,7 +155,7 @@
                 <Label text="المبلغ المدفوع:" style="-fx-font-size: 14px; -fx-font-weight: bold;"/>
                 <HBox spacing="10" alignment="CENTER_LEFT">
                     <TextField fx:id="paidAmountField" promptText="0" prefWidth="150" onKeyReleased="#handlePaidAmountChange"/>
-                    <Label text="دينار"/>
+                    <Label fx:id="paidAmountCurrencyLabel" text="دينار"/>
                 </HBox>
             </VBox>
 

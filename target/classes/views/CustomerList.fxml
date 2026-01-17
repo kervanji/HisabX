@@ -48,7 +48,9 @@
             <TableColumn fx:id="phoneColumn" text="رقم الهاتف" prefWidth="120"/>
             <TableColumn fx:id="addressColumn" text="العنوان" prefWidth="140"/>
             <TableColumn fx:id="projectLocationColumn" text="موقع المشروع" prefWidth="120"/>
-            <TableColumn fx:id="balanceColumn" text="الرصيد" prefWidth="100" style="-fx-alignment: CENTER;"/>
+            <TableColumn fx:id="balanceColumn" text="الرصيد" prefWidth="90" style="-fx-alignment: CENTER;" visible="false"/>
+            <TableColumn fx:id="balanceIqdColumn" text="رصيد دينار" prefWidth="100" style="-fx-alignment: CENTER;"/>
+            <TableColumn fx:id="balanceUsdColumn" text="رصيد دولار" prefWidth="100" style="-fx-alignment: CENTER;"/>
             <TableColumn fx:id="actionsColumn" text="الإجراءات" prefWidth="140"/>
         </columns>
         <placeholder>
@@ -61,13 +63,18 @@
           style="-fx-background-color: white; -fx-padding: 16; -fx-background-radius: 12; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.05), 8, 0, 0, 2);">
         <VBox alignment="CENTER" spacing="4">
             <Label fx:id="totalDebtLabel" text="0.00 د.ع" 
-                   style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #ef4444;"/>
-            <Label text="إجمالي المديونية" style="-fx-font-size: 12px; -fx-text-fill: #6b7280;"/>
+                   style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #ef4444;"/>
+            <Label text="ديون دينار" style="-fx-font-size: 11px; -fx-text-fill: #6b7280;"/>
         </VBox>
-        <VBox alignment="CENTER" spacing="4" style="-fx-padding: 0 40;">
+        <VBox alignment="CENTER" spacing="4">
+            <Label fx:id="totalDebtUsdLabel" text="0.00 $" 
+                   style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #ef4444;"/>
+            <Label text="ديون دولار" style="-fx-font-size: 11px; -fx-text-fill: #6b7280;"/>
+        </VBox>
+        <VBox alignment="CENTER" spacing="4" style="-fx-padding: 0 20;">
             <Label fx:id="totalCreditLabel" text="0.00 د.ع" 
-                   style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #10b981;"/>
-            <Label text="إجمالي الأرصدة الدائنة" style="-fx-font-size: 12px; -fx-text-fill: #6b7280;"/>
+                   style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #10b981;"/>
+            <Label text="أرصدة دينار" style="-fx-font-size: 11px; -fx-text-fill: #6b7280;"/>
         </VBox>
         <HBox HBox.hgrow="ALWAYS"/>
         <Button text="تصدير إلى Excel" onAction="#handleExport"

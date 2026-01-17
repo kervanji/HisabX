@@ -61,6 +61,34 @@ public class DatabaseManager {
         } catch (SQLException ignored) {
             // Column already exists or table missing; ignore
         }
+        
+        // Add balance_iqd to customers table if missing
+        try {
+            stmt.execute("ALTER TABLE customers ADD COLUMN balance_iqd REAL DEFAULT 0");
+        } catch (SQLException ignored) {
+            // Column already exists or table missing; ignore
+        }
+        
+        // Add balance_usd to customers table if missing
+        try {
+            stmt.execute("ALTER TABLE customers ADD COLUMN balance_usd REAL DEFAULT 0");
+        } catch (SQLException ignored) {
+            // Column already exists or table missing; ignore
+        }
+
+        // Add currency to sales table if missing
+        try {
+            stmt.execute("ALTER TABLE sales ADD COLUMN currency TEXT DEFAULT 'دينار'");
+        } catch (SQLException ignored) {
+            // Column already exists or table missing; ignore
+        }
+        
+        // Migrate existing current_balance to balance_iqd if balance_iqd is 0
+        try {
+            stmt.execute("UPDATE customers SET balance_iqd = current_balance WHERE balance_iqd = 0 OR balance_iqd IS NULL");
+        } catch (SQLException ignored) {
+            // Migration failed; ignore
+        }
     }
     
     private static void createTables(Statement stmt) throws SQLException {
@@ -110,6 +138,7 @@ public class DatabaseManager {
                 sale_code TEXT UNIQUE NOT NULL,
                 customer_id INTEGER NOT NULL,
                 sale_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+                currency TEXT DEFAULT 'دينار',
                 project_location TEXT,
                 total_amount REAL NOT NULL,
                 discount_amount REAL DEFAULT 0,
@@ -230,6 +259,30 @@ public class DatabaseManager {
             )
         """);
         
+        // Vouchers table (سندات القبض والدفع)
+        stmt.execute("""
+            CREATE TABLE IF NOT EXISTS vouchers (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                voucher_number TEXT UNIQUE NOT NULL,
+                voucher_type TEXT NOT NULL,
+                voucher_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+                currency TEXT DEFAULT 'دينار',
+                exchange_rate REAL DEFAULT 1,
+                customer_id INTEGER,
+                account_name TEXT,
+                cash_account TEXT,
+                amount REAL NOT NULL,
+                discount_percentage REAL DEFAULT 0,
+                discount_amount REAL DEFAULT 0,
+                description TEXT,
+                notes TEXT,
+                processed_by TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (customer_id) REFERENCES customers(id)
+            )
+        """);
+        
         // Create indexes for better performance
         stmt.execute("CREATE INDEX IF NOT EXISTS idx_customers_code ON customers(customer_code)");
         stmt.execute("CREATE INDEX IF NOT EXISTS idx_products_code ON products(product_code)");
@@ -244,6 +297,9 @@ public class DatabaseManager {
         stmt.execute("CREATE INDEX IF NOT EXISTS idx_returns_customer ON sale_returns(customer_id)");
         stmt.execute("CREATE INDEX IF NOT EXISTS idx_payments_code ON customer_payments(payment_code)");
         stmt.execute("CREATE INDEX IF NOT EXISTS idx_payments_customer ON customer_payments(customer_id)");
+        stmt.execute("CREATE INDEX IF NOT EXISTS idx_vouchers_number ON vouchers(voucher_number)");
+        stmt.execute("CREATE INDEX IF NOT EXISTS idx_vouchers_type ON vouchers(voucher_type)");
+        stmt.execute("CREATE INDEX IF NOT EXISTS idx_vouchers_customer ON vouchers(customer_id)");
         
         logger.info("Database tables created successfully");
     }
@@ -272,6 +328,7 @@ public class DatabaseManager {
             configuration.addAnnotatedClass(com.hisabx.model.SaleReturn.class);
             configuration.addAnnotatedClass(com.hisabx.model.ReturnItem.class);
             configuration.addAnnotatedClass(com.hisabx.model.CustomerPayment.class);
+            configuration.addAnnotatedClass(com.hisabx.model.Voucher.class);
             
             sessionFactory = configuration.buildSessionFactory();
             logger.info("Hibernate configured successfully");

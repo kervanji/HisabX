@@ -41,6 +41,12 @@ public class Customer {
     @Column(name = "current_balance")
     private Double currentBalance;
     
+    @Column(name = "balance_iqd")
+    private Double balanceIqd;
+    
+    @Column(name = "balance_usd")
+    private Double balanceUsd;
+    
     @Column(name = "created_at")
     private LocalDateTime createdAt;
     
@@ -55,6 +61,8 @@ public class Customer {
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
         this.currentBalance = 0.0;
+        this.balanceIqd = 0.0;
+        this.balanceUsd = 0.0;
     }
 
     // Getters and Setters
@@ -87,6 +95,12 @@ public class Customer {
     
     public Double getCurrentBalance() { return currentBalance; }
     public void setCurrentBalance(Double currentBalance) { this.currentBalance = currentBalance; }
+    
+    public Double getBalanceIqd() { return balanceIqd != null ? balanceIqd : 0.0; }
+    public void setBalanceIqd(Double balanceIqd) { this.balanceIqd = balanceIqd; }
+    
+    public Double getBalanceUsd() { return balanceUsd != null ? balanceUsd : 0.0; }
+    public void setBalanceUsd(Double balanceUsd) { this.balanceUsd = balanceUsd; }
     
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
