@@ -11,13 +11,13 @@ import javafx.scene.control.TabPane;
 import javafx.scene.layout.BorderPane;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
+import com.hisabx.util.TabManager;
 import com.hisabx.MainApp;
 import com.hisabx.model.Product;
 import com.hisabx.model.Sale;
 import com.hisabx.service.CustomerService;
 import com.hisabx.service.InventoryService;
 import com.hisabx.service.SalesService;
-import com.hisabx.util.TabManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -58,12 +58,6 @@ public class MainController {
     private void initialize() {
         loadCompanyName();
         refreshDashboard();
-        
-        // تهيئة مدير التبويبات
-        if (mainTabPane != null && dashboardTab != null) {
-            TabManager.getInstance().initialize(mainTabPane, dashboardTab, mainApp);
-            TabManager.getInstance().setDashboardRefreshCallback(this::refreshDashboard);
-        }
     }
     
     private void loadCompanyName() {
@@ -80,13 +74,11 @@ public class MainController {
     
     public void setMainApp(MainApp mainApp) {
         this.mainApp = mainApp;
-        refreshDashboard();
-        
-        // تحديث مرجع MainApp في TabManager
         if (mainTabPane != null && dashboardTab != null) {
             TabManager.getInstance().initialize(mainTabPane, dashboardTab, mainApp);
             TabManager.getInstance().setDashboardRefreshCallback(this::refreshDashboard);
         }
+        refreshDashboard();
     }
     
     private void registerDashboardRefresh(Stage stage) {
@@ -175,161 +167,164 @@ public class MainController {
     @FXML
     private void handleNewCustomer() {
         TabManager.getInstance().openTab(
-            "new-customer",
-            "👤 عميل جديد",
-            "/views/CustomerForm.fxml",
-            (CustomerController controller) -> controller.setTabMode(true)
+                "new-customer",
+                "👤 عميل جديد",
+                "/views/CustomerForm.fxml",
+                (CustomerController controller) -> controller.setTabMode(true)
         );
     }
     
     @FXML
     private void handleNewProduct() {
         TabManager.getInstance().openTab(
-            "new-product",
-            "📦 منتج جديد",
-            "/views/ProductForm.fxml",
-            (ProductController controller) -> controller.setTabMode(true)
+                "new-product",
+                "📦 منتج جديد",
+                "/views/ProductForm.fxml",
+                (ProductController controller) -> controller.setTabMode(true)
         );
     }
     
     @FXML
     private void handleNewSale() {
         TabManager.getInstance().openTab(
-            "new-sale",
-            "🛒 بيع جديد",
-            "/views/SaleForm.fxml",
-            (SaleFormController controller) -> {
-                controller.setMainApp(mainApp);
-                controller.setTabMode(true);
-            }
+                "new-sale",
+                "🛒 بيع جديد",
+                "/views/SaleForm.fxml",
+                (SaleFormController controller) -> {
+                    controller.setTabMode(true);
+                    controller.setMainApp(mainApp);
+                }
         );
     }
     
     @FXML
     private void handleViewCustomers() {
         TabManager.getInstance().openTab(
-            "customer-list",
-            "👥 عرض العملاء",
-            "/views/CustomerList.fxml"
+                "customers",
+                "👥 العملاء",
+                "/views/CustomerList.fxml"
         );
     }
     
     @FXML
     private void handleSearchCustomer() {
         TabManager.getInstance().openTab(
-            "customer-search",
-            "🔍 البحث عن عميل",
-            "/views/CustomerSearch.fxml",
-            (CustomerSearchController controller) -> controller.setMainApp(mainApp)
+                "customer-search",
+                "🔎 بحث العملاء",
+                "/views/CustomerSearch.fxml",
+                (CustomerSearchController controller) -> {
+                    controller.setTabMode(true);
+                    controller.setMainApp(mainApp);
+                }
         );
     }
     
     @FXML
     private void handleViewInventory() {
         TabManager.getInstance().openTab(
-            "inventory-list",
-            "📦 عرض المخزون",
-            "/views/InventoryList.fxml"
+                "inventory",
+                "📦 المخزون",
+                "/views/InventoryList.fxml"
         );
     }
     
     @FXML
     private void handleLowStock() {
         TabManager.getInstance().openTab(
-            "low-stock",
-            "⚠️ منتجات منخفضة",
-            "/views/LowStockList.fxml"
+                "low-stock",
+                "⚠️ منخفض المخزون",
+                "/views/LowStockList.fxml"
         );
     }
     
     @FXML
     private void handleAddStock() {
         TabManager.getInstance().openTab(
-            "add-stock",
-            "➕ إضافة مخزون",
-            "/views/AddStockDialog.fxml",
-            (AddStockController controller) -> controller.setTabMode(true)
+                "add-stock",
+                "➕ إضافة مخزون",
+                "/views/AddStockDialog.fxml",
+                (AddStockController controller) -> controller.setTabMode(true)
         );
     }
     
     @FXML
     private void handleManageCategories() {
         TabManager.getInstance().openTab(
-            "categories",
-            "📁 إدارة الفئات",
-            "/views/CategoryManager.fxml",
-            (CategoryController controller) -> controller.setTabMode(true)
+                "categories",
+                "🧩 الفئات",
+                "/views/CategoryManager.fxml",
+                (CategoryController controller) -> controller.setTabMode(true)
         );
     }
     
     @FXML
     private void handleViewSales() {
         TabManager.getInstance().openTab(
-            "sales-list",
-            "🛒 عرض المبيعات",
-            "/views/SaleList.fxml",
-            (SaleListController controller) -> controller.setMainApp(mainApp)
+                "sales",
+                "🧾 المبيعات",
+                "/views/SaleList.fxml",
+                (SaleListController controller) -> controller.setMainApp(mainApp)
         );
     }
     
     @FXML
     private void handleSalesReport() {
         TabManager.getInstance().openTab(
-            "sales-report",
-            "📊 تقارير المبيعات",
-            "/views/SalesReport.fxml"
+                "sales-report",
+                "📊 تقارير المبيعات",
+                "/views/SalesReport.fxml"
         );
     }
     
     @FXML
     private void handlePendingPayments() {
         TabManager.getInstance().openTab(
-            "pending-payments",
-            "💳 المدفوعات المعلقة",
-            "/views/PendingPayments.fxml"
+                "pending-payments",
+                "💰 المدفوعات المعلقة",
+                "/views/PendingPayments.fxml"
         );
     }
     
     @FXML
     private void handleProductReturn() {
         TabManager.getInstance().openTab(
-            "product-return",
-            "↩️ إرجاع مواد",
-            "/views/ReturnForm.fxml",
-            (ReturnController controller) -> controller.setTabMode(true)
+                "product-return",
+                "↩️ إرجاع مواد",
+                "/views/ReturnForm.fxml",
+                (ReturnController controller) -> controller.setTabMode(true)
         );
     }
     
     @FXML
     private void handleCreateReceipt() {
         TabManager.getInstance().openTab(
-            "create-receipt",
-            "🧾 إنشاء إيصال",
-            "/views/CreateReceipt.fxml",
-            (CreateReceiptController controller) -> {
-                controller.setMainApp(mainApp);
-                controller.setTabMode(true);
-            }
+                "create-receipt",
+                "🧾 إنشاء إيصال",
+                "/views/CreateReceipt.fxml",
+                (CreateReceiptController controller) -> {
+                    controller.setTabMode(true);
+                    controller.setMainApp(mainApp);
+                }
         );
     }
     
     @FXML
     private void handleViewReceipts() {
         TabManager.getInstance().openTab(
-            "receipts-list",
-            "🧾 عرض الإيصالات",
-            "/views/ReceiptList.fxml",
-            (ReceiptListController controller) -> controller.setMainApp(mainApp)
+                "receipt-list",
+                "📄 الإيصالات",
+                "/views/ReceiptList.fxml",
+                (ReceiptListController controller) -> controller.setMainApp(mainApp)
         );
     }
     
     @FXML
     private void handleSettings() {
         TabManager.getInstance().openTab(
-            "settings",
-            "⚙️ الإعدادات",
-            "/views/Settings.fxml",
-            (SettingsController controller) -> controller.setTabMode(true)
+                "settings",
+                "⚙️ الإعدادات",
+                "/views/Settings.fxml",
+                (SettingsController controller) -> controller.setTabMode(true)
         );
     }
     
@@ -337,26 +332,6 @@ public class MainController {
     private void handleFirebaseSync() {
         // TODO: Implement Firebase sync
         showInfo("قريباً", "ميزة المزامنة مع فايربيس قيد التطوير");
-    }
-    
-    @FXML
-    private void handleReceiptVoucher() {
-        TabManager.getInstance().openTab(
-            "receipt-voucher",
-            "📥 سند قبض",
-            "/views/ReceiptVoucher.fxml",
-            (ReceiptVoucherController controller) -> controller.setTabMode(true)
-        );
-    }
-    
-    @FXML
-    private void handlePaymentVoucher() {
-        TabManager.getInstance().openTab(
-            "payment-voucher",
-            "📤 سند دفع",
-            "/views/PaymentVoucher.fxml",
-            (PaymentVoucherController controller) -> controller.setTabMode(true)
-        );
     }
     
     @FXML

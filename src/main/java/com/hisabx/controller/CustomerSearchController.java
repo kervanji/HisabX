@@ -37,6 +37,7 @@ public class CustomerSearchController {
     private final CustomerService customerService = new CustomerService();
     private Stage dialogStage;
     private MainApp mainApp;
+    private boolean tabMode = false;
     
     @FXML
     private void initialize() {
@@ -94,6 +95,10 @@ public class CustomerSearchController {
     
     public void setMainApp(MainApp mainApp) {
         this.mainApp = mainApp;
+    }
+
+    public void setTabMode(boolean tabMode) {
+        this.tabMode = tabMode;
     }
     
     @FXML

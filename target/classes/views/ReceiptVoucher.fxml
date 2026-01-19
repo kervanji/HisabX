@@ -65,9 +65,15 @@
                 </HBox>
             </HBox>
             
-            <!-- Row 3: Account Name -->
+            <!-- Row 3: Account Name with Add Button -->
             <HBox spacing="8" alignment="CENTER_RIGHT">
-                <ComboBox fx:id="customerCombo" prefWidth="300" editable="true"
+                <Button fx:id="addCustomerBtn" text="+" onAction="#handleAddCustomer"
+                        style="-fx-background-color: #43a047; -fx-text-fill: white; -fx-font-size: 14px; -fx-font-weight: bold; -fx-padding: 8 12; -fx-background-radius: 8; -fx-cursor: hand;">
+                    <tooltip>
+                        <Tooltip text="إضافة حساب جديد" />
+                    </tooltip>
+                </Button>
+                <ComboBox fx:id="customerCombo" prefWidth="280" editable="true"
                           promptText="اختر أو ابحث عن حساب..."
                           style="-fx-background-radius: 8;"/>
                 <Label text="اسم الحساب" style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #333;"/>
@@ -106,6 +112,30 @@
                           style="-fx-background-radius: 8;"/>
                 <Label text="البيان" style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #333;"/>
             </HBox>
+            
+            <!-- Items Section - Materials to add to inventory -->
+            <VBox spacing="10" style="-fx-background-color: #f5f5f5; -fx-padding: 12; -fx-background-radius: 8;">
+                <HBox spacing="10" alignment="CENTER_RIGHT">
+                    <Button fx:id="addItemBtn" text="➕ إضافة مادة" onAction="#handleAddItem"
+                            style="-fx-background-color: #1976d2; -fx-text-fill: white; -fx-font-size: 12px; -fx-padding: 8 16; -fx-background-radius: 6; -fx-cursor: hand;"/>
+                    <Label text="المواد المشتراة (للإدخال إلى المخزن)" style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #1b5e20;"/>
+                </HBox>
+                
+                <TableView fx:id="itemsTable" prefHeight="150" style="-fx-font-size: 12px;">
+                    <columns>
+                        <TableColumn fx:id="itemDeleteCol" text="" prefWidth="40"/>
+                        <TableColumn fx:id="itemProductCol" text="المادة" prefWidth="150"/>
+                        <TableColumn fx:id="itemQuantityCol" text="الكمية" prefWidth="80"/>
+                        <TableColumn fx:id="itemPriceCol" text="السعر" prefWidth="100"/>
+                        <TableColumn fx:id="itemTotalCol" text="الإجمالي" prefWidth="100"/>
+                    </columns>
+                </TableView>
+                
+                <HBox spacing="10" alignment="CENTER_RIGHT">
+                    <Label fx:id="itemsTotalLabel" text="0" style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #2e7d32;"/>
+                    <Label text="إجمالي المواد:" style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #333;"/>
+                </HBox>
+            </VBox>
             
         </VBox>
     </HBox>
