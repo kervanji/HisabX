@@ -54,10 +54,6 @@
                     <MenuItem text="إنشاء إيصال" onAction="#handleCreateReceipt"/>
                     <MenuItem text="عرض الإيصالات" onAction="#handleViewReceipts"/>
                 </Menu>
-                <Menu text="السندات">
-                    <MenuItem text="سند قبض" onAction="#handleReceiptVoucher"/>
-                    <MenuItem text="سند دفع" onAction="#handlePaymentVoucher"/>
-                </Menu>
                 <Menu text="إعدادات">
                     <MenuItem text="إعدادات النظام" onAction="#handleSettings"/>
                     <MenuItem text="مزامنة مع فايربيس" onAction="#handleFirebaseSync"/>
@@ -70,131 +66,128 @@
     </top>
     
     <center>
-        <TabPane fx:id="mainTabPane" tabClosingPolicy="ALL_TABS" 
-                 style="-fx-background-color: transparent;">
-            <Tab fx:id="dashboardTab" text="🏠 لوحة التحكم" closable="false">
-                <StackPane style="-fx-padding: 30;">
-                    <Pane StackPane.alignment="CENTER">
-                        <Circle radius="200" fill="#dbeafe" opacity="0.25" layoutX="180" layoutY="200"/>
-                        <Circle radius="150" fill="#fef3c7" opacity="0.28" layoutX="600" layoutY="150"/>
-                        <Circle radius="100" fill="#d1fae5" opacity="0.22" layoutX="450" layoutY="350"/>
-                        <Polygon fill="#e0e7ff" opacity="0.45" points="500, 50, 620, 190, 380, 190"/>
-                    </Pane>
+        <TabPane fx:id="mainTabPane">
+            <tabs>
+                <Tab fx:id="dashboardTab" text="لوحة التحكم" closable="false">
+                    <content>
+                        <StackPane style="-fx-padding: 30;">
+                            <Pane StackPane.alignment="CENTER">
+                                <Circle radius="200" fill="#dbeafe" opacity="0.25" layoutX="180" layoutY="200"/>
+                                <Circle radius="150" fill="#fef3c7" opacity="0.28" layoutX="600" layoutY="150"/>
+                                <Circle radius="100" fill="#d1fae5" opacity="0.22" layoutX="450" layoutY="350"/>
+                                <Polygon fill="#e0e7ff" opacity="0.45" points="500, 50, 620, 190, 380, 190"/>
+                            </Pane>
 
-                    <VBox alignment="CENTER" spacing="28" StackPane.alignment="CENTER">
-                        <!-- Logo and Header Section -->
-                        <VBox alignment="CENTER" spacing="16">
-                            <ImageView fitWidth="100" fitHeight="100" preserveRatio="true">
-                                <image>
-                                    <Image url="@../templates/HisabX_transparent.png"/>
-                                </image>
-                            </ImageView>
-                            <VBox alignment="CENTER" spacing="6">
-                                <Label text="HisabX" styleClass="label-title" style="-fx-font-size: 52px; -fx-font-weight: bold; -fx-text-fill: #1e293b;">
-                                    <font>
-                                        <Font name="Segoe UI Bold" size="52"/>
-                                    </font>
-                                </Label>
-                                <Label fx:id="companyNameLabel" text="" style="-fx-font-size: 17px; -fx-font-weight: 600; -fx-text-fill: #3b82f6;">
-                                    <font>
-                                        <Font name="Segoe UI Semibold" size="17"/>
-                                    </font>
-                                </Label>
-                            </VBox>
-                        </VBox>
+                            <VBox alignment="CENTER" spacing="28" StackPane.alignment="CENTER">
+                                <!-- Logo and Header Section -->
+                                <VBox alignment="CENTER" spacing="16">
+                                    <ImageView fitWidth="100" fitHeight="100" preserveRatio="true">
+                                        <image>
+                                            <Image url="@../templates/HisabX_transparent.png"/>
+                                        </image>
+                                    </ImageView>
+                                    <VBox alignment="CENTER" spacing="6">
+                                        <Label text="HisabX" styleClass="label-title" style="-fx-font-size: 52px; -fx-font-weight: bold; -fx-text-fill: #1e293b;">
+                                            <font>
+                                                <Font name="Segoe UI Bold" size="52"/>
+                                            </font>
+                                        </Label>
+                                        <Label fx:id="companyNameLabel" text="" style="-fx-font-size: 17px; -fx-font-weight: 600; -fx-text-fill: #3b82f6;">
+                                            <font>
+                                                <Font name="Segoe UI Semibold" size="17"/>
+                                            </font>
+                                        </Label>
+                                    </VBox>
+                                </VBox>
 
-                        <!-- Main Action Buttons -->
-                        <VBox alignment="CENTER" spacing="16">
-                            <HBox alignment="CENTER" spacing="16">
-                                <Button text="🛒 بيع جديد" mnemonicParsing="false" onAction="#handleNewSale"
-                                        styleClass="button-primary"
-                                        style="-fx-font-size: 16px; -fx-padding: 16 32; -fx-background-radius: 12; -fx-cursor: hand;"/>
-                                <Button text="📦 إدارة المخزون" mnemonicParsing="false" onAction="#handleViewInventory"
-                                        styleClass="button-success"
-                                        style="-fx-font-size: 15px; -fx-padding: 14 28; -fx-background-radius: 12; -fx-cursor: hand;"/>
-                                <Button text="👤 إضافة عميل" mnemonicParsing="false" onAction="#handleNewCustomer"
-                                        styleClass="button-secondary"
-                                        style="-fx-font-size: 15px; -fx-padding: 14 28; -fx-background-radius: 12; -fx-cursor: hand;"/>
-                            </HBox>
-                            <HBox alignment="CENTER" spacing="16">
-                                <Button text="📊 تقارير المبيعات" mnemonicParsing="false" onAction="#handleSalesReport"
-                                        styleClass="button-secondary"
-                                        style="-fx-font-size: 14px; -fx-padding: 12 24; -fx-background-radius: 10; -fx-cursor: hand;"/>
-                                <Button text="💰 المدفوعات المعلقة" mnemonicParsing="false" onAction="#handlePendingPayments"
-                                        styleClass="button-warning"
-                                        style="-fx-font-size: 14px; -fx-padding: 12 24; -fx-background-radius: 10; -fx-cursor: hand;"/>
-                                <Button text="🧾 إنشاء إيصال" mnemonicParsing="false" onAction="#handleCreateReceipt"
-                                        styleClass="button-secondary"
-                                        style="-fx-font-size: 14px; -fx-padding: 12 24; -fx-background-radius: 10; -fx-cursor: hand;"/>
-                                <Button text="↩️ إرجاع مواد" mnemonicParsing="false" onAction="#handleProductReturn"
-                                        styleClass="button-secondary"
-                                        style="-fx-font-size: 14px; -fx-padding: 12 24; -fx-background-radius: 10; -fx-cursor: hand;"/>
-                            </HBox>
-                            <HBox alignment="CENTER" spacing="16">
-                                <Button text="📥 سند قبض" mnemonicParsing="false" onAction="#handleReceiptVoucher"
-                                        style="-fx-background-color: linear-gradient(to right, #2e7d32, #388e3c); -fx-text-fill: white; -fx-font-size: 14px; -fx-font-weight: bold; -fx-padding: 12 24; -fx-background-radius: 10; -fx-cursor: hand;"/>
-                                <Button text="📤 سند دفع" mnemonicParsing="false" onAction="#handlePaymentVoucher"
-                                        style="-fx-background-color: linear-gradient(to right, #c62828, #d32f2f); -fx-text-fill: white; -fx-font-size: 14px; -fx-font-weight: bold; -fx-padding: 12 24; -fx-background-radius: 10; -fx-cursor: hand;"/>
-                            </HBox>
-                        </VBox>
+                                <!-- Main Action Buttons -->
+                                <VBox alignment="CENTER" spacing="16">
+                                    <HBox alignment="CENTER" spacing="16">
+                                        <Button text="🛒 بيع جديد" mnemonicParsing="false" onAction="#handleNewSale"
+                                                styleClass="button-primary"
+                                                style="-fx-font-size: 16px; -fx-padding: 16 32; -fx-background-radius: 12; -fx-cursor: hand;"/>
+                                        <Button text="📦 إدارة المخزون" mnemonicParsing="false" onAction="#handleViewInventory"
+                                                styleClass="button-success"
+                                                style="-fx-font-size: 15px; -fx-padding: 14 28; -fx-background-radius: 12; -fx-cursor: hand;"/>
+                                        <Button text="👤 إضافة عميل" mnemonicParsing="false" onAction="#handleNewCustomer"
+                                                styleClass="button-secondary"
+                                                style="-fx-font-size: 15px; -fx-padding: 14 28; -fx-background-radius: 12; -fx-cursor: hand;"/>
+                                    </HBox>
+                                    <HBox alignment="CENTER" spacing="16">
+                                        <Button text="📊 تقارير المبيعات" mnemonicParsing="false" onAction="#handleSalesReport"
+                                                styleClass="button-secondary"
+                                                style="-fx-font-size: 14px; -fx-padding: 12 24; -fx-background-radius: 10; -fx-cursor: hand;"/>
+                                        <Button text="💰 المدفوعات المعلقة" mnemonicParsing="false" onAction="#handlePendingPayments"
+                                                styleClass="button-warning"
+                                                style="-fx-font-size: 14px; -fx-padding: 12 24; -fx-background-radius: 10; -fx-cursor: hand;"/>
+                                        <Button text="🧾 إنشاء إيصال" mnemonicParsing="false" onAction="#handleCreateReceipt"
+                                                styleClass="button-secondary"
+                                                style="-fx-font-size: 14px; -fx-padding: 12 24; -fx-background-radius: 10; -fx-cursor: hand;"/>
+                                        <Button text="↩️ إرجاع مواد" mnemonicParsing="false" onAction="#handleProductReturn"
+                                                styleClass="button-secondary"
+                                                style="-fx-font-size: 14px; -fx-padding: 12 24; -fx-background-radius: 10; -fx-cursor: hand;"/>
+                                    </HBox>
+                                </VBox>
 
-                        <!-- Dashboard Cards -->
-                        <HBox alignment="CENTER" spacing="18">
-                            <VBox alignment="TOP_RIGHT" spacing="10" prefWidth="240" styleClass="card"
-                                  style="-fx-background-color: white; -fx-padding: 18; -fx-background-radius: 16; -fx-effect: dropshadow(gaussian, rgba(59,130,246,0.15), 16,0,0,6);">
-                                <HBox alignment="CENTER_RIGHT" spacing="8">
-                                    <MenuButton text="⋮" style="-fx-background-color: transparent; -fx-font-size: 18px; -fx-cursor: hand;">
-                                        <items>
-                                            <MenuItem text="عرض كل المبيعات" onAction="#handleViewSales"/>
-                                            <MenuItem text="تقرير المبيعات" onAction="#handleSalesReport"/>
-                                            <MenuItem text="المدفوعات المعلقة" onAction="#handlePendingPayments"/>
-                                        </items>
-                                    </MenuButton>
-                                    <Label text="📈 مبيعات اليوم" styleClass="card-header" style="-fx-font-size: 15px; -fx-font-weight: bold; -fx-text-fill: #1e293b;" HBox.hgrow="ALWAYS"/>
+                                <!-- Dashboard Cards -->
+                                <HBox alignment="CENTER" spacing="18">
+                                    <VBox alignment="TOP_RIGHT" spacing="10" prefWidth="240" styleClass="card"
+                                          style="-fx-background-color: white; -fx-padding: 18; -fx-background-radius: 16; -fx-effect: dropshadow(gaussian, rgba(59,130,246,0.15), 16,0,0,6);">
+                                        <HBox alignment="CENTER_RIGHT" spacing="8">
+                                            <MenuButton text="⋮" style="-fx-background-color: transparent; -fx-font-size: 18px; -fx-cursor: hand;">
+                                                <items>
+                                                    <MenuItem text="عرض كل المبيعات" onAction="#handleViewSales"/>
+                                                    <MenuItem text="تقرير المبيعات" onAction="#handleSalesReport"/>
+                                                    <MenuItem text="المدفوعات المعلقة" onAction="#handlePendingPayments"/>
+                                                </items>
+                                            </MenuButton>
+                                            <Label text="📈 مبيعات اليوم" styleClass="card-header" style="-fx-font-size: 15px; -fx-font-weight: bold; -fx-text-fill: #1e293b;" HBox.hgrow="ALWAYS"/>
+                                        </HBox>
+                                        <Label fx:id="todaySalesCountLabel" text="عدد المبيعات: --" style="-fx-font-size: 13px; -fx-text-fill: #64748b;"/>
+                                        <Label fx:id="todaySalesAmountLabel" text="0 د.ع" styleClass="badge badge-info" style="-fx-font-size: 15px; -fx-font-weight: bold; -fx-text-fill: #1e40af; -fx-background-color: #dbeafe; -fx-padding: 8 12; -fx-background-radius: 10;"/>
+                                    </VBox>
+                                    <VBox alignment="TOP_RIGHT" spacing="10" prefWidth="240" styleClass="card"
+                                          style="-fx-background-color: white; -fx-padding: 18; -fx-background-radius: 16; -fx-effect: dropshadow(gaussian, rgba(239,68,68,0.15), 16,0,0,6);">
+                                        <Label text="⚠️ تنبيهات المخزون" styleClass="card-header" style="-fx-font-size: 15px; -fx-font-weight: bold; -fx-text-fill: #1e293b;"/>
+                                        <Label fx:id="lowStockDescLabel" text="راقب المنتجات منخفضة المخزون" style="-fx-font-size: 12px; -fx-text-fill: #64748b;"/>
+                                        <Label fx:id="lowStockCountLabel" text="لا توجد تنبيهات" styleClass="badge badge-success" style="-fx-font-size: 13px; -fx-font-weight: 600; -fx-text-fill: #065f46; -fx-background-color: #d1fae5; -fx-padding: 8 12; -fx-background-radius: 10;"/>
+                                    </VBox>
+                                    <VBox alignment="TOP_RIGHT" spacing="10" prefWidth="240" styleClass="card"
+                                          style="-fx-background-color: white; -fx-padding: 18; -fx-background-radius: 16; -fx-effect: dropshadow(gaussian, rgba(245,158,11,0.15), 16,0,0,6);">
+                                        <Label text="💳 المدفوعات المعلقة" styleClass="card-header" style="-fx-font-size: 15px; -fx-font-weight: bold; -fx-text-fill: #1e293b;"/>
+                                        <Label fx:id="pendingPaymentsDescLabel" text="فواتير تنتظر الدفع" style="-fx-font-size: 12px; -fx-text-fill: #64748b;"/>
+                                        <Label fx:id="pendingPaymentsLabel" text="0 فاتورة" styleClass="badge badge-warning" style="-fx-font-size: 13px; -fx-font-weight: 600; -fx-text-fill: #92400e; -fx-background-color: #fed7aa; -fx-padding: 8 12; -fx-background-radius: 10;"/>
+                                    </VBox>
                                 </HBox>
-                                <Label fx:id="todaySalesCountLabel" text="عدد المبيعات: --" style="-fx-font-size: 13px; -fx-text-fill: #64748b;"/>
-                                <Label fx:id="todaySalesAmountLabel" text="0 د.ع" styleClass="badge badge-info" style="-fx-font-size: 15px; -fx-font-weight: bold; -fx-text-fill: #1e40af; -fx-background-color: #dbeafe; -fx-padding: 8 12; -fx-background-radius: 10;"/>
+                                
+                                <!-- Statistics Row -->
+                                <HBox alignment="CENTER" spacing="18">
+                                    <VBox alignment="TOP_RIGHT" spacing="8" prefWidth="180" styleClass="card"
+                                          style="-fx-background-color: white; -fx-padding: 16; -fx-background-radius: 14; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 12,0,0,4);">
+                                        <Label text="👥 العملاء" style="-fx-font-size: 13px; -fx-font-weight: 600; -fx-text-fill: #64748b;"/>
+                                        <Label fx:id="totalCustomersLabel" text="--" styleClass="card-value" style="-fx-font-size: 26px; -fx-font-weight: bold; -fx-text-fill: #6366f1;"/>
+                                    </VBox>
+                                    <VBox alignment="TOP_RIGHT" spacing="8" prefWidth="180" styleClass="card"
+                                          style="-fx-background-color: white; -fx-padding: 16; -fx-background-radius: 14; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 12,0,0,4);">
+                                        <Label text="📦 المنتجات" style="-fx-font-size: 13px; -fx-font-weight: 600; -fx-text-fill: #64748b;"/>
+                                        <Label fx:id="totalProductsLabel" text="--" styleClass="card-value" style="-fx-font-size: 26px; -fx-font-weight: bold; -fx-text-fill: #10b981;"/>
+                                    </VBox>
+                                    <VBox alignment="TOP_RIGHT" spacing="8" prefWidth="180" styleClass="card"
+                                          style="-fx-background-color: white; -fx-padding: 16; -fx-background-radius: 14; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 12,0,0,4);">
+                                        <Label text="🛍️ إجمالي المبيعات" style="-fx-font-size: 13px; -fx-font-weight: 600; -fx-text-fill: #64748b;"/>
+                                        <Label fx:id="totalSalesLabel" text="--" styleClass="card-value" style="-fx-font-size: 26px; -fx-font-weight: bold; -fx-text-fill: #f59e0b;"/>
+                                    </VBox>
+                                    <VBox alignment="TOP_RIGHT" spacing="8" prefWidth="180" styleClass="card"
+                                          style="-fx-background-color: white; -fx-padding: 16; -fx-background-radius: 14; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 12,0,0,4);">
+                                        <Label text="💵 قيمة المخزون" style="-fx-font-size: 13px; -fx-font-weight: 600; -fx-text-fill: #64748b;"/>
+                                        <Label fx:id="inventoryValueLabel" text="--" styleClass="card-value" style="-fx-font-size: 26px; -fx-font-weight: bold; -fx-text-fill: #ef4444;"/>
+                                    </VBox>
+                                </HBox>
                             </VBox>
-                            <VBox alignment="TOP_RIGHT" spacing="10" prefWidth="240" styleClass="card"
-                                  style="-fx-background-color: white; -fx-padding: 18; -fx-background-radius: 16; -fx-effect: dropshadow(gaussian, rgba(239,68,68,0.15), 16,0,0,6);">
-                                <Label text="⚠️ تنبيهات المخزون" styleClass="card-header" style="-fx-font-size: 15px; -fx-font-weight: bold; -fx-text-fill: #1e293b;"/>
-                                <Label fx:id="lowStockDescLabel" text="راقب المنتجات منخفضة المخزون" style="-fx-font-size: 12px; -fx-text-fill: #64748b;"/>
-                                <Label fx:id="lowStockCountLabel" text="لا توجد تنبيهات" styleClass="badge badge-success" style="-fx-font-size: 13px; -fx-font-weight: 600; -fx-text-fill: #065f46; -fx-background-color: #d1fae5; -fx-padding: 8 12; -fx-background-radius: 10;"/>
-                            </VBox>
-                            <VBox alignment="TOP_RIGHT" spacing="10" prefWidth="240" styleClass="card"
-                                  style="-fx-background-color: white; -fx-padding: 18; -fx-background-radius: 16; -fx-effect: dropshadow(gaussian, rgba(245,158,11,0.15), 16,0,0,6);">
-                                <Label text="💳 المدفوعات المعلقة" styleClass="card-header" style="-fx-font-size: 15px; -fx-font-weight: bold; -fx-text-fill: #1e293b;"/>
-                                <Label fx:id="pendingPaymentsDescLabel" text="فواتير تنتظر الدفع" style="-fx-font-size: 12px; -fx-text-fill: #64748b;"/>
-                                <Label fx:id="pendingPaymentsLabel" text="0 فاتورة" styleClass="badge badge-warning" style="-fx-font-size: 13px; -fx-font-weight: 600; -fx-text-fill: #92400e; -fx-background-color: #fed7aa; -fx-padding: 8 12; -fx-background-radius: 10;"/>
-                            </VBox>
-                        </HBox>
-                        
-                        <!-- Statistics Row -->
-                        <HBox alignment="CENTER" spacing="18">
-                            <VBox alignment="TOP_RIGHT" spacing="8" prefWidth="180" styleClass="card"
-                                  style="-fx-background-color: white; -fx-padding: 16; -fx-background-radius: 14; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 12,0,0,4);">
-                                <Label text="👥 العملاء" style="-fx-font-size: 13px; -fx-font-weight: 600; -fx-text-fill: #64748b;"/>
-                                <Label fx:id="totalCustomersLabel" text="--" styleClass="card-value" style="-fx-font-size: 26px; -fx-font-weight: bold; -fx-text-fill: #6366f1;"/>
-                            </VBox>
-                            <VBox alignment="TOP_RIGHT" spacing="8" prefWidth="180" styleClass="card"
-                                  style="-fx-background-color: white; -fx-padding: 16; -fx-background-radius: 14; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 12,0,0,4);">
-                                <Label text="📦 المنتجات" style="-fx-font-size: 13px; -fx-font-weight: 600; -fx-text-fill: #64748b;"/>
-                                <Label fx:id="totalProductsLabel" text="--" styleClass="card-value" style="-fx-font-size: 26px; -fx-font-weight: bold; -fx-text-fill: #10b981;"/>
-                            </VBox>
-                            <VBox alignment="TOP_RIGHT" spacing="8" prefWidth="180" styleClass="card"
-                                  style="-fx-background-color: white; -fx-padding: 16; -fx-background-radius: 14; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 12,0,0,4);">
-                                <Label text="🛍️ إجمالي المبيعات" style="-fx-font-size: 13px; -fx-font-weight: 600; -fx-text-fill: #64748b;"/>
-                                <Label fx:id="totalSalesLabel" text="--" styleClass="card-value" style="-fx-font-size: 26px; -fx-font-weight: bold; -fx-text-fill: #f59e0b;"/>
-                            </VBox>
-                            <VBox alignment="TOP_RIGHT" spacing="8" prefWidth="180" styleClass="card"
-                                  style="-fx-background-color: white; -fx-padding: 16; -fx-background-radius: 14; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 12,0,0,4);">
-                                <Label text="💵 قيمة المخزون" style="-fx-font-size: 13px; -fx-font-weight: 600; -fx-text-fill: #64748b;"/>
-                                <Label fx:id="inventoryValueLabel" text="--" styleClass="card-value" style="-fx-font-size: 26px; -fx-font-weight: bold; -fx-text-fill: #ef4444;"/>
-                            </VBox>
-                        </HBox>
-                    </VBox>
-                </StackPane>
-            </Tab>
+                        </StackPane>
+                    </content>
+                </Tab>
+            </tabs>
         </TabPane>
     </center>
     

@@ -65,9 +65,15 @@
                 </HBox>
             </HBox>
             
-            <!-- Row 3: Account Name -->
+            <!-- Row 3: Account Name with Add Button -->
             <HBox spacing="8" alignment="CENTER_RIGHT">
-                <ComboBox fx:id="customerCombo" prefWidth="300" editable="true"
+                <Button fx:id="addCustomerBtn" text="+" onAction="#handleAddCustomer"
+                        style="-fx-background-color: #43a047; -fx-text-fill: white; -fx-font-size: 14px; -fx-font-weight: bold; -fx-padding: 8 12; -fx-background-radius: 8; -fx-cursor: hand;">
+                    <tooltip>
+                        <Tooltip text="إضافة حساب جديد" />
+                    </tooltip>
+                </Button>
+                <ComboBox fx:id="customerCombo" prefWidth="280" editable="true"
                           promptText="اختر أو ابحث عن حساب..."
                           style="-fx-background-radius: 8;"/>
                 <Label text="اسم الحساب" style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #333;"/>
@@ -106,6 +112,58 @@
                           style="-fx-background-radius: 8;"/>
                 <Label text="البيان" style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #333;"/>
             </HBox>
+            
+            <!-- Installment Section -->
+            <VBox spacing="10" style="-fx-background-color: #fff3e0; -fx-padding: 12; -fx-background-radius: 8;">
+                <HBox spacing="10" alignment="CENTER_RIGHT">
+                    <CheckBox fx:id="isInstallmentCheck" text="دفع على أقساط" onAction="#handleInstallmentToggle"
+                              style="-fx-font-size: 13px; -fx-font-weight: bold;"/>
+                    <Label text="خيارات الدفع" style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #e65100;"/>
+                </HBox>
+                
+                <HBox fx:id="installmentOptionsBox" spacing="20" alignment="CENTER_RIGHT" visible="false" managed="false">
+                    <HBox spacing="8" alignment="CENTER_RIGHT">
+                        <TextField fx:id="installmentCountField" prefWidth="80" promptText="عدد"
+                                   style="-fx-padding: 8; -fx-background-radius: 8;"/>
+                        <Label text="عدد الأقساط:" style="-fx-font-size: 13px;"/>
+                    </HBox>
+                    <HBox spacing="8" alignment="CENTER_RIGHT">
+                        <Label fx:id="installmentAmountLabel" text="0" style="-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #e65100;"/>
+                        <Label text="قيمة القسط:" style="-fx-font-size: 13px;"/>
+                    </HBox>
+                </HBox>
+            </VBox>
+            
+            <!-- Customer Items Section - Materials purchased from this customer -->
+            <VBox spacing="10" style="-fx-background-color: #f5f5f5; -fx-padding: 12; -fx-background-radius: 8;">
+                <HBox spacing="10" alignment="CENTER_RIGHT">
+                    <Button fx:id="loadItemsBtn" text="تحميل المواد" onAction="#handleLoadCustomerItems"
+                            style="-fx-background-color: #1976d2; -fx-text-fill: white; -fx-font-size: 12px; -fx-padding: 8 16; -fx-background-radius: 6; -fx-cursor: hand;"/>
+                    <Label text="المواد المشتراة من هذا الحساب" style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #b71c1c;"/>
+                </HBox>
+                
+                <TableView fx:id="customerItemsTable" prefHeight="120" style="-fx-font-size: 12px;">
+                    <columns>
+                        <TableColumn fx:id="ciDateCol" text="التاريخ" prefWidth="100"/>
+                        <TableColumn fx:id="ciProductCol" text="المادة" prefWidth="150"/>
+                        <TableColumn fx:id="ciQuantityCol" text="الكمية" prefWidth="80"/>
+                        <TableColumn fx:id="ciTotalCol" text="الإجمالي" prefWidth="100"/>
+                        <TableColumn fx:id="ciCurrencyCol" text="العملة" prefWidth="70"/>
+                    </columns>
+                </TableView>
+                
+                <HBox spacing="20" alignment="CENTER_RIGHT">
+                    <HBox spacing="8">
+                        <Label fx:id="totalUsdLabel" text="0" style="-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #1565c0;"/>
+                        <Label text="دولار:" style="-fx-font-size: 13px;"/>
+                    </HBox>
+                    <HBox spacing="8">
+                        <Label fx:id="totalIqdLabel" text="0" style="-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #2e7d32;"/>
+                        <Label text="دينار:" style="-fx-font-size: 13px;"/>
+                    </HBox>
+                    <Label text="إجمالي المواد:" style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #333;"/>
+                </HBox>
+            </VBox>
             
         </VBox>
     </HBox>

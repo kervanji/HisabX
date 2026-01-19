@@ -9,14 +9,11 @@ C:\Users\smart\Projects\HisabX\CascadeProjects\windsurf-project\HisabX\src\main\
 C:\Users\smart\Projects\HisabX\CascadeProjects\windsurf-project\HisabX\src\main\java\com\hisabx\controller\AddStockController.java
 C:\Users\smart\Projects\HisabX\CascadeProjects\windsurf-project\HisabX\src\main\java\com\hisabx\controller\SalesReportController.java
 C:\Users\smart\Projects\HisabX\CascadeProjects\windsurf-project\HisabX\src\main\java\com\hisabx\model\Customer.java
-C:\Users\smart\Projects\HisabX\CascadeProjects\windsurf-project\HisabX\src\main\java\com\hisabx\service\VoucherService.java
 C:\Users\smart\Projects\HisabX\CascadeProjects\windsurf-project\HisabX\src\main\java\com\hisabx\controller\InventoryListController.java
 C:\Users\smart\Projects\HisabX\CascadeProjects\windsurf-project\HisabX\src\main\java\com\hisabx\controller\MainController.java
-C:\Users\smart\Projects\HisabX\CascadeProjects\windsurf-project\HisabX\src\main\java\com\hisabx\controller\ReceiptVoucherController.java
 C:\Users\smart\Projects\HisabX\CascadeProjects\windsurf-project\HisabX\src\main\java\com\hisabx\controller\SettingsController.java
 C:\Users\smart\Projects\HisabX\CascadeProjects\windsurf-project\HisabX\src\main\java\com\hisabx\controller\SaleFormController.java
 C:\Users\smart\Projects\HisabX\CascadeProjects\windsurf-project\HisabX\src\main\java\com\hisabx\service\ReceiptService.java
-C:\Users\smart\Projects\HisabX\CascadeProjects\windsurf-project\HisabX\src\main\java\com\hisabx\controller\PaymentVoucherController.java
 C:\Users\smart\Projects\HisabX\CascadeProjects\windsurf-project\HisabX\src\main\java\com\hisabx\controller\PendingPaymentsController.java
 C:\Users\smart\Projects\HisabX\CascadeProjects\windsurf-project\HisabX\src\main\java\com\hisabx\controller\ReceiptListController.java
 C:\Users\smart\Projects\HisabX\CascadeProjects\windsurf-project\HisabX\src\main\java\com\hisabx\model\Sale.java
@@ -35,7 +32,6 @@ C:\Users\smart\Projects\HisabX\CascadeProjects\windsurf-project\HisabX\src\main\
 C:\Users\smart\Projects\HisabX\CascadeProjects\windsurf-project\HisabX\src\main\java\com\hisabx\controller\ProductController.java
 C:\Users\smart\Projects\HisabX\CascadeProjects\windsurf-project\HisabX\src\main\java\com\hisabx\database\Repository.java
 C:\Users\smart\Projects\HisabX\CascadeProjects\windsurf-project\HisabX\src\main\java\com\hisabx\model\Product.java
-C:\Users\smart\Projects\HisabX\CascadeProjects\windsurf-project\HisabX\src\main\java\com\hisabx\model\Voucher.java
 C:\Users\smart\Projects\HisabX\CascadeProjects\windsurf-project\HisabX\src\main\java\com\hisabx\controller\CategoryController.java
 C:\Users\smart\Projects\HisabX\CascadeProjects\windsurf-project\HisabX\src\main\java\com\hisabx\controller\SaleController.java
 C:\Users\smart\Projects\HisabX\CascadeProjects\windsurf-project\HisabX\src\main\java\com\hisabx\firebase\FirebaseSyncService.java
