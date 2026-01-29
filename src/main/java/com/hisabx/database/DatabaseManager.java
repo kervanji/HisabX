@@ -230,6 +230,23 @@ public class DatabaseManager {
             )
         """);
         
+        // Users table
+        stmt.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT UNIQUE NOT NULL,
+                display_name TEXT NOT NULL,
+                pin_hash TEXT NOT NULL,
+                role TEXT NOT NULL DEFAULT 'SELLER',
+                is_active BOOLEAN DEFAULT 1,
+                failed_attempts INTEGER DEFAULT 0,
+                locked_until DATETIME,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                last_login_at DATETIME,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        """);
+        
         // Create indexes for better performance
         stmt.execute("CREATE INDEX IF NOT EXISTS idx_customers_code ON customers(customer_code)");
         stmt.execute("CREATE INDEX IF NOT EXISTS idx_products_code ON products(product_code)");
@@ -244,6 +261,8 @@ public class DatabaseManager {
         stmt.execute("CREATE INDEX IF NOT EXISTS idx_returns_customer ON sale_returns(customer_id)");
         stmt.execute("CREATE INDEX IF NOT EXISTS idx_payments_code ON customer_payments(payment_code)");
         stmt.execute("CREATE INDEX IF NOT EXISTS idx_payments_customer ON customer_payments(customer_id)");
+        stmt.execute("CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)");
+        stmt.execute("CREATE INDEX IF NOT EXISTS idx_users_role ON users(role)");
         
         logger.info("Database tables created successfully");
     }
@@ -272,6 +291,7 @@ public class DatabaseManager {
             configuration.addAnnotatedClass(com.hisabx.model.SaleReturn.class);
             configuration.addAnnotatedClass(com.hisabx.model.ReturnItem.class);
             configuration.addAnnotatedClass(com.hisabx.model.CustomerPayment.class);
+            configuration.addAnnotatedClass(com.hisabx.model.User.class);
             
             sessionFactory = configuration.buildSessionFactory();
             logger.info("Hibernate configured successfully");

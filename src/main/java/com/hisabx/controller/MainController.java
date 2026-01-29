@@ -5,16 +5,20 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.control.MenuItem;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
 import javafx.scene.layout.BorderPane;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import com.hisabx.util.TabManager;
+import com.hisabx.util.SessionManager;
 import com.hisabx.MainApp;
 import com.hisabx.model.Product;
 import com.hisabx.model.Sale;
+import com.hisabx.model.UserRole;
 import com.hisabx.service.CustomerService;
 import com.hisabx.service.InventoryService;
 import com.hisabx.service.SalesService;
@@ -46,6 +50,13 @@ public class MainController {
     @FXML private Label totalSalesLabel;
     @FXML private Label inventoryValueLabel;
     @FXML private Label companyNameLabel;
+    @FXML private Label currentUserLabel;
+    @FXML private Label currentRoleLabel;
+    @FXML private Button lockButton;
+    @FXML private Button logoutButton;
+    @FXML private MenuItem userManagementMenuItem;
+    @FXML private MenuItem salesReportMenuItem;
+    @FXML private MenuItem settingsMenuItem;
     
     private static final String PREF_COMPANY_NAME = "company.name";
     
@@ -57,7 +68,40 @@ public class MainController {
     @FXML
     private void initialize() {
         loadCompanyName();
+        loadCurrentUserInfo();
+        applyRolePermissions();
         refreshDashboard();
+    }
+    
+    private void loadCurrentUserInfo() {
+        SessionManager session = SessionManager.getInstance();
+        if (session.isLoggedIn()) {
+            if (currentUserLabel != null) {
+                currentUserLabel.setText(session.getCurrentDisplayName());
+            }
+            if (currentRoleLabel != null) {
+                currentRoleLabel.setText(session.getCurrentRole().getDisplayName());
+            }
+        }
+    }
+    
+    private void applyRolePermissions() {
+        SessionManager session = SessionManager.getInstance();
+        
+        // Hide user management for non-admins
+        if (userManagementMenuItem != null) {
+            userManagementMenuItem.setVisible(session.canManageUsers());
+        }
+        
+        // Hide settings for non-admins
+        if (settingsMenuItem != null) {
+            settingsMenuItem.setVisible(session.canAccessSettings());
+        }
+        
+        // Hide reports for sellers (optional - you can enable if sellers should see reports)
+        if (salesReportMenuItem != null) {
+            salesReportMenuItem.setVisible(session.canAccessReports());
+        }
     }
     
     private void loadCompanyName() {
@@ -269,6 +313,10 @@ public class MainController {
     
     @FXML
     private void handleSalesReport() {
+        if (!SessionManager.getInstance().canAccessReports()) {
+            showError("غير مسموح", "ليس لديك صلاحية الوصول للتقارير");
+            return;
+        }
         TabManager.getInstance().openTab(
                 "sales-report",
                 "📊 تقارير المبيعات",
@@ -320,12 +368,51 @@ public class MainController {
     
     @FXML
     private void handleSettings() {
+        if (!SessionManager.getInstance().canAccessSettings()) {
+            showError("غير مسموح", "ليس لديك صلاحية الوصول للإعدادات");
+            return;
+        }
         TabManager.getInstance().openTab(
                 "settings",
                 "⚙️ الإعدادات",
                 "/views/Settings.fxml",
                 (SettingsController controller) -> controller.setTabMode(true)
         );
+    }
+    
+    @FXML
+    private void handleUserManagement() {
+        if (!SessionManager.getInstance().canManageUsers()) {
+            showError("غير مسموح", "ليس لديك صلاحية إدارة المستخدمين");
+            return;
+        }
+        TabManager.getInstance().openTab(
+                "user-management",
+                "👥 إدارة المستخدمين",
+                "/views/UserManagement.fxml",
+                (UserManagementController controller) -> controller.setTabMode(true)
+        );
+    }
+    
+    @FXML
+    private void handleLogout() {
+        if (mainApp != null) {
+            mainApp.logout();
+        }
+    }
+    
+    @FXML
+    private void handleLock() {
+        // Lock the app - go back to login but keep user remembered
+        if (mainApp != null) {
+            mainApp.lock();
+        }
+    }
+
+    public void refreshAfterLogin() {
+        loadCurrentUserInfo();
+        applyRolePermissions();
+        refreshDashboard();
     }
     
     @FXML

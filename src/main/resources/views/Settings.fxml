@@ -125,6 +125,15 @@
             </padding>
             
             <Label text="إعدادات متقدمة" style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #1f3c56;"/>
+
+            <VBox spacing="10" style="-fx-background-color: white; -fx-padding: 15; -fx-background-radius: 8;">
+                <Label text="حجم الخط" style="-fx-font-weight: bold; -fx-font-size: 14px;"/>
+                <Label text="غيّر حجم الخط في واجهة البرنامج" style="-fx-text-fill: #6b7280;"/>
+                <HBox spacing="10" alignment="CENTER_LEFT">
+                    <Slider fx:id="fontSizeSlider" min="10" max="24" value="13" prefWidth="260"/>
+                    <Label fx:id="fontSizeValueLabel" text="13px" style="-fx-font-weight: bold;"/>
+                </HBox>
+            </VBox>
             
             <VBox spacing="10" style="-fx-background-color: white; -fx-padding: 15; -fx-background-radius: 8;">
                 <Label text="إعادة تعيين البيانات" style="-fx-font-weight: bold; -fx-font-size: 14px; -fx-text-fill: #ef4444;"/>
