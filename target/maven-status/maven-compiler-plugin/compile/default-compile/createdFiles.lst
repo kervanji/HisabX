@@ -1,7 +1,9 @@
 com\hisabx\model\CustomerPayment.class
 com\hisabx\controller\SalesReportController$3.class
 com\hisabx\controller\ReturnListController.class
+com\hisabx\service\AuthService.class
 com\hisabx\database\SQLiteDialect.class
+com\hisabx\controller\LoginController.class
 com\hisabx\controller\CustomerListController$3.class
 com\hisabx\model\Sale.class
 com\hisabx\model\SaleReturn.class
@@ -45,9 +47,11 @@ com\hisabx\controller\PendingPaymentsController$1.class
 com\hisabx\controller\ReceiptListController$3.class
 com\hisabx\controller\PdfPreviewController.class
 com\hisabx\controller\SaleFormController$7.class
+com\hisabx\util\SessionManager.class
 com\hisabx\controller\SaleFormController$4.class
 com\hisabx\firebase\FirebaseSyncService.class
 com\hisabx\service\InventoryService.class
+com\hisabx\model\UserRole.class
 com\hisabx\controller\LowStockController$1.class
 com\hisabx\model\Customer.class
 com\hisabx\service\SalesService$SaleItemRequest.class
@@ -72,6 +76,7 @@ com\hisabx\service\CustomerService.class
 com\hisabx\firebase\FirebaseService.class
 com\hisabx\controller\SalesReportController$1.class
 com\hisabx\service\SalesService.class
+com\hisabx\controller\UserManagementController.class
 com\hisabx\controller\InventoryListController.class
 com\hisabx\MainApp.class
 com\hisabx\controller\AddStockController$1.class
@@ -87,6 +92,7 @@ com\hisabx\database\Repository$ProductRepository.class
 com\hisabx\util\TabManager.class
 com\hisabx\database\Repository$SaleRepository.class
 com\hisabx\controller\InventoryListController$1.class
+com\hisabx\controller\UserManagementController$1.class
 com\hisabx\controller\CustomerSearchController.class
 com\hisabx\controller\ReturnController.class
 com\hisabx\controller\SalesReportController$CustomerStat.class
@@ -96,4 +102,5 @@ com\hisabx\database\SQLiteDialect$SQLiteIdentityColumnSupport.class
 com\hisabx\controller\SaleFormController$5.class
 com\hisabx\database\Repository$ReturnItemRepository.class
 com\hisabx\controller\SalesReportController$2.class
+com\hisabx\model\User.class
 com\hisabx\service\ReturnService.class

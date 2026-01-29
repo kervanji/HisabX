@@ -43,6 +43,16 @@ public class TabManager {
         this.tabPane = tabPane;
         this.dashboardTab = dashboardTab;
         this.mainApp = mainApp;
+        // Ensure we don't keep stale tabs between sessions / layouts
+        this.openTabs.clear();
+    }
+
+    public void reset() {
+        this.openTabs.clear();
+        this.tabPane = null;
+        this.dashboardTab = null;
+        this.mainApp = null;
+        this.dashboardRefreshCallback = null;
     }
     
     public void setDashboardRefreshCallback(Runnable callback) {
@@ -67,8 +77,12 @@ public class TabManager {
         // التحقق إذا كان التبويب مفتوحاً بالفعل
         if (openTabs.containsKey(tabId)) {
             Tab existingTab = openTabs.get(tabId);
-            tabPane.getSelectionModel().select(existingTab);
-            return null;
+            if (tabPane != null && tabPane.getTabs().contains(existingTab)) {
+                tabPane.getSelectionModel().select(existingTab);
+                return null;
+            }
+            // Stale cached tab from previous session/layout
+            openTabs.remove(tabId);
         }
         
         try {

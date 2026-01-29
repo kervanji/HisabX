@@ -7,6 +7,8 @@ import com.hisabx.service.CustomerService;
 import com.hisabx.service.InventoryService;
 import com.hisabx.service.ReceiptService;
 import com.hisabx.service.SalesService;
+import com.hisabx.util.SessionManager;
+import com.hisabx.util.TabManager;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.stage.DirectoryChooser;
@@ -34,6 +36,8 @@ public class SettingsController {
     @FXML private TextField bannerPathField;
     @FXML private TextField receiptsPathField;
     @FXML private TextField companyNameField;
+    @FXML private Slider fontSizeSlider;
+    @FXML private Label fontSizeValueLabel;
     @FXML private Label backupStatusLabel;
     @FXML private Label customersCountLabel;
     @FXML private Label productsCountLabel;
@@ -66,6 +70,27 @@ public class SettingsController {
         
         // Load statistics
         handleRefreshStats();
+
+        // Load UI font size
+        if (fontSizeSlider != null && fontSizeValueLabel != null) {
+            int size = SessionManager.getInstance().getUiFontSize();
+            fontSizeSlider.setValue(size);
+            fontSizeValueLabel.setText(size + "px");
+            fontSizeSlider.valueProperty().addListener((obs, oldVal, newVal) -> {
+                int rounded = (int) Math.round(newVal.doubleValue());
+                fontSizeValueLabel.setText(rounded + "px");
+                SessionManager.getInstance().setUiFontSize(rounded);
+
+                com.hisabx.MainApp app = TabManager.getInstance().getMainApp();
+                if (app != null) {
+                    app.applyUiFontSizeToAllWindows(rounded);
+                } else if (dialogStage != null && dialogStage.getScene() != null) {
+                    dialogStage.getScene().getRoot().setStyle(
+                            com.hisabx.MainApp.upsertFontSizeStyle(dialogStage.getScene().getRoot().getStyle(), rounded)
+                    );
+                }
+            });
+        }
     }
     
     public void setDialogStage(Stage dialogStage) {

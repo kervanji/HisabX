@@ -17,6 +17,7 @@ import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import javafx.stage.Modality;
 import javafx.util.StringConverter;
+import com.hisabx.util.SessionManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -1091,7 +1092,8 @@ public class SaleFormController {
             request.setPaymentMethod(paymentMethod);
             request.setCurrency(currency);
             request.setNotes(notesArea.getText());
-            request.setCreatedBy("System");
+            String createdBy = SessionManager.getInstance().getCurrentDisplayName();
+            request.setCreatedBy(createdBy != null ? createdBy : "System");
 
             double paidAmount = 0;
             try {

@@ -45,7 +45,7 @@
                 </Menu>
                 <Menu text="المبيعات">
                     <MenuItem text="عرض كل المبيعات" onAction="#handleViewSales"/>
-                    <MenuItem text="تقرير المبيعات" onAction="#handleSalesReport"/>
+                    <MenuItem fx:id="salesReportMenuItem" text="تقرير المبيعات" onAction="#handleSalesReport"/>
                     <MenuItem text="المدفوعات المعلقة" onAction="#handlePendingPayments"/>
                     <SeparatorMenuItem/>
                     <MenuItem text="إرجاع مواد" onAction="#handleProductReturn"/>
@@ -55,7 +55,9 @@
                     <MenuItem text="عرض الإيصالات" onAction="#handleViewReceipts"/>
                 </Menu>
                 <Menu text="إعدادات">
-                    <MenuItem text="إعدادات النظام" onAction="#handleSettings"/>
+                    <MenuItem fx:id="userManagementMenuItem" text="إدارة المستخدمين" onAction="#handleUserManagement"/>
+                    <SeparatorMenuItem/>
+                    <MenuItem fx:id="settingsMenuItem" text="إعدادات النظام" onAction="#handleSettings"/>
                     <MenuItem text="مزامنة مع فايربيس" onAction="#handleFirebaseSync"/>
                 </Menu>
                 <Menu text="مساعدة">
@@ -193,11 +195,19 @@
     
     <bottom>
         <HBox alignment="CENTER_RIGHT" spacing="20" style="-fx-padding: 8 16; -fx-background-color: linear-gradient(to right, #f8fafc, #ffffff); -fx-border-color: #e2e8f0; -fx-border-width: 1 0 0 0;">
+            <!-- User Info and Logout -->
+            <HBox alignment="CENTER_LEFT" spacing="10" HBox.hgrow="ALWAYS">
+                <Label text="👤" style="-fx-font-size: 14px;"/>
+                <Label fx:id="currentUserLabel" text="" style="-fx-font-size: 12px; -fx-text-fill: #1e40af; -fx-font-weight: 600;"/>
+                <Label fx:id="currentRoleLabel" text="" style="-fx-font-size: 11px; -fx-text-fill: #64748b; -fx-background-color: #f1f5f9; -fx-padding: 3 8; -fx-background-radius: 4;"/>
+                <Button fx:id="lockButton" text="🔒 قفل" onAction="#handleLock" style="-fx-background-color: #fef3c7; -fx-text-fill: #92400e; -fx-font-size: 11px; -fx-padding: 4 10; -fx-background-radius: 6; -fx-cursor: hand;"/>
+                <Button fx:id="logoutButton" text="🚪 خروج" onAction="#handleLogout" style="-fx-background-color: #fee2e2; -fx-text-fill: #dc2626; -fx-font-size: 11px; -fx-padding: 4 10; -fx-background-radius: 6; -fx-cursor: hand;"/>
+            </HBox>
             <Label text="© 2025 KervanjiHolding" style="-fx-font-size: 11px; -fx-text-fill: #94a3b8;"/>
             <Label text="•" style="-fx-font-size: 11px; -fx-text-fill: #cbd5e1;"/>
             <Label text="HisabX v1.0.0" style="-fx-font-size: 11px; -fx-text-fill: #64748b; -fx-font-weight: 600;"/>
             <Label text="•" style="-fx-font-size: 11px; -fx-text-fill: #cbd5e1;"/>
-            <Label text="✓ جاهز" style="-fx-font-size: 11px; -fx-text-fill: #22c55e; -fx-font-weight: 600;" HBox.hgrow="ALWAYS"/>
+            <Label text="✓ جاهز" style="-fx-font-size: 11px; -fx-text-fill: #22c55e; -fx-font-weight: 600;"/>
         </HBox>
     </bottom>
 </BorderPane>

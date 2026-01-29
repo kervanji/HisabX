@@ -4,6 +4,7 @@ import com.hisabx.model.Category;
 import com.hisabx.model.Product;
 import com.hisabx.service.CategoryService;
 import com.hisabx.service.InventoryService;
+import com.hisabx.util.SessionManager;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
@@ -38,6 +39,8 @@ public class ProductController {
     private Product product;
     private boolean isEditMode = false;
     private boolean tabMode = false;
+    private Double originalCostPrice = null; // Store original cost for sellers who can't see it
+    private Double originalUnitPrice = null; // Store original selling price for sellers who can't edit it
     private final InventoryService inventoryService = new InventoryService();
     private final CategoryService categoryService = new CategoryService();
     private final DecimalFormat numberFormat;
@@ -54,6 +57,39 @@ public class ProductController {
         loadUnitsOfMeasure();
         setupPriceListeners();
         setupPricingModeToggle();
+        applyRoleRestrictions();
+    }
+    
+    private void applyRoleRestrictions() {
+        boolean canSeeCost = SessionManager.getInstance().canSeeCost();
+        
+        if (!canSeeCost) {
+            // Hide cost price - show ****** instead
+            costPriceField.setEditable(false);
+            costPriceField.setPromptText("******");
+            
+            // Hide pricing mode options (they depend on cost)
+            manualPriceRadio.setVisible(false);
+            manualPriceRadio.setManaged(false);
+            percentagePriceRadio.setVisible(false);
+            percentagePriceRadio.setManaged(false);
+            
+            // Hide profit percentage field
+            profitPercentageField.setVisible(false);
+            profitPercentageField.setManaged(false);
+            
+            // Hide profit margin label
+            profitMarginLabel.setVisible(false);
+            profitMarginLabel.setManaged(false);
+        }
+
+        applySellingPriceEditRestriction();
+    }
+
+    private void applySellingPriceEditRestriction() {
+        boolean lockSellingPrice = SessionManager.getInstance().isSeller() && isEditMode;
+        unitPriceField.setEditable(!lockSellingPrice);
+        unitPriceField.setDisable(lockSellingPrice);
     }
     
     private void loadCategories() {
@@ -120,6 +156,12 @@ public class ProductController {
     }
     
     private void updateProfitMargin() {
+        // Don't show profit margin for users who can't see cost
+        if (!SessionManager.getInstance().canSeeCost()) {
+            profitMarginLabel.setText("");
+            return;
+        }
+        
         try {
             double cost = parseDouble(costPriceField.getText());
             double price = parseDouble(unitPriceField.getText());
@@ -153,14 +195,24 @@ public class ProductController {
         descriptionField.setText(product.getDescription());
         categoryComboBox.setValue(product.getCategory());
         barcodeField.setText(product.getBarcode());
-        costPriceField.setText(product.getCostPrice() != null ? String.valueOf(product.getCostPrice()) : "");
+        // Store original cost price for sellers
+        originalCostPrice = product.getCostPrice();
+        originalUnitPrice = product.getUnitPrice();
+        
+        // Show cost price only if user has permission
+        if (SessionManager.getInstance().canSeeCost()) {
+            costPriceField.setText(product.getCostPrice() != null ? String.valueOf(product.getCostPrice()) : "");
+        } else {
+            costPriceField.setText("******");
+        }
         unitPriceField.setText(product.getUnitPrice() != null ? String.valueOf(product.getUnitPrice()) : "");
         quantityField.setText(String.valueOf(product.getQuantityInStock()));
         minimumStockField.setText(product.getMinimumStock() != null ? String.valueOf(product.getMinimumStock()) : "");
         maximumStockField.setText(product.getMaximumStock() != null ? String.valueOf(product.getMaximumStock()) : "");
         unitOfMeasureComboBox.setValue(product.getUnitOfMeasure());
         isActiveCheckBox.setSelected(product.getIsActive());
-        
+
+        applySellingPriceEditRestriction();
         updateProfitMargin();
     }
     
@@ -206,8 +258,19 @@ public class ProductController {
             product.setDescription(descriptionField.getText());
             product.setCategory(categoryComboBox.getValue());
             product.setBarcode(barcodeField.getText().trim());
-            product.setCostPrice(parseDouble(costPriceField.getText()));
-            product.setUnitPrice(parseDouble(unitPriceField.getText()));
+            // Only update cost price if user can see it, otherwise keep original
+            if (SessionManager.getInstance().canSeeCost()) {
+                product.setCostPrice(parseDouble(costPriceField.getText()));
+            } else if (originalCostPrice != null) {
+                product.setCostPrice(originalCostPrice);
+            }
+
+            // Sellers can't change selling price when editing; keep original value.
+            if (SessionManager.getInstance().isSeller() && isEditMode && originalUnitPrice != null) {
+                product.setUnitPrice(originalUnitPrice);
+            } else {
+                product.setUnitPrice(parseDouble(unitPriceField.getText()));
+            }
             product.setQuantityInStock(parseDouble(quantityField.getText()));
             product.setMinimumStock(parseDouble(minimumStockField.getText()));
             product.setMaximumStock(parseDoubleOrNull(maximumStockField.getText()));
