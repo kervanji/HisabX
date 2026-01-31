@@ -310,6 +310,7 @@ public class SalesReportController {
         alert.setTitle(title);
         alert.setHeaderText(null);
         alert.setContentText(message);
+        styleAlert(alert);
         alert.showAndWait();
     }
 
@@ -318,7 +319,24 @@ public class SalesReportController {
         alert.setTitle(title);
         alert.setHeaderText(null);
         alert.setContentText(message);
+        styleAlert(alert);
         alert.showAndWait();
+    }
+
+    private void styleAlert(Alert alert) {
+        if (alert == null || alert.getDialogPane() == null) {
+            return;
+        }
+
+        String css = getClass().getResource("/styles/main.css") != null
+                ? getClass().getResource("/styles/main.css").toExternalForm()
+                : null;
+        if (css != null && !alert.getDialogPane().getStylesheets().contains(css)) {
+            alert.getDialogPane().getStylesheets().add(css);
+        }
+        alert.getDialogPane().setStyle(
+                "-fx-font-family: 'Geeza Pro', 'SF Arabic', 'Arial', 'Tahoma';"
+        );
     }
 
     public static class ProductStat {

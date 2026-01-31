@@ -13,6 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Consumer;
@@ -88,6 +89,7 @@ public class TabManager {
         try {
             FXMLLoader loader = new FXMLLoader();
             loader.setLocation(MainApp.class.getResource(fxmlPath));
+            loader.setCharset(StandardCharsets.UTF_8);
             Parent content = loader.load();
             
             T controller = loader.getController();

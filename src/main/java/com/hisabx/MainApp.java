@@ -19,6 +19,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -75,6 +76,7 @@ public class MainApp extends Application {
         try {
             FXMLLoader loader = new FXMLLoader();
             loader.setLocation(MainApp.class.getResource("/views/Login.fxml"));
+            loader.setCharset(StandardCharsets.UTF_8);
             Parent loginRoot = loader.load();
             
             LoginController controller = loader.getController();
@@ -106,6 +108,7 @@ public class MainApp extends Application {
     private void showMainLayout() throws IOException {
         FXMLLoader loader = new FXMLLoader();
         loader.setLocation(MainApp.class.getResource("/views/MainLayout.fxml"));
+        loader.setCharset(StandardCharsets.UTF_8);
         mainLayout = loader.load();
         
         // Get the controller and set the main app reference
@@ -141,6 +144,7 @@ public class MainApp extends Application {
         try {
             FXMLLoader loader = new FXMLLoader();
             loader.setLocation(MainApp.class.getResource("/views/Login.fxml"));
+            loader.setCharset(StandardCharsets.UTF_8);
             Parent loginRoot = loader.load();
 
             LoginController controller = loader.getController();
@@ -250,6 +254,7 @@ public class MainApp extends Application {
         try {
             FXMLLoader loader = new FXMLLoader();
             loader.setLocation(MainApp.class.getResource("/views/PdfPreview.fxml"));
+            loader.setCharset(StandardCharsets.UTF_8);
             javafx.scene.Parent page = loader.load();
 
             Stage dialogStage = new Stage();

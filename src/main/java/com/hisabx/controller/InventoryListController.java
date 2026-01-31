@@ -23,6 +23,7 @@ import javafx.stage.Modality;
 import javafx.stage.Stage;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.util.ArrayList;
@@ -228,6 +229,7 @@ public class InventoryListController {
         try {
             FXMLLoader loader = new FXMLLoader();
             loader.setLocation(MainApp.class.getResource("/views/ProductForm.fxml"));
+            loader.setCharset(StandardCharsets.UTF_8);
             Parent root = loader.load();
             
             Stage stage = new Stage();
@@ -250,6 +252,7 @@ public class InventoryListController {
         try {
             FXMLLoader loader = new FXMLLoader();
             loader.setLocation(MainApp.class.getResource("/views/ProductForm.fxml"));
+            loader.setCharset(StandardCharsets.UTF_8);
             Parent root = loader.load();
             
             Stage stage = new Stage();
@@ -296,6 +299,7 @@ public class InventoryListController {
         try {
             FXMLLoader loader = new FXMLLoader();
             loader.setLocation(MainApp.class.getResource("/views/CategoryManager.fxml"));
+            loader.setCharset(StandardCharsets.UTF_8);
             Parent root = loader.load();
             
             Stage stage = new Stage();

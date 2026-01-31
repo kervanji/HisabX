@@ -20,6 +20,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.text.DecimalFormat;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -309,6 +310,7 @@ public class CustomerListController {
         try {
             FXMLLoader loader = new FXMLLoader();
             loader.setLocation(MainApp.class.getResource("/views/CustomerForm.fxml"));
+            loader.setCharset(StandardCharsets.UTF_8);
             Parent root = loader.load();
             
             Stage stage = new Stage();
