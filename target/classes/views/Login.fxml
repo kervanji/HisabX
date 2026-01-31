@@ -5,7 +5,7 @@
 <?import javafx.scene.layout.*?>
 <?import javafx.scene.text.Font?>
 
-<BorderPane style="-fx-background-color: linear-gradient(to bottom right, #1a1a2e, #16213e);"
+<BorderPane style="-fx-background-color: linear-gradient(to bottom right, #1a1a2e, #16213e); -fx-font-family: 'Geeza Pro', 'SF Arabic', 'Arial', 'Tahoma';"
             xmlns:fx="http://javafx.com/fxml" fx:controller="com.hisabx.controller.LoginController"
             prefWidth="500" prefHeight="600">
     

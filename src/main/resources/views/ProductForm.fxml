@@ -5,8 +5,9 @@
 
 <VBox xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="com.hisabx.controller.ProductController"
+      stylesheets="@../styles/main.css"
       spacing="16" prefWidth="500" prefHeight="650"
-      style="-fx-background-color: #f8fafc; -fx-padding: 24;">
+      style="-fx-background-color: #f8fafc; -fx-padding: 24; -fx-font-family: 'Geeza Pro', 'SF Arabic', 'Arial', 'Tahoma';">
     
     <Label text="إضافة / تعديل منتج" 
            style="-fx-font-size: 22px; -fx-font-weight: bold; -fx-text-fill: #1f3c56;"/>

@@ -29,8 +29,8 @@
     -fx-shadow-md: dropshadow(gaussian, rgba(0,0,0,0.1), 10, 0, 0, 4);
     -fx-shadow-lg: dropshadow(gaussian, rgba(0,0,0,0.15), 20, 0, 0, 8);
     
-    -fx-font-family: "Segoe UI", "Arial", "Tahoma", sans-serif;
-    font-family: "Segoe UI", "Arial", "Tahoma", sans-serif;
+    -fx-font-family: "Geeza Pro", "SF Arabic", "Arial", "Tahoma", sans-serif;
+    font-family: "Geeza Pro", "SF Arabic", "Arial", "Tahoma", sans-serif;
 }
 
 /* Menu Bar Styling */

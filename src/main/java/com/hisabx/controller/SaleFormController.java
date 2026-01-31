@@ -23,6 +23,7 @@ import org.slf4j.LoggerFactory;
 
 import java.awt.Desktop;
 import java.io.File;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.text.DecimalFormat;
@@ -750,6 +751,7 @@ public class SaleFormController {
 
             FXMLLoader loader = new FXMLLoader();
             loader.setLocation(getClass().getResource("/views/ProductForm.fxml"));
+            loader.setCharset(StandardCharsets.UTF_8);
             Parent root = loader.load();
 
             Stage stage = new Stage();
@@ -860,6 +862,7 @@ public class SaleFormController {
         try {
             FXMLLoader loader = new FXMLLoader();
             loader.setLocation(getClass().getResource("/views/CustomerForm.fxml"));
+            loader.setCharset(StandardCharsets.UTF_8);
             Parent root = loader.load();
 
             Stage stage = new Stage();

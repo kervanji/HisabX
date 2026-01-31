@@ -17,6 +17,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.text.DecimalFormat;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -304,6 +305,7 @@ public class ReturnController {
         try {
             javafx.fxml.FXMLLoader loader = new javafx.fxml.FXMLLoader();
             loader.setLocation(getClass().getResource("/views/ReturnList.fxml"));
+            loader.setCharset(StandardCharsets.UTF_8);
             javafx.scene.Parent root = loader.load();
             
             javafx.stage.Stage stage = new javafx.stage.Stage();
