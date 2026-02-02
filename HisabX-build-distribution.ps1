@@ -8,7 +8,7 @@ $ErrorActionPreference = "Stop"
 # Configuration
 # -----------------------------
 $APP_NAME = "HisabX"
-$APP_VERSION = "1.0.0"
+$APP_VERSION = "1.0.1"
 $JAVAFX_VERSION = "17.0.10"
 
 # Main class (must contain public static void main)
@@ -87,6 +87,14 @@ if (-not (Test-Path (Join-Path $env:JAVA_HOME "jmods"))) {
     exit 1
 }
 
+# Use jlink from JAVA_HOME to avoid PATH issues
+$JLINK = Join-Path $env:JAVA_HOME "bin\jlink.exe"
+if (-not (Test-Path $JLINK)) {
+    Write-Host "jlink not found under JAVA_HOME. Expected: $JLINK" -ForegroundColor Red
+    Write-Host "Make sure JAVA_HOME points to a JDK (not JRE)." -ForegroundColor Yellow
+    exit 1
+}
+
 # Build jlink module path
 $modulePath = "$env:JAVA_HOME\jmods;$JAVAFX_JMODS_DIR"
 
@@ -112,7 +120,7 @@ $modules = @(
 ) -join ","
 
 # Create runtime
-jlink --module-path $modulePath `
+& $JLINK --module-path $modulePath `
       --add-modules $modules `
       --output $RUNTIME_DIR `
       --strip-debug `
@@ -136,17 +144,35 @@ if (-not $javafxInRuntime) {
 # -----------------------------
 Write-Host "`n[5/6] Copying application files..." -ForegroundColor Yellow
 
-$jar1 = Join-Path $TARGET_DIR "inventory-management-$APP_VERSION.jar"
-$jar2 = Join-Path $TARGET_DIR "inventory-management-$APP_VERSION-shaded.jar"
+# Prefer shaded jar, pick the newest build output regardless of version
+$shaded = Get-ChildItem -Path $TARGET_DIR -Filter "inventory-management-*-shaded.jar" -File -ErrorAction SilentlyContinue |
+    Sort-Object LastWriteTime -Descending |
+    Select-Object -First 1
 
-if (Test-Path $jar1) {
-    Copy-Item $jar1 (Join-Path $DIST_DIR "$APP_NAME.jar") -Force
-} elseif (Test-Path $jar2) {
-    Copy-Item $jar2 (Join-Path $DIST_DIR "$APP_NAME.jar") -Force
+$plain = Get-ChildItem -Path $TARGET_DIR -Filter "inventory-management-*.jar" -File -ErrorAction SilentlyContinue |
+    Where-Object { $_.Name -notlike "*-shaded.jar" } |
+    Sort-Object LastWriteTime -Descending |
+    Select-Object -First 1
+
+$jarToCopy = $null
+if ($shaded) {
+    $jarToCopy = $shaded.FullName
+} elseif ($plain) {
+    $jarToCopy = $plain.FullName
+}
+
+if ($jarToCopy) {
+    Copy-Item $jarToCopy (Join-Path $DIST_DIR "$APP_NAME.jar") -Force
 } else {
     Write-Host "App jar not found in target!" -ForegroundColor Red
-    Write-Host "Expected: $jar1 OR $jar2" -ForegroundColor Yellow
+    Write-Host "Expected something like: inventory-management-<version>-shaded.jar" -ForegroundColor Yellow
     exit 1
+}
+
+# Optional EXE launcher (Launch4j) - keep a copy in project root so it survives distribution rebuild
+$exeSource = Join-Path $PROJECT_DIR "$APP_NAME.exe"
+if (Test-Path $exeSource) {
+    Copy-Item $exeSource (Join-Path $DIST_DIR "$APP_NAME.exe") -Force
 }
 
 # Optional DB file (if exists)
@@ -164,7 +190,7 @@ Set objFSO = CreateObject("Scripting.FileSystemObject")
 
 strScriptPath = objFSO.GetParentFolderName(WScript.ScriptFullName)
 
-cmd = """" & strScriptPath & "\runtime\bin\javaw.exe"" --module-path """ & strScriptPath & "\runtime\lib"" --add-modules javafx.controls,javafx.fxml,javafx.swing -cp """ & strScriptPath & "\$APP_NAME.jar"" $MAIN_CLASS"
+cmd = """" & strScriptPath & "\runtime\bin\javaw.exe"" -cp """ & strScriptPath & "\$APP_NAME.jar"" $MAIN_CLASS"
 objShell.Run cmd, 0, False
 
 Set objShell = Nothing
@@ -180,8 +206,6 @@ cd /d "%~dp0"
 set APP_JAR=%~dp0$APP_NAME.jar
 
 runtime\bin\java.exe ^
- --module-path "%~dp0runtime\lib" ^
- --add-modules javafx.controls,javafx.fxml,javafx.swing ^
  -cp "%APP_JAR%" ^
  $MAIN_CLASS
 

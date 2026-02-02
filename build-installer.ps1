@@ -40,7 +40,7 @@ Write-Host "`nFound Inno Setup at: $ISCC" -ForegroundColor Green
 
 # Step 1: Build the distribution package
 Write-Host "`n[1/2] Building distribution package..." -ForegroundColor Yellow
-& "$PSScriptRoot\build-distribution.ps1"
+& "$PSScriptRoot\HisabX-build-distribution.ps1"
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host "Distribution build failed!" -ForegroundColor Red

@@ -5,7 +5,7 @@
 #define MyAppNameArabic "حساب إكس - نظام إدارة المخازن والمبيعات"
 #define MyAppVersion "1.0.0"
 #define MyAppPublisher "HisabX"
-#define MyAppExeName "HisabX.vbs"
+#define MyAppExeName "HisabX.exe"
 #define MyAppIcon "src\main\resources\templates\HisabX.ico"
 
 [Setup]
@@ -14,7 +14,7 @@ AppId={{A1B2C3D4-E5F6-4A5B-8C9D-0E1F2A3B4C5D}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}
-DefaultDirName={autopf}\{#MyAppName}
+DefaultDirName={sd}\{#MyAppName}
 DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
 OutputDir=installer-output
@@ -64,29 +64,13 @@ Name: "quicklaunchicon"; Description: "{cm:CreateQuickLaunchIcon}"; GroupDescrip
 [Files]
 ; Main Application Files
 Source: "distribution\HisabX.jar"; DestDir: "{app}"; Flags: ignoreversion
+Source: "distribution\HisabX.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "distribution\HisabX.vbs"; DestDir: "{app}"; Flags: ignoreversion
 Source: "distribution\HisabX.bat"; DestDir: "{app}"; Flags: ignoreversion
 Source: "distribution\README.txt"; DestDir: "{app}"; Flags: ignoreversion isreadme
 
-; Runtime (Java) - Split large files to avoid freezing
-Source: "distribution\runtime\bin\*"; DestDir: "{app}\runtime\bin"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "distribution\runtime\conf\*"; DestDir: "{app}\runtime\conf"; Flags: ignoreversion recursesubdirs createallsubdirs; Check: DirExists(ExpandConstant('{src}\distribution\runtime\conf'))
-Source: "distribution\runtime\legal\*"; DestDir: "{app}\runtime\legal"; Flags: ignoreversion recursesubdirs createallsubdirs; Check: DirExists(ExpandConstant('{src}\distribution\runtime\legal'))
-Source: "distribution\runtime\lib\*.lib"; DestDir: "{app}\runtime\lib"; Flags: ignoreversion
-Source: "distribution\runtime\lib\*.jar"; DestDir: "{app}\runtime\lib"; Flags: ignoreversion
-Source: "distribution\runtime\lib\*.properties*"; DestDir: "{app}\runtime\lib"; Flags: ignoreversion
-Source: "distribution\runtime\lib\*.cfg"; DestDir: "{app}\runtime\lib"; Flags: ignoreversion
-Source: "distribution\runtime\lib\*.dat"; DestDir: "{app}\runtime\lib"; Flags: ignoreversion
-Source: "distribution\runtime\lib\*.bfc"; DestDir: "{app}\runtime\lib"; Flags: ignoreversion
-Source: "distribution\runtime\lib\*.src"; DestDir: "{app}\runtime\lib"; Flags: ignoreversion
-Source: "distribution\runtime\lib\classlist"; DestDir: "{app}\runtime\lib"; Flags: ignoreversion
-Source: "distribution\runtime\lib\tzmappings"; DestDir: "{app}\runtime\lib"; Flags: ignoreversion
-Source: "distribution\runtime\lib\modules"; DestDir: "{app}\runtime\lib"; Flags: ignoreversion solidbreak
-Source: "distribution\runtime\lib\security\*"; DestDir: "{app}\runtime\lib\security"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "distribution\runtime\release"; DestDir: "{app}\runtime"; Flags: ignoreversion; Check: FileExists(ExpandConstant('{src}\distribution\runtime\release'))
-
-; Libraries (if any)
-Source: "distribution\lib\*"; DestDir: "{app}\lib"; Flags: ignoreversion recursesubdirs createallsubdirs; Check: DirExists(ExpandConstant('{src}\distribution\lib'))
+; Runtime (Java) - copy everything to avoid missing security/config files
+Source: "distribution\runtime\*"; DestDir: "{app}\runtime"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 ; Start Menu

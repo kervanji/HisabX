@@ -1,5 +1,6 @@
 package com.hisabx.controller;
 
+import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
@@ -8,6 +9,7 @@ import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.MenuItem;
+import javafx.scene.control.ProgressIndicator;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
 import javafx.scene.layout.BorderPane;
@@ -16,6 +18,10 @@ import javafx.stage.Stage;
 import com.hisabx.util.TabManager;
 import com.hisabx.util.SessionManager;
 import com.hisabx.MainApp;
+import com.hisabx.update.AppVersion;
+import com.hisabx.update.UpdateCheckResult;
+import com.hisabx.update.UpdateInstallerLauncher;
+import com.hisabx.update.UpdateService;
 import com.hisabx.model.Product;
 import com.hisabx.model.Sale;
 import com.hisabx.model.UserRole;
@@ -28,6 +34,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.nio.file.Path;
 import java.text.DecimalFormat;
 import java.time.LocalDate;
 import java.util.List;
@@ -56,6 +63,9 @@ public class MainController {
     @FXML private Label currentRoleLabel;
     @FXML private Button lockButton;
     @FXML private Button logoutButton;
+    @FXML private Label updateStatusLabel;
+    @FXML private ProgressIndicator updateProgress;
+    @FXML private Button updateButton;
     @FXML private MenuItem userManagementMenuItem;
     @FXML private MenuItem salesReportMenuItem;
     @FXML private MenuItem settingsMenuItem;
@@ -66,6 +76,9 @@ public class MainController {
     private final CustomerService customerService = new CustomerService();
     private final InventoryService inventoryService = new InventoryService();
     private final SalesService salesService = new SalesService();
+
+    private final UpdateService updateService = new UpdateService();
+    private volatile UpdateCheckResult availableUpdate;
     
     @FXML
     private void initialize() {
@@ -73,6 +86,60 @@ public class MainController {
         loadCurrentUserInfo();
         applyRolePermissions();
         refreshDashboard();
+        initUpdateUi();
+        checkForUpdatesInBackground();
+    }
+
+    private void initUpdateUi() {
+        if (updateStatusLabel != null) {
+            updateStatusLabel.setText("");
+        }
+        if (updateProgress != null) {
+            updateProgress.setVisible(false);
+        }
+        if (updateButton != null) {
+            updateButton.setVisible(false);
+            updateButton.setDisable(false);
+        }
+    }
+
+    private void checkForUpdatesInBackground() {
+        String currentVersion = AppVersion.current();
+        if (updateStatusLabel != null) {
+            updateStatusLabel.setText("فحص التحديثات...");
+        }
+        updateService.checkForUpdateAsync(currentVersion).whenComplete((result, err) -> {
+            Platform.runLater(() -> {
+                if (err != null) {
+                    logger.warn("Update check failed", err);
+                    if (updateStatusLabel != null) {
+                        updateStatusLabel.setText("");
+                    }
+                    if (updateButton != null) {
+                        updateButton.setVisible(false);
+                    }
+                    return;
+                }
+
+                if (result != null && result.isUpdateAvailable()) {
+                    availableUpdate = result;
+                    if (updateStatusLabel != null) {
+                        updateStatusLabel.setText("يوجد تحديث v" + result.getLatestVersion());
+                    }
+                    if (updateButton != null) {
+                        updateButton.setVisible(true);
+                        updateButton.setDisable(false);
+                    }
+                } else {
+                    if (updateStatusLabel != null) {
+                        updateStatusLabel.setText("");
+                    }
+                    if (updateButton != null) {
+                        updateButton.setVisible(false);
+                    }
+                }
+            });
+        });
     }
     
     private void loadCurrentUserInfo() {
@@ -409,6 +476,76 @@ public class MainController {
         if (mainApp != null) {
             mainApp.lock();
         }
+    }
+
+    @FXML
+    private void handleUpdateNow() {
+        UpdateCheckResult update = availableUpdate;
+        if (update == null || update.getDownloadUrl() == null || update.getDownloadUrl().isBlank()) {
+            return;
+        }
+
+        if (updateProgress != null) {
+            updateProgress.setVisible(true);
+        }
+        if (updateButton != null) {
+            updateButton.setDisable(true);
+        }
+        if (updateStatusLabel != null) {
+            updateStatusLabel.setText("جاري تنزيل التحديث...");
+        }
+
+        String fileName = "HisabX-Setup-" + update.getLatestVersion() + ".exe";
+        updateService.downloadInstallerAsync(update.getDownloadUrl(), fileName).whenComplete((path, err) -> {
+            Platform.runLater(() -> {
+                if (err != null) {
+                    logger.error("Update download failed", err);
+                    if (updateProgress != null) {
+                        updateProgress.setVisible(false);
+                    }
+                    if (updateButton != null) {
+                        updateButton.setDisable(false);
+                    }
+                    if (updateStatusLabel != null) {
+                        updateStatusLabel.setText("فشل تنزيل التحديث");
+                    }
+                    return;
+                }
+
+                if (path == null) {
+                    if (updateProgress != null) {
+                        updateProgress.setVisible(false);
+                    }
+                    if (updateButton != null) {
+                        updateButton.setDisable(false);
+                    }
+                    if (updateStatusLabel != null) {
+                        updateStatusLabel.setText("فشل تنزيل التحديث");
+                    }
+                    return;
+                }
+
+                if (updateStatusLabel != null) {
+                    updateStatusLabel.setText("جاري تثبيت التحديث...");
+                }
+
+                try {
+                    UpdateInstallerLauncher.launchInstallerAndRestart(path);
+                    System.exit(0);
+                } catch (Exception e) {
+                    logger.error("Failed to launch installer", e);
+                    if (updateProgress != null) {
+                        updateProgress.setVisible(false);
+                    }
+                    if (updateButton != null) {
+                        updateButton.setDisable(false);
+                    }
+                    if (updateStatusLabel != null) {
+                        updateStatusLabel.setText("فشل تشغيل التحديث");
+                    }
+                }
+            });
+        });
     }
 
     public void refreshAfterLogin() {
