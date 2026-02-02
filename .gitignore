@@ -1,0 +1,11 @@
+# Maven / Java
+target/
+*.jar
+
+# Windows installers / binaries
+*.exe
+
+# Common build outputs
+distribution/
+installer/
+Compiler/
