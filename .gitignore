@@ -1,11 +1,15 @@
-# Maven / Java
-target/
-*.jar
-
-# Windows installers / binaries
-*.exe
-
-# Common build outputs
+# outputs
 distribution/
 installer/
 Compiler/
+target/
+
+# binaries
+*.exe
+*.jar
+
+# local db
+*.db
+
+# JavaFX jmods (prefer downloading in build step)
+javafx-jmods-17.0.10/
