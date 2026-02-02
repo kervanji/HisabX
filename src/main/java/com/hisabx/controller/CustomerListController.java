@@ -14,11 +14,13 @@ import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.HBox;
+import javafx.stage.FileChooser;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.text.DecimalFormat;
@@ -346,8 +348,20 @@ public class CustomerListController {
     private void handlePrint() {
         try {
             PrintService printService = new PrintService();
-            java.io.File pdfFile = printService.generateCustomerListPdf(allCustomers);
-            
+ 
+            FileChooser fileChooser = new FileChooser();
+            fileChooser.setTitle("حفظ تقرير العملاء");
+            fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("PDF", "*.pdf"));
+            fileChooser.setInitialFileName("customers_report.pdf");
+
+            Stage owner = (Stage) customersTable.getScene().getWindow();
+            File selectedFile = fileChooser.showSaveDialog(owner);
+            if (selectedFile == null) {
+                return;
+            }
+
+            File pdfFile = printService.generateCustomerListPdf(allCustomers, selectedFile);
+             
             if (pdfFile.exists()) {
                 if (java.awt.Desktop.isDesktopSupported()) {
                     java.awt.Desktop.getDesktop().open(pdfFile);

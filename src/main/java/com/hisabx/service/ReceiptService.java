@@ -72,6 +72,16 @@ public class ReceiptService {
                                             LocalDate to,
                                             boolean includeItems,
                                             String currency) {
+        return generateAccountStatementPdf(customer, projectLocation, from, to, includeItems, currency, null);
+    }
+
+    public File generateAccountStatementPdf(Customer customer,
+                                            String projectLocation,
+                                            LocalDate from,
+                                            LocalDate to,
+                                            boolean includeItems,
+                                            String currency,
+                                            File outputFile) {
         if (customer == null || customer.getId() == null) {
             throw new IllegalArgumentException("العميل غير موجود");
         }
@@ -100,15 +110,23 @@ public class ReceiptService {
         try {
             byte[] pdfData = generateAccountStatementPDF(customer, projectLocation, from, to, sales, returns, includeItems, currency);
 
-            File dir = new File("statements");
-            if (!dir.exists()) {
-                dir.mkdirs();
+            File out = outputFile;
+            if (out == null) {
+                File dir = new File("statements");
+                if (!dir.exists()) {
+                    dir.mkdirs();
+                }
+
+                String datePart = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
+                String safeCustomer = customer.getName() != null ? customer.getName().replaceAll("[^\\p{L}\\p{N}]+", "_") : "customer";
+                String fileName = "statement_" + safeCustomer + "_" + datePart + ".pdf";
+                out = new File(dir, fileName);
             }
 
-            String datePart = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
-            String safeCustomer = customer.getName() != null ? customer.getName().replaceAll("[^\\p{L}\\p{N}]+", "_") : "customer";
-            String fileName = "statement_" + safeCustomer + "_" + datePart + ".pdf";
-            File out = new File(dir, fileName);
+            File parent = out.getParentFile();
+            if (parent != null && !parent.exists()) {
+                parent.mkdirs();
+            }
 
             try (FileOutputStream fos = new FileOutputStream(out)) {
                 fos.write(pdfData);

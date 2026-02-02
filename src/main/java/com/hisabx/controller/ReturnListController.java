@@ -8,11 +8,13 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
+import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 
 import java.text.DecimalFormat;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.io.File;
 import java.util.List;
 
 public class ReturnListController {
@@ -168,7 +170,21 @@ public class ReturnListController {
 
     private void handleViewReturn(SaleReturn saleReturn) {
         try {
-            java.io.File pdfFile = returnService.generateReturnReceiptPdf(saleReturn);
+            FileChooser fileChooser = new FileChooser();
+            fileChooser.setTitle("حفظ إيصال المرتجع");
+            fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("PDF", "*.pdf"));
+            String defaultName = (saleReturn != null && saleReturn.getReturnCode() != null)
+                    ? ("return_" + saleReturn.getReturnCode() + ".pdf")
+                    : "return_receipt.pdf";
+            fileChooser.setInitialFileName(defaultName);
+
+            Stage owner = (Stage) returnsTable.getScene().getWindow();
+            File selectedFile = fileChooser.showSaveDialog(owner);
+            if (selectedFile == null) {
+                return;
+            }
+
+            File pdfFile = returnService.generateReturnReceiptPdf(saleReturn, selectedFile);
             if (pdfFile != null && pdfFile.exists()) {
                 if (java.awt.Desktop.isDesktopSupported()) {
                     java.awt.Desktop.getDesktop().open(pdfFile);

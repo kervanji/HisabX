@@ -113,6 +113,10 @@ public class ReturnService {
     }
 
     public File generateReturnReceiptPdf(SaleReturn saleReturn) {
+        return generateReturnReceiptPdf(saleReturn, null);
+    }
+
+    public File generateReturnReceiptPdf(SaleReturn saleReturn, File outputFile) {
         if (saleReturn == null) {
             throw new IllegalArgumentException("المرتجع غير موجود");
         }
@@ -120,14 +124,22 @@ public class ReturnService {
         try {
             byte[] pdfData = generateReturnReceiptPDF(saleReturn);
 
-            File dir = new File("receipts");
-            if (!dir.exists()) {
-                dir.mkdirs();
+            File out = outputFile;
+            if (out == null) {
+                File dir = new File("receipts");
+                if (!dir.exists()) {
+                    dir.mkdirs();
+                }
+
+                String datePart = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
+                String fileName = "return_" + saleReturn.getReturnCode() + "_" + datePart + ".pdf";
+                out = new File(dir, fileName);
             }
 
-            String datePart = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
-            String fileName = "return_" + saleReturn.getReturnCode() + "_" + datePart + ".pdf";
-            File out = new File(dir, fileName);
+            File parent = out.getParentFile();
+            if (parent != null && !parent.exists()) {
+                parent.mkdirs();
+            }
 
             try (FileOutputStream fos = new FileOutputStream(out)) {
                 fos.write(pdfData);

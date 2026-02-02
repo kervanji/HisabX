@@ -14,6 +14,7 @@ import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.layout.GridPane;
+import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import javafx.geometry.Insets;
 import org.slf4j.Logger;
@@ -23,6 +24,7 @@ import java.text.DecimalFormat;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
+import java.io.File;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -259,12 +261,26 @@ public class PendingPaymentsController {
         }
 
         try {
-            java.io.File pdfFile = receiptService.generateAccountStatementPdf(
+            FileChooser fileChooser = new FileChooser();
+            fileChooser.setTitle("حفظ كشف الحساب");
+            fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("PDF", "*.pdf"));
+            String customerName = selectedSale.getCustomer().getName() != null ? selectedSale.getCustomer().getName() : "customer";
+            fileChooser.setInitialFileName("statement_" + customerName + ".pdf");
+
+            Stage owner = (Stage) pendingTable.getScene().getWindow();
+            File selectedFile = fileChooser.showSaveDialog(owner);
+            if (selectedFile == null) {
+                return;
+            }
+
+            File pdfFile = receiptService.generateAccountStatementPdf(
                 selectedSale.getCustomer(),
                 null,
                 null,
                 null,
-                false
+                false,
+                null,
+                selectedFile
             );
             if (pdfFile != null && pdfFile.exists()) {
                 if (java.awt.Desktop.isDesktopSupported()) {

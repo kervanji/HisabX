@@ -36,6 +36,25 @@ public class PrintService {
             String fileName = "customers_report_" + timestamp + ".pdf";
             File outputFile = new File(dir, fileName);
             
+            return generateCustomerListPdf(customers, outputFile);
+            
+        } catch (Exception e) {
+            logger.error("Failed to generate customer list PDF", e);
+            throw new RuntimeException("فشل في إنشاء تقرير العملاء", e);
+        }
+    }
+
+    public File generateCustomerListPdf(List<Customer> customers, File outputFile) {
+        try {
+            if (outputFile == null) {
+                throw new IllegalArgumentException("مسار الملف غير صحيح");
+            }
+
+            File parent = outputFile.getParentFile();
+            if (parent != null && !parent.exists()) {
+                parent.mkdirs();
+            }
+
             Document document = new Document(PageSize.A4, 30, 30, 30 + BANNER_HEIGHT, 30);
             PdfWriter writer = PdfWriter.getInstance(document, new FileOutputStream(outputFile));
             document.open();
@@ -46,24 +65,17 @@ public class PrintService {
             Font bodyFont = new Font(baseFont, 10, Font.NORMAL);
             Font smallFont = new Font(baseFont, 9, Font.NORMAL);
             
-            // Banner
             addBanner(writer, document);
-            
-            // Title
             addCenteredRtlText(document, "تقرير العملاء", titleFont);
-            
-            // Date
             addCenteredRtlText(document,
                     "تاريخ الإصدار: " + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")),
                     smallFont, 15f);
             
-            // Table
             PdfPTable table = new PdfPTable(7);
             table.setWidthPercentage(100);
             table.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
             table.setWidths(new float[]{1.1f, 0.6f, 1.3f, 1.0f, 0.25f, 0.35f, 0.35f});
             
-            // Headers
             addTableHeader(table, "ت", headerFont);
             addTableHeader(table, "الكود", headerFont);
             addTableHeader(table, "الاسم", headerFont);
@@ -72,7 +84,6 @@ public class PrintService {
             addTableHeader(table, "رصيد دينار", headerFont);
             addTableHeader(table, "رصيد دولار", headerFont);
             
-            // Data rows
             int rowNum = 1;
             double totalDebtIqd = 0;
             double totalDebtUsd = 0;
@@ -116,7 +127,6 @@ public class PrintService {
             
             document.add(table);
             
-            // Summary
             document.add(new Paragraph(" ", bodyFont));
             PdfPTable summaryTable = new PdfPTable(2);
             summaryTable.setWidthPercentage(50);
@@ -130,8 +140,6 @@ public class PrintService {
             addSummaryRow(summaryTable, "أرصدة دولار:", DECIMAL_FORMAT.format(totalCreditUsd) + " $", headerFont, bodyFont);
             
             document.add(summaryTable);
-            
-            // Footer
             addUnifiedFooter(document, headerFont, smallFont);
             
             document.close();
@@ -155,6 +163,25 @@ public class PrintService {
             String fileName = "inventory_report_" + timestamp + ".pdf";
             File outputFile = new File(dir, fileName);
             
+            return generateInventoryListPdf(products, outputFile);
+            
+        } catch (Exception e) {
+            logger.error("Failed to generate inventory list PDF", e);
+            throw new RuntimeException("فشل في إنشاء تقرير المخزون", e);
+        }
+    }
+
+    public File generateInventoryListPdf(List<Product> products, File outputFile) {
+        try {
+            if (outputFile == null) {
+                throw new IllegalArgumentException("مسار الملف غير صحيح");
+            }
+
+            File parent = outputFile.getParentFile();
+            if (parent != null && !parent.exists()) {
+                parent.mkdirs();
+            }
+
             Document document = new Document(PageSize.A4.rotate(), 30, 30, 30 + BANNER_HEIGHT, 30);
             PdfWriter writer = PdfWriter.getInstance(document, new FileOutputStream(outputFile));
             document.open();
@@ -165,24 +192,17 @@ public class PrintService {
             Font bodyFont = new Font(baseFont, 10, Font.NORMAL);
             Font smallFont = new Font(baseFont, 9, Font.NORMAL);
             
-            // Banner
             addBanner(writer, document);
-            
-            // Title
             addCenteredRtlText(document, "تقرير المخزون", titleFont);
-            
-            // Date
             addCenteredRtlText(document,
                     "تاريخ الإصدار: " + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")),
                     smallFont, 15f);
             
-            // Table
             PdfPTable table = new PdfPTable(8);
             table.setWidthPercentage(100);
             table.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
             table.setWidths(new float[]{0.4f, 0.8f, 1.5f, 0.8f, 0.8f, 0.8f, 0.6f, 0.6f});
             
-            // Headers
             addTableHeader(table, "ت", headerFont);
             addTableHeader(table, "الكود", headerFont);
             addTableHeader(table, "الاسم", headerFont);
@@ -192,7 +212,6 @@ public class PrintService {
             addTableHeader(table, "الكمية", headerFont);
             addTableHeader(table, "الحد الأدنى", headerFont);
             
-            // Data rows
             int rowNum = 1;
             double totalValue = 0;
             double totalStock = 0;
@@ -228,7 +247,6 @@ public class PrintService {
             
             document.add(table);
             
-            // Summary
             document.add(new Paragraph(" ", bodyFont));
             PdfPTable summaryTable = new PdfPTable(2);
             summaryTable.setWidthPercentage(40);
@@ -241,8 +259,6 @@ public class PrintService {
             addSummaryRow(summaryTable, "منتجات منخفضة:", String.valueOf(lowStockCount), headerFont, bodyFont);
             
             document.add(summaryTable);
-            
-            // Footer
             addUnifiedFooter(document, headerFont, smallFont);
             
             document.close();

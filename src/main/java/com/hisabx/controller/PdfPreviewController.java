@@ -8,6 +8,7 @@ import javafx.scene.image.ImageView;
 import javafx.scene.image.WritableImage;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
+import com.hisabx.util.FxUtil;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.printing.PDFPageable;
 import org.apache.pdfbox.rendering.ImageType;
@@ -95,14 +96,12 @@ public class PdfPreviewController {
         };
 
         printTask.setOnFailed(e -> logger.error("Failed to print PDF", printTask.getException()));
-        
+
         new Thread(printTask).start();
     }
 
     @FXML
     private void handleClose() {
-        if (dialogStage != null) {
-            dialogStage.close();
-        }
+        FxUtil.closeWindow(printButton);
     }
 }
