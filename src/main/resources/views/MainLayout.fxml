@@ -50,6 +50,15 @@
                     <SeparatorMenuItem/>
                     <MenuItem text="إرجاع مواد" onAction="#handleProductReturn"/>
                 </Menu>
+                <Menu text="السندات">
+                    <MenuItem text="سند قبض" onAction="#handleReceiptVoucher"/>
+                    <MenuItem text="سند دفع" onAction="#handlePaymentVoucher"/>
+                    <SeparatorMenuItem/>
+                    <MenuItem text="سندات القبض السابقة" onAction="#handleViewReceiptVouchers"/>
+                    <MenuItem text="سندات الدفع السابقة" onAction="#handleViewPaymentVouchers"/>
+                    <SeparatorMenuItem/>
+                    <MenuItem text="الأقساط المستحقة" onAction="#handleDueInstallments"/>
+                </Menu>
                 <Menu text="الإيصالات">
                     <MenuItem text="إنشاء إيصال" onAction="#handleCreateReceipt"/>
                     <MenuItem text="عرض الإيصالات" onAction="#handleViewReceipts"/>
@@ -128,6 +137,12 @@
                                         <Button text="↩️ إرجاع مواد" mnemonicParsing="false" onAction="#handleProductReturn"
                                                 styleClass="button-secondary"
                                                 style="-fx-font-size: 14px; -fx-padding: 12 24; -fx-background-radius: 10; -fx-cursor: hand;"/>
+                                    </HBox>
+                                    <HBox alignment="CENTER" spacing="16">
+                                        <Button text="📥 سند قبض" mnemonicParsing="false" onAction="#handleReceiptVoucher"
+                                                style="-fx-font-size: 14px; -fx-padding: 12 24; -fx-background-radius: 10; -fx-cursor: hand; -fx-background-color: #10b981; -fx-text-fill: white;"/>
+                                        <Button text="📤 سند دفع" mnemonicParsing="false" onAction="#handlePaymentVoucher"
+                                                style="-fx-font-size: 14px; -fx-padding: 12 24; -fx-background-radius: 10; -fx-cursor: hand; -fx-background-color: #ef4444; -fx-text-fill: white;"/>
                                     </HBox>
                                 </VBox>
 

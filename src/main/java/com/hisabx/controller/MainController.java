@@ -19,9 +19,11 @@ import com.hisabx.MainApp;
 import com.hisabx.model.Product;
 import com.hisabx.model.Sale;
 import com.hisabx.model.UserRole;
+import com.hisabx.model.VoucherType;
 import com.hisabx.service.CustomerService;
 import com.hisabx.service.InventoryService;
 import com.hisabx.service.SalesService;
+import com.hisabx.service.VoucherService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -419,6 +421,102 @@ public class MainController {
     private void handleFirebaseSync() {
         // TODO: Implement Firebase sync
         showInfo("قريباً", "ميزة المزامنة مع فايربيس قيد التطوير");
+    }
+    
+    @FXML
+    private void handleReceiptVoucher() {
+        try {
+            TabManager.getInstance().openTab(
+                    "receipt-voucher",
+                    "📥 سند قبض",
+                    "/views/ReceiptVoucher.fxml",
+                    (ReceiptVoucherController controller) -> {
+                        controller.setTabMode(true);
+                        controller.setTabId("receipt-voucher");
+                    }
+            );
+        } catch (Exception e) {
+            logger.error("Failed to open receipt voucher", e);
+            showError("خطأ", "فشل في فتح سند القبض: " + e.getMessage());
+        }
+    }
+    
+    @FXML
+    private void handlePaymentVoucher() {
+        try {
+            TabManager.getInstance().openTab(
+                    "payment-voucher",
+                    "📤 سند دفع",
+                    "/views/PaymentVoucher.fxml",
+                    (PaymentVoucherController controller) -> {
+                        controller.setTabMode(true);
+                        controller.setTabId("payment-voucher");
+                    }
+            );
+        } catch (Exception e) {
+            logger.error("Failed to open payment voucher", e);
+            showError("خطأ", "فشل في فتح سند الدفع: " + e.getMessage());
+        }
+    }
+    
+    @FXML
+    private void handleViewReceiptVouchers() {
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/views/VoucherList.fxml"));
+            Parent root = loader.load();
+            
+            VoucherListController controller = loader.getController();
+            controller.setVoucherType(VoucherType.RECEIPT);
+            
+            Stage stage = new Stage();
+            stage.setTitle("سندات القبض");
+            stage.setScene(new Scene(root));
+            stage.initModality(Modality.APPLICATION_MODAL);
+            stage.show();
+        } catch (IOException e) {
+            logger.error("Failed to open receipt vouchers list", e);
+            showError("خطأ", "فشل في فتح قائمة سندات القبض");
+        }
+    }
+    
+    @FXML
+    private void handleViewPaymentVouchers() {
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/views/VoucherList.fxml"));
+            Parent root = loader.load();
+            
+            VoucherListController controller = loader.getController();
+            controller.setVoucherType(VoucherType.PAYMENT);
+            
+            Stage stage = new Stage();
+            stage.setTitle("سندات الدفع");
+            stage.setScene(new Scene(root));
+            stage.initModality(Modality.APPLICATION_MODAL);
+            stage.show();
+        } catch (IOException e) {
+            logger.error("Failed to open payment vouchers list", e);
+            showError("خطأ", "فشل في فتح قائمة سندات الدفع");
+        }
+    }
+    
+    @FXML
+    private void handleDueInstallments() {
+        VoucherService voucherService = new VoucherService();
+        var dueInstallments = voucherService.getDueInstallments();
+        
+        if (dueInstallments.isEmpty()) {
+            showInfo("الأقساط", "لا توجد أقساط مستحقة");
+        } else {
+            StringBuilder msg = new StringBuilder("الأقساط المستحقة:\n\n");
+            for (var inst : dueInstallments) {
+                msg.append("• ").append(inst.getParentVoucher().getVoucherNumber())
+                   .append(" - ").append(inst.getAmount())
+                   .append(" (القسط ").append(inst.getInstallmentNumber()).append(")")
+                   .append(" - مستحق: ").append(inst.getDueDate())
+                   .append("\n");
+            }
+            showInfo("الأقساط المستحقة", msg.toString());
+        }
     }
     
     @FXML
