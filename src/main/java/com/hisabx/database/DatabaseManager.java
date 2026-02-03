@@ -36,6 +36,9 @@ public class DatabaseManager {
         
         try (Connection conn = DriverManager.getConnection(DB_URL);
              Statement stmt = conn.createStatement()) {
+
+            stmt.execute("PRAGMA busy_timeout = 5000");
+            stmt.execute("PRAGMA journal_mode = WAL");
             
             // Create tables if they don't exist
             createTables(stmt);
@@ -247,6 +250,81 @@ public class DatabaseManager {
             )
         """);
         
+        // Vouchers table (سندات القبض والدفع)
+        stmt.execute("""
+            CREATE TABLE IF NOT EXISTS vouchers (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                voucher_number TEXT UNIQUE NOT NULL,
+                voucher_type TEXT NOT NULL,
+                voucher_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+                currency TEXT NOT NULL DEFAULT 'دينار',
+                exchange_rate REAL DEFAULT 1,
+                customer_id INTEGER,
+                cash_account TEXT,
+                amount REAL NOT NULL,
+                discount_percentage REAL DEFAULT 0,
+                discount_amount REAL DEFAULT 0,
+                net_amount REAL NOT NULL,
+                amount_in_words TEXT,
+                description TEXT,
+                payment_method TEXT,
+                reference_number TEXT,
+                is_installment BOOLEAN DEFAULT 0,
+                total_installments INTEGER,
+                installment_number INTEGER,
+                parent_voucher_id INTEGER,
+                notes TEXT,
+                created_by TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                is_cancelled BOOLEAN DEFAULT 0,
+                cancelled_at DATETIME,
+                cancelled_by TEXT,
+                cancel_reason TEXT,
+                FOREIGN KEY (customer_id) REFERENCES customers(id),
+                FOREIGN KEY (parent_voucher_id) REFERENCES vouchers(id)
+            )
+        """);
+        
+        // Voucher Items table (عناصر السند - للمشتريات)
+        stmt.execute("""
+            CREATE TABLE IF NOT EXISTS voucher_items (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                voucher_id INTEGER NOT NULL,
+                product_id INTEGER,
+                product_name TEXT,
+                quantity REAL DEFAULT 1,
+                unit_price REAL,
+                total_price REAL,
+                unit_of_measure TEXT,
+                notes TEXT,
+                add_to_inventory BOOLEAN DEFAULT 1,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (voucher_id) REFERENCES vouchers(id),
+                FOREIGN KEY (product_id) REFERENCES products(id)
+            )
+        """);
+        
+        // Installments table (الأقساط)
+        stmt.execute("""
+            CREATE TABLE IF NOT EXISTS installments (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                parent_voucher_id INTEGER NOT NULL,
+                installment_number INTEGER NOT NULL,
+                amount REAL NOT NULL,
+                due_date DATE NOT NULL,
+                is_paid BOOLEAN DEFAULT 0,
+                paid_amount REAL DEFAULT 0,
+                paid_date DATE,
+                payment_voucher_id INTEGER,
+                notes TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (parent_voucher_id) REFERENCES vouchers(id),
+                FOREIGN KEY (payment_voucher_id) REFERENCES vouchers(id)
+            )
+        """);
+        
         // Create indexes for better performance
         stmt.execute("CREATE INDEX IF NOT EXISTS idx_customers_code ON customers(customer_code)");
         stmt.execute("CREATE INDEX IF NOT EXISTS idx_products_code ON products(product_code)");
@@ -263,6 +341,13 @@ public class DatabaseManager {
         stmt.execute("CREATE INDEX IF NOT EXISTS idx_payments_customer ON customer_payments(customer_id)");
         stmt.execute("CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)");
         stmt.execute("CREATE INDEX IF NOT EXISTS idx_users_role ON users(role)");
+        stmt.execute("CREATE INDEX IF NOT EXISTS idx_vouchers_number ON vouchers(voucher_number)");
+        stmt.execute("CREATE INDEX IF NOT EXISTS idx_vouchers_type ON vouchers(voucher_type)");
+        stmt.execute("CREATE INDEX IF NOT EXISTS idx_vouchers_customer ON vouchers(customer_id)");
+        stmt.execute("CREATE INDEX IF NOT EXISTS idx_vouchers_date ON vouchers(voucher_date)");
+        stmt.execute("CREATE INDEX IF NOT EXISTS idx_voucher_items_voucher ON voucher_items(voucher_id)");
+        stmt.execute("CREATE INDEX IF NOT EXISTS idx_installments_voucher ON installments(parent_voucher_id)");
+        stmt.execute("CREATE INDEX IF NOT EXISTS idx_installments_due_date ON installments(due_date)");
         
         logger.info("Database tables created successfully");
     }
@@ -278,7 +363,7 @@ public class DatabaseManager {
             configuration.setProperty("hibernate.hbm2ddl.auto", "update");
             configuration.setProperty("hibernate.show_sql", "false");
             configuration.setProperty("hibernate.format_sql", "true");
-            configuration.setProperty("hibernate.connection.pool_size", "1");
+            configuration.setProperty("hibernate.connection.pool_size", "10");
             configuration.setProperty("hibernate.current_session_context_class", "thread");
             
             // Add entity classes
@@ -292,6 +377,9 @@ public class DatabaseManager {
             configuration.addAnnotatedClass(com.hisabx.model.ReturnItem.class);
             configuration.addAnnotatedClass(com.hisabx.model.CustomerPayment.class);
             configuration.addAnnotatedClass(com.hisabx.model.User.class);
+            configuration.addAnnotatedClass(com.hisabx.model.Voucher.class);
+            configuration.addAnnotatedClass(com.hisabx.model.VoucherItem.class);
+            configuration.addAnnotatedClass(com.hisabx.model.Installment.class);
             
             sessionFactory = configuration.buildSessionFactory();
             logger.info("Hibernate configured successfully");

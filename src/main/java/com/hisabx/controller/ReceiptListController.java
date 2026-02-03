@@ -11,6 +11,7 @@ import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.geometry.Insets;
 import javafx.scene.control.*;
+import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -474,7 +475,19 @@ public class ReceiptListController {
             String currencyFilter = "الكل".equals(selectedCurrency) ? null : selectedCurrency;
 
             try {
-                File pdfFile = receiptService.generateAccountStatementPdf(c, project, fromDate, toDate, includeItems.isSelected(), currencyFilter);
+                FileChooser fileChooser = new FileChooser();
+                fileChooser.setTitle("حفظ كشف الحساب");
+                fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("PDF", "*.pdf"));
+                String customerName = c.getName() != null ? c.getName() : "customer";
+                fileChooser.setInitialFileName("statement_" + customerName + ".pdf");
+
+                Stage owner = (Stage) receiptsTable.getScene().getWindow();
+                File selectedFile = fileChooser.showSaveDialog(owner);
+                if (selectedFile == null) {
+                    return;
+                }
+
+                File pdfFile = receiptService.generateAccountStatementPdf(c, project, fromDate, toDate, includeItems.isSelected(), currencyFilter, selectedFile);
                 if (pdfFile != null && pdfFile.exists()) {
                     if (mainApp != null) {
                         mainApp.showPdfPreview(pdfFile);

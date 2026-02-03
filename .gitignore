@@ -1,0 +1,22 @@
+# outputs
+distribution/
+installer/
+Compiler/
+target/
+
+# binaries
+*.exe
+*.jar
+
+# local db
+*.db
+
+*.db-wal
+*.db-shm
+
+voucher_receipts/*.pdf
+
+app_config.properties
+
+# JavaFX jmods (prefer downloading in build step)
+javafx-jmods-17.0.10/

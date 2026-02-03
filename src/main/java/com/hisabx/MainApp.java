@@ -11,8 +11,10 @@ import javafx.scene.paint.Color;
 import javafx.stage.StageStyle;
 import com.hisabx.database.DatabaseManager;
 import com.hisabx.controller.LoginController;
+import com.hisabx.controller.ActivationController;
 import com.hisabx.model.User;
 import com.hisabx.model.UserRole;
+import com.hisabx.service.LicenseService;
 import com.hisabx.util.SessionManager;
 import com.hisabx.util.TabManager;
 import org.slf4j.Logger;
@@ -62,13 +64,50 @@ public class MainApp extends Application {
             // Set up logout callback
             SessionManager.getInstance().setOnLogoutCallback(this::showLoginScreen);
             
-            // Show login screen first
-            showLoginScreen();
+            // License gate (offline activation)
+            if (new LicenseService().isActivated()) {
+                // Show login screen first
+                showLoginScreen();
+            } else {
+                showActivationScreen();
+            }
             
             logger.info("Application started successfully");
         } catch (Exception e) {
             logger.error("Failed to start application", e);
             showError("خطأ في بدء التطبيق", "فشل في بدء التطبيق: " + e.getMessage());
+        }
+    }
+    
+    private void showActivationScreen() {
+        try {
+            FXMLLoader loader = new FXMLLoader();
+            loader.setLocation(MainApp.class.getResource("/views/Activation.fxml"));
+            loader.setCharset(StandardCharsets.UTF_8);
+            Parent activationRoot = loader.load();
+
+            ActivationController controller = loader.getController();
+            controller.setOnActivationSuccess(() -> {
+                try {
+                    showLoginScreen();
+                } catch (Exception e) {
+                    logger.error("Failed to show login screen after activation", e);
+                    showError("خطأ", "فشل في تحميل شاشة الدخول");
+                }
+            });
+
+            Scene scene = new Scene(activationRoot);
+            applyUiFontSizeToScene(scene, SessionManager.getInstance().getUiFontSize());
+            primaryStage.setScene(scene);
+            primaryStage.setMaximized(false);
+            primaryStage.setResizable(false);
+            primaryStage.setWidth(520);
+            primaryStage.setHeight(620);
+            primaryStage.centerOnScreen();
+            primaryStage.show();
+        } catch (IOException e) {
+            logger.error("Failed to show activation screen", e);
+            showError("خطأ", "فشل في تحميل شاشة التفعيل");
         }
     }
     

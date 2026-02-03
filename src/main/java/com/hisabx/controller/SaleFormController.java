@@ -13,10 +13,12 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.control.*;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import javafx.stage.Modality;
 import javafx.util.StringConverter;
+import javafx.application.Platform;
 import com.hisabx.util.SessionManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,6 +37,7 @@ import java.util.Locale;
 public class SaleFormController {
     private static final Logger logger = LoggerFactory.getLogger(SaleFormController.class);
 
+    @FXML private VBox root;
     @FXML private ComboBox<Customer> customerComboBox;
     @FXML private ComboBox<String> projectLocationComboBox;
     @FXML private TextField newProjectLocationField;
@@ -58,6 +61,8 @@ public class SaleFormController {
     @FXML private RadioButton creditRadio;
     @FXML private ToggleGroup paymentGroup;
     @FXML private ComboBox<String> currencyComboBox;
+    @FXML private VBox exchangeRateBox;
+    @FXML private TextField exchangeRateField;
     @FXML private TextField additionalDiscountField;
     @FXML private Label additionalDiscountCurrencyLabel;
     @FXML private Label subtotalLabel;
@@ -105,6 +110,12 @@ public class SaleFormController {
         setupProductComboBox();
         setupItemsTable();
         setupDefaults();
+
+        Platform.runLater(() -> {
+            if (root != null && root.getScene() != null && root.getScene().getWindow() instanceof Stage s) {
+                dialogStage = s;
+            }
+        });
     }
 
     private void setupCurrencyComboBox() {
@@ -114,11 +125,64 @@ public class SaleFormController {
 
         currencyComboBox.setItems(FXCollections.observableArrayList("دينار", "دولار"));
         currencyComboBox.setValue("دينار");
+        if (exchangeRateField != null && (exchangeRateField.getText() == null || exchangeRateField.getText().trim().isEmpty())) {
+            exchangeRateField.setText("1500");
+        }
+        updateExchangeRateVisibility("دينار");
         updateCurrencyLabels("دينار");
         currencyComboBox.valueProperty().addListener((obs, oldVal, newVal) -> {
+            updateExchangeRateVisibility(newVal);
             updateCurrencyLabels(newVal);
+            refreshConversionOnRows();
             updateTotals();
         });
+    }
+
+    @FXML
+    private void handleExchangeRateChange() {
+        refreshConversionOnRows();
+        updateTotals();
+        updateSelectedProductPriceLabel();
+    }
+
+    private void updateExchangeRateVisibility(String currency) {
+        boolean isUsd = "دولار".equals(currency);
+        if (exchangeRateBox != null) {
+            exchangeRateBox.setVisible(isUsd);
+            exchangeRateBox.setManaged(isUsd);
+        }
+    }
+
+    private void refreshConversionOnRows() {
+        String currency = currencyComboBox != null ? currencyComboBox.getValue() : "دينار";
+        double rate = getExchangeRateOrDefault();
+        for (SaleItemRow row : saleItems) {
+            row.setCurrencyAndRate(currency, rate);
+            row.recalculate();
+        }
+        if (itemsTable != null) {
+            itemsTable.refresh();
+        }
+    }
+
+    private double getExchangeRateOrDefault() {
+        double rate = 1500.0;
+        if (exchangeRateField == null || exchangeRateField.getText() == null) {
+            return rate;
+        }
+
+        try {
+            String text = exchangeRateField.getText().trim().replace(",", "");
+            if (!text.isEmpty()) {
+                rate = Double.parseDouble(text);
+            }
+        } catch (NumberFormatException ignored) {
+        }
+
+        if (rate <= 0) {
+            rate = 1500.0;
+        }
+        return rate;
     }
 
     private void updateCurrencyLabels(String currency) {
@@ -407,9 +471,30 @@ public class SaleFormController {
                     stockLabel.setText("المخزون المتاح: " + stock + " " + unit);
                     stockLabel.setStyle("-fx-text-fill: #7f8c8d;");
                 }
-                priceLabel.setText("السعر: " + numberFormatter.format(selected.getUnitPrice()) + " دينار");
+                updateSelectedProductPriceLabel();
             }
         });
+    }
+
+    private void updateSelectedProductPriceLabel() {
+        if (priceLabel == null) {
+            return;
+        }
+
+        if (selectedProduct == null) {
+            priceLabel.setText("السعر: -");
+            return;
+        }
+
+        String currency = currencyComboBox != null ? currencyComboBox.getValue() : "دينار";
+        double baseIqd = selectedProduct.getUnitPrice();
+        if ("دولار".equals(currency)) {
+            double rate = getExchangeRateOrDefault();
+            double usd = baseIqd / rate;
+            priceLabel.setText("السعر: " + numberFormatter.format(usd) + " دولار");
+        } else {
+            priceLabel.setText("السعر: " + numberFormatter.format(baseIqd) + " دينار");
+        }
     }
 
     private void setupItemsTable() {
@@ -941,6 +1026,8 @@ public class SaleFormController {
                     product.getUnitPrice(),
                     discountPercent
             );
+            String currency = currencyComboBox != null ? currencyComboBox.getValue() : "دينار";
+            newItem.setCurrencyAndRate(currency, getExchangeRateOrDefault());
             saleItems.add(newItem);
         }
 
@@ -966,7 +1053,7 @@ public class SaleFormController {
         double subtotal = saleItems.stream().mapToDouble(SaleItemRow::getTotalPrice).sum();
         double additionalDiscount = 0;
         try {
-            additionalDiscount = Double.parseDouble(additionalDiscountField.getText().trim());
+            additionalDiscount = Double.parseDouble(additionalDiscountField.getText().trim().replace(",", ""));
         } catch (NumberFormatException e) {
             additionalDiscount = 0;
         }
@@ -979,7 +1066,7 @@ public class SaleFormController {
 
         double additionalDiscount = 0;
         try {
-            additionalDiscount = Double.parseDouble(additionalDiscountField.getText().trim());
+            additionalDiscount = Double.parseDouble(additionalDiscountField.getText().trim().replace(",", ""));
         } catch (NumberFormatException e) {
             additionalDiscount = 0;
         }
@@ -1039,7 +1126,7 @@ public class SaleFormController {
     }
 
     @FXML
-    private void handleSaveAndPrint() {
+    private void handleSaveAndPrint(javafx.event.ActionEvent e) {
         Sale sale = createSale();
         if (sale != null) {
             try {
@@ -1058,10 +1145,9 @@ public class SaleFormController {
                         }
                     }
                 }
-                
-                dialogStage.close();
-            } catch (Exception e) {
-                logger.error("Failed to generate receipt", e);
+                resetSaleForm();
+            } catch (Exception ex) {
+                logger.error("Failed to generate receipt", ex);
                 showError("خطأ", "تم حفظ الفاتورة لكن فشل إنشاء الإيصال");
             }
         }
@@ -1118,7 +1204,7 @@ public class SaleFormController {
 
             double additionalDiscount = 0;
             try {
-                additionalDiscount = Double.parseDouble(additionalDiscountField.getText().trim());
+                additionalDiscount = Double.parseDouble(additionalDiscountField.getText().trim().replace(",", ""));
             } catch (NumberFormatException e) {
                 additionalDiscount = 0;
             }
@@ -1150,6 +1236,34 @@ public class SaleFormController {
             com.hisabx.util.TabManager.getInstance().closeTab("new-sale");
         } else if (dialogStage != null) {
             dialogStage.close();
+        } else {
+            resetSaleForm();
+        }
+    }
+
+    private void resetSaleForm() {
+        customerComboBox.setValue(null);
+        projectLocationComboBox.getSelectionModel().clearSelection();
+        newProjectLocationField.clear();
+        categoryFilterComboBox.getSelectionModel().clearSelection();
+        productComboBox.getSelectionModel().clearSelection();
+        quantityField.clear();
+        stockLabel.setText("");
+        priceLabel.setText("");
+        saleItems.clear();
+        itemsTable.refresh();
+        additionalDiscountField.setText("0");
+        additionalDiscountCurrencyLabel.setText("");
+        subtotalLabel.setText("0");
+        discountLabel.setText("0");
+        finalTotalLabel.setText("0");
+        paidAmountField.clear();
+        paidAmountCurrencyLabel.setText("");
+        balanceLabel.setText("0");
+        balanceStatusLabel.setText("");
+        notesArea.clear();
+        if (paymentGroup != null) {
+            paymentGroup.selectToggle(cashRadio);
         }
     }
 
@@ -1182,21 +1296,32 @@ public class SaleFormController {
         private Long productId;
         private String productName;
         private double quantity;
-        private double unitPrice;
+        private double baseUnitPriceIqd;
         private double discountPercent;
         private double discountAmount;
         private double totalPrice;
 
-        public SaleItemRow(Long productId, String productName, double quantity, double unitPrice, double discountPercent) {
+        private String currency = "دينار";
+        private double exchangeRate = 1500.0;
+
+        public SaleItemRow(Long productId, String productName, double quantity, double unitPriceIqd, double discountPercent) {
             this.productId = productId;
             this.productName = productName;
             this.quantity = quantity;
-            this.unitPrice = unitPrice;
+            this.baseUnitPriceIqd = unitPriceIqd;
             this.discountPercent = discountPercent;
             recalculate();
         }
 
+        public void setCurrencyAndRate(String currency, double exchangeRate) {
+            this.currency = currency != null ? currency : "دينار";
+            if (exchangeRate > 0) {
+                this.exchangeRate = exchangeRate;
+            }
+        }
+
         public void recalculate() {
+            double unitPrice = getUnitPrice();
             double gross = unitPrice * quantity;
             this.discountAmount = gross * (discountPercent / 100.0);
             this.totalPrice = gross - discountAmount;
@@ -1206,8 +1331,25 @@ public class SaleFormController {
         public String getProductName() { return productName; }
         public double getQuantity() { return quantity; }
         public void setQuantity(double quantity) { this.quantity = quantity; }
-        public double getUnitPrice() { return unitPrice; }
-        public void setUnitPrice(double unitPrice) { this.unitPrice = unitPrice; }
+
+        public double getUnitPrice() {
+            if ("دولار".equals(currency)) {
+                return baseUnitPriceIqd / exchangeRate;
+            }
+            return baseUnitPriceIqd;
+        }
+
+        public void setUnitPrice(double unitPrice) {
+            if (unitPrice < 0) {
+                return;
+            }
+            if ("دولار".equals(currency)) {
+                this.baseUnitPriceIqd = unitPrice * exchangeRate;
+            } else {
+                this.baseUnitPriceIqd = unitPrice;
+            }
+        }
+
         public double getDiscountPercent() { return discountPercent; }
         public void setDiscountPercent(double discountPercent) { this.discountPercent = discountPercent; }
         public double getDiscountAmount() { return discountAmount; }

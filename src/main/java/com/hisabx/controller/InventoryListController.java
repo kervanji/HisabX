@@ -19,9 +19,11 @@ import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.stage.FileChooser;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.text.DecimalFormat;
@@ -328,8 +330,20 @@ public class InventoryListController {
     private void handlePrint() {
         try {
             PrintService printService = new PrintService();
-            java.io.File pdfFile = printService.generateInventoryListPdf(productsList);
-            
+ 
+            FileChooser fileChooser = new FileChooser();
+            fileChooser.setTitle("حفظ تقرير المخزون");
+            fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("PDF", "*.pdf"));
+            fileChooser.setInitialFileName("inventory_report.pdf");
+
+            Stage owner = (Stage) productsTable.getScene().getWindow();
+            File selectedFile = fileChooser.showSaveDialog(owner);
+            if (selectedFile == null) {
+                return;
+            }
+
+            File pdfFile = printService.generateInventoryListPdf(productsList, selectedFile);
+             
             if (pdfFile.exists()) {
                 if (java.awt.Desktop.isDesktopSupported()) {
                     java.awt.Desktop.getDesktop().open(pdfFile);

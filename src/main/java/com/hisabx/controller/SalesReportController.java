@@ -3,6 +3,17 @@ package com.hisabx.controller;
 import com.hisabx.model.Sale;
 import com.hisabx.model.SaleItem;
 import com.hisabx.service.SalesService;
+import com.itextpdf.text.BaseColor;
+import com.itextpdf.text.Document;
+import com.itextpdf.text.Element;
+import com.itextpdf.text.Font;
+import com.itextpdf.text.PageSize;
+import com.itextpdf.text.Paragraph;
+import com.itextpdf.text.Phrase;
+import com.itextpdf.text.pdf.BaseFont;
+import com.itextpdf.text.pdf.PdfPCell;
+import com.itextpdf.text.pdf.PdfPTable;
+import com.itextpdf.text.pdf.PdfWriter;
 import javafx.beans.property.SimpleDoubleProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
@@ -10,8 +21,21 @@ import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
+import javafx.stage.FileChooser;
 import javafx.stage.Stage;
+import org.apache.poi.ss.usermodel.CellStyle;
+import org.apache.poi.ss.usermodel.FillPatternType;
+import org.apache.poi.ss.usermodel.FontUnderline;
+import org.apache.poi.ss.usermodel.IndexedColors;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.xssf.usermodel.XSSFCellStyle;
+import org.apache.poi.xssf.usermodel.XSSFFont;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
+import java.awt.Desktop;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -269,17 +293,46 @@ public class SalesReportController {
 
     @FXML
     private void handleExportPDF() {
-        showInfo("تصدير PDF", "ميزة تصدير PDF قيد التطوير\n\n" + generateTextReport());
+        try {
+            if (reportData == null) {
+                showError("خطأ", "الرجاء إنشاء التقرير أولاً");
+                return;
+            }
+
+            File selectedFile = showSaveDialog("حفظ تقرير المبيعات (PDF)", "sales_report.pdf", "PDF", "*.pdf");
+            if (selectedFile == null) {
+                return;
+            }
+
+            generateSalesReportPdf(selectedFile);
+
+            if (Desktop.isDesktopSupported()) {
+                Desktop.getDesktop().open(selectedFile);
+            }
+            showInfo("تم", "تم تصدير تقرير المبيعات (PDF):\n" + selectedFile.getAbsolutePath());
+        } catch (Exception e) {
+            showError("خطأ", "فشل في تصدير PDF: " + e.getMessage());
+        }
     }
 
     @FXML
     private void handleExportExcel() {
-        showInfo("تصدير Excel", "ميزة تصدير Excel قيد التطوير");
-    }
+        try {
+            if (reportData == null) {
+                showError("خطأ", "الرجاء إنشاء التقرير أولاً");
+                return;
+            }
 
-    @FXML
-    private void handlePrint() {
-        showInfo("طباعة التقرير", generateTextReport());
+            File selectedFile = showSaveDialog("حفظ تقرير المبيعات (Excel)", "sales_report.xlsx", "Excel", "*.xlsx");
+            if (selectedFile == null) {
+                return;
+            }
+
+            generateSalesReportExcel(selectedFile);
+            showInfo("تم", "تم تصدير تقرير المبيعات (Excel):\n" + selectedFile.getAbsolutePath());
+        } catch (Exception e) {
+            showError("خطأ", "فشل في تصدير Excel: " + e.getMessage());
+        }
     }
 
     private String generateTextReport() {
@@ -297,6 +350,287 @@ public class SalesReportController {
         report.append("إجمالي الخصومات: ").append(totalDiscountLabel.getText()).append(" دينار\n");
 
         return report.toString();
+    }
+
+    private File showSaveDialog(String title, String initialFileName, String filterName, String filterPattern) {
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle(title);
+        fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter(filterName, filterPattern));
+        fileChooser.setInitialFileName(initialFileName);
+
+        Stage owner = (Stage) topProductsTable.getScene().getWindow();
+        return fileChooser.showSaveDialog(owner);
+    }
+
+    private void generateSalesReportPdf(File outputFile) throws Exception {
+        if (outputFile == null) {
+            throw new IllegalArgumentException("مسار الملف غير صحيح");
+        }
+
+        File parent = outputFile.getParentFile();
+        if (parent != null && !parent.exists()) {
+            parent.mkdirs();
+        }
+
+        Document document = new Document(PageSize.A4, 30, 30, 30, 30);
+        PdfWriter.getInstance(document, new FileOutputStream(outputFile));
+        document.open();
+
+        BaseFont baseFont = loadArabicBaseFont();
+        Font titleFont = new Font(baseFont, 16, Font.BOLD);
+        Font headerFont = new Font(baseFont, 11, Font.BOLD);
+        Font bodyFont = new Font(baseFont, 10, Font.NORMAL);
+
+        addCenteredRtlText(document, "تقرير المبيعات", titleFont, 4f, 10f);
+
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+        addCenteredRtlText(
+                document,
+                "الفترة: " + fromDatePicker.getValue().format(formatter) + " إلى " + toDatePicker.getValue().format(formatter),
+                bodyFont,
+                0f,
+                10f
+        );
+
+        PdfPTable summary = new PdfPTable(2);
+        summary.setWidthPercentage(60);
+        summary.setHorizontalAlignment(Element.ALIGN_CENTER);
+        summary.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+        summary.setSpacingAfter(10f);
+        addSummaryRow(summary, "إجمالي المبيعات:", totalSalesLabel.getText() + " دينار", headerFont, bodyFont);
+        addSummaryRow(summary, "عدد الفواتير:", invoiceCountLabel.getText(), headerFont, bodyFont);
+        addSummaryRow(summary, "متوسط الفاتورة:", avgSaleLabel.getText() + " دينار", headerFont, bodyFont);
+        addSummaryRow(summary, "إجمالي الخصومات:", totalDiscountLabel.getText() + " دينار", headerFont, bodyFont);
+        document.add(summary);
+
+        PdfPTable topProducts = new PdfPTable(4);
+        topProducts.setWidthPercentage(100);
+        topProducts.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+        topProducts.setSpacingBefore(5f);
+        topProducts.setSpacingAfter(10f);
+        topProducts.setWidths(new float[]{0.4f, 2.0f, 0.8f, 1.0f});
+
+        addTableHeader(topProducts, "ت", headerFont);
+        addTableHeader(topProducts, "المنتج", headerFont);
+        addTableHeader(topProducts, "الكمية", headerFont);
+        addTableHeader(topProducts, "الإجمالي", headerFont);
+
+        List<ProductStat> products = topProductsTable.getItems() != null ? topProductsTable.getItems() : FXCollections.observableArrayList();
+        int i = 1;
+        for (ProductStat p : products) {
+            topProducts.addCell(createBodyCell(String.valueOf(i++), bodyFont, Element.ALIGN_CENTER));
+            topProducts.addCell(createBodyCell(p.getProductName(), bodyFont, Element.ALIGN_RIGHT));
+            topProducts.addCell(createBodyCell(formatNumber(p.getQuantitySold()), bodyFont, Element.ALIGN_CENTER));
+            topProducts.addCell(createBodyCell(formatNumber(p.getTotalAmount()), bodyFont, Element.ALIGN_CENTER));
+        }
+        addCenteredRtlText(document, "المنتجات الأكثر مبيعاً", headerFont, 6f, 6f);
+        document.add(topProducts);
+
+        PdfPTable topCustomers = new PdfPTable(3);
+        topCustomers.setWidthPercentage(100);
+        topCustomers.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+        topCustomers.setSpacingBefore(5f);
+        topCustomers.setSpacingAfter(10f);
+        topCustomers.setWidths(new float[]{0.4f, 2.0f, 1.0f});
+
+        addTableHeader(topCustomers, "ت", headerFont);
+        addTableHeader(topCustomers, "العميل", headerFont);
+        addTableHeader(topCustomers, "الإجمالي", headerFont);
+
+        List<CustomerStat> customers = topCustomersTable.getItems() != null ? topCustomersTable.getItems() : FXCollections.observableArrayList();
+        int j = 1;
+        for (CustomerStat c : customers) {
+            topCustomers.addCell(createBodyCell(String.valueOf(j++), bodyFont, Element.ALIGN_CENTER));
+            topCustomers.addCell(createBodyCell(c.getCustomerName(), bodyFont, Element.ALIGN_RIGHT));
+            topCustomers.addCell(createBodyCell(formatNumber(c.getTotalAmount()), bodyFont, Element.ALIGN_CENTER));
+        }
+        addCenteredRtlText(document, "أفضل العملاء", headerFont, 6f, 6f);
+        document.add(topCustomers);
+
+        document.close();
+    }
+
+    private void addCenteredRtlText(Document document, String text, Font font, float spacingBefore, float spacingAfter) throws Exception {
+        Paragraph paragraph = new Paragraph(text, font);
+        paragraph.setAlignment(Element.ALIGN_CENTER);
+        paragraph.setSpacingBefore(spacingBefore);
+        paragraph.setSpacingAfter(spacingAfter);
+
+        PdfPTable wrapper = new PdfPTable(1);
+        wrapper.setWidthPercentage(100);
+        wrapper.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+
+        PdfPCell cell = new PdfPCell();
+        cell.setBorder(PdfPCell.NO_BORDER);
+        cell.setHorizontalAlignment(Element.ALIGN_CENTER);
+        cell.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+        cell.addElement(paragraph);
+        wrapper.addCell(cell);
+
+        document.add(wrapper);
+    }
+
+    private void generateSalesReportExcel(File outputFile) throws Exception {
+        if (outputFile == null) {
+            throw new IllegalArgumentException("مسار الملف غير صحيح");
+        }
+
+        File parent = outputFile.getParentFile();
+        if (parent != null && !parent.exists()) {
+            parent.mkdirs();
+        }
+
+        try (Workbook workbook = new XSSFWorkbook()) {
+            var sheet = workbook.createSheet("Sales Report");
+
+            XSSFFont titleFont = (XSSFFont) workbook.createFont();
+            titleFont.setBold(true);
+            titleFont.setFontHeightInPoints((short) 14);
+
+            XSSFCellStyle titleStyle = (XSSFCellStyle) workbook.createCellStyle();
+            titleStyle.setFont(titleFont);
+
+            XSSFFont headerFont = (XSSFFont) workbook.createFont();
+            headerFont.setBold(true);
+
+            XSSFCellStyle headerStyle = (XSSFCellStyle) workbook.createCellStyle();
+            headerStyle.setFont(headerFont);
+            headerStyle.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
+            headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+
+            int rowIdx = 0;
+            Row titleRow = sheet.createRow(rowIdx++);
+            titleRow.createCell(0).setCellValue("تقرير المبيعات");
+            titleRow.getCell(0).setCellStyle(titleStyle);
+
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+            Row periodRow = sheet.createRow(rowIdx++);
+            periodRow.createCell(0).setCellValue("الفترة: " + fromDatePicker.getValue().format(formatter) + " إلى " + toDatePicker.getValue().format(formatter));
+
+            rowIdx++;
+
+            Row summaryHeader = sheet.createRow(rowIdx++);
+            summaryHeader.createCell(0).setCellValue("الملخص");
+            summaryHeader.getCell(0).setCellStyle(headerStyle);
+
+            rowIdx = writeKeyValue(sheet, rowIdx, "إجمالي المبيعات", totalSalesLabel.getText() + " دينار");
+            rowIdx = writeKeyValue(sheet, rowIdx, "عدد الفواتير", invoiceCountLabel.getText());
+            rowIdx = writeKeyValue(sheet, rowIdx, "متوسط الفاتورة", avgSaleLabel.getText() + " دينار");
+            rowIdx = writeKeyValue(sheet, rowIdx, "إجمالي الخصومات", totalDiscountLabel.getText() + " دينار");
+
+            rowIdx++;
+
+            Row prodTitle = sheet.createRow(rowIdx++);
+            prodTitle.createCell(0).setCellValue("المنتجات الأكثر مبيعاً");
+            prodTitle.getCell(0).setCellStyle(headerStyle);
+
+            Row prodHeader = sheet.createRow(rowIdx++);
+            String[] prodCols = new String[]{"#", "المنتج", "الكمية", "الإجمالي"};
+            for (int c = 0; c < prodCols.length; c++) {
+                prodHeader.createCell(c).setCellValue(prodCols[c]);
+                prodHeader.getCell(c).setCellStyle(headerStyle);
+            }
+
+            List<ProductStat> products = topProductsTable.getItems() != null ? topProductsTable.getItems() : FXCollections.observableArrayList();
+            int i = 1;
+            for (ProductStat p : products) {
+                Row r = sheet.createRow(rowIdx++);
+                r.createCell(0).setCellValue(i++);
+                r.createCell(1).setCellValue(p.getProductName());
+                r.createCell(2).setCellValue(p.getQuantitySold());
+                r.createCell(3).setCellValue(p.getTotalAmount());
+            }
+
+            rowIdx++;
+
+            Row custTitle = sheet.createRow(rowIdx++);
+            custTitle.createCell(0).setCellValue("أفضل العملاء");
+            custTitle.getCell(0).setCellStyle(headerStyle);
+
+            Row custHeader = sheet.createRow(rowIdx++);
+            String[] custCols = new String[]{"#", "العميل", "الإجمالي"};
+            for (int c = 0; c < custCols.length; c++) {
+                custHeader.createCell(c).setCellValue(custCols[c]);
+                custHeader.getCell(c).setCellStyle(headerStyle);
+            }
+
+            List<CustomerStat> customers = topCustomersTable.getItems() != null ? topCustomersTable.getItems() : FXCollections.observableArrayList();
+            int j = 1;
+            for (CustomerStat c : customers) {
+                Row r = sheet.createRow(rowIdx++);
+                r.createCell(0).setCellValue(j++);
+                r.createCell(1).setCellValue(c.getCustomerName());
+                r.createCell(2).setCellValue(c.getTotalAmount());
+            }
+
+            for (int col = 0; col < 6; col++) {
+                sheet.autoSizeColumn(col);
+            }
+
+            try (FileOutputStream fos = new FileOutputStream(outputFile)) {
+                workbook.write(fos);
+            }
+        }
+    }
+
+    private int writeKeyValue(org.apache.poi.ss.usermodel.Sheet sheet, int rowIdx, String key, String value) {
+        Row r = sheet.createRow(rowIdx++);
+        r.createCell(0).setCellValue(key);
+        r.createCell(1).setCellValue(value);
+        return rowIdx;
+    }
+
+    private BaseFont loadArabicBaseFont() throws Exception {
+        String[] fontCandidates = new String[]{
+                "C:\\Windows\\Fonts\\arial.ttf",
+                "C:\\Windows\\Fonts\\tahoma.ttf",
+                "C:\\Windows\\Fonts\\arialuni.ttf"
+        };
+
+        for (String fontPath : fontCandidates) {
+            try {
+                return BaseFont.createFont(fontPath, BaseFont.IDENTITY_H, BaseFont.EMBEDDED);
+            } catch (Exception ignored) {
+            }
+        }
+
+        return BaseFont.createFont(BaseFont.HELVETICA, BaseFont.WINANSI, BaseFont.NOT_EMBEDDED);
+    }
+
+    private void addTableHeader(PdfPTable table, String header, Font font) {
+        PdfPCell cell = new PdfPCell(new Phrase(header, font));
+        cell.setHorizontalAlignment(Element.ALIGN_CENTER);
+        cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+        cell.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+        cell.setBackgroundColor(BaseColor.LIGHT_GRAY);
+        cell.setPadding(5f);
+        table.addCell(cell);
+    }
+
+    private PdfPCell createBodyCell(String text, Font font, int alignment) {
+        PdfPCell cell = new PdfPCell(new Phrase(text != null ? text : "-", font));
+        cell.setHorizontalAlignment(alignment);
+        cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+        cell.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+        cell.setPadding(4f);
+        return cell;
+    }
+
+    private void addSummaryRow(PdfPTable table, String label, String value, Font labelFont, Font valueFont) {
+        PdfPCell labelCell = new PdfPCell(new Phrase(label, labelFont));
+        labelCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+        labelCell.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+        labelCell.setPadding(5f);
+        labelCell.setBorder(PdfPCell.NO_BORDER);
+
+        PdfPCell valueCell = new PdfPCell(new Phrase(value, valueFont));
+        valueCell.setHorizontalAlignment(Element.ALIGN_CENTER);
+        valueCell.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+        valueCell.setPadding(5f);
+        valueCell.setBorder(PdfPCell.NO_BORDER);
+
+        table.addCell(labelCell);
+        table.addCell(valueCell);
     }
 
     @FXML

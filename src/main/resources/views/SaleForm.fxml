@@ -91,10 +91,13 @@
         </VBox>
 
         <!-- Right Panel - Payment and Summary -->
-        <VBox spacing="15" prefWidth="320" style="-fx-background-color: white; -fx-background-radius: 10; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 10, 0, 0, 2);">
-            <padding>
-                <Insets top="15" right="15" bottom="15" left="15"/>
-            </padding>
+        <ScrollPane prefWidth="320" fitToWidth="true" hbarPolicy="NEVER" vbarPolicy="AS_NEEDED"
+                    style="-fx-background-color: white; -fx-background: white; -fx-background-radius: 10; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 10, 0, 0, 2);">
+            <content>
+                <VBox spacing="15" style="-fx-background-color: white; -fx-background-radius: 10;">
+                    <padding>
+                        <Insets top="15" right="15" bottom="15" left="15"/>
+                    </padding>
 
             <!-- Payment Method -->
             <VBox spacing="8">
@@ -111,6 +114,14 @@
             <VBox spacing="8">
                 <Label text="عملة الدفع:" style="-fx-font-size: 14px; -fx-font-weight: bold;"/>
                 <ComboBox fx:id="currencyComboBox" prefWidth="150"/>
+            </VBox>
+
+            <VBox fx:id="exchangeRateBox" spacing="8" visible="false" managed="false">
+                <Label text="سعر الصرف:" style="-fx-font-size: 14px; -fx-font-weight: bold;"/>
+                <HBox spacing="10" alignment="CENTER_LEFT">
+                    <TextField fx:id="exchangeRateField" promptText="مثال: 1500" prefWidth="150" onKeyReleased="#handleExchangeRateChange"/>
+                    <Label text="دينار لكل دولار"/>
+                </HBox>
             </VBox>
 
             <Separator/>
@@ -174,10 +185,11 @@
             <Separator/>
 
             <!-- Notes -->
-            <VBox spacing="8">
-                <Label text="ملاحظات:" style="-fx-font-size: 14px; -fx-font-weight: bold;"/>
-                <TextArea fx:id="notesArea" promptText="أدخل أي ملاحظات..." prefRowCount="3"/>
-            </VBox>
+            <TitledPane text="📝 اكتب ملاحظة" expanded="false" collapsible="true">
+                <content>
+                    <TextArea fx:id="notesArea" promptText="أدخل أي ملاحظات..." prefRowCount="3"/>
+                </content>
+            </TitledPane>
 
             <!-- Action Buttons -->
             <VBox spacing="10" VBox.vgrow="ALWAYS" alignment="BOTTOM_CENTER">
@@ -186,6 +198,8 @@
                 <Button text="❌ إلغاء" onAction="#handleCancel" prefWidth="280" prefHeight="35"
                         style="-fx-background-color: #e74c3c; -fx-text-fill: white; -fx-font-size: 14px;"/>
             </VBox>
-        </VBox>
+                </VBox>
+            </content>
+        </ScrollPane>
     </HBox>
 </VBox>
