@@ -144,6 +144,9 @@
                                                 style="-fx-font-size: 14px; -fx-padding: 12 24; -fx-background-radius: 10; -fx-cursor: hand; -fx-background-color: #10b981; -fx-text-fill: white;"/>
                                         <Button text="📤 سند دفع" mnemonicParsing="false" onAction="#handlePaymentVoucher"
                                                 style="-fx-font-size: 14px; -fx-padding: 12 24; -fx-background-radius: 10; -fx-cursor: hand; -fx-background-color: #ef4444; -fx-text-fill: white;"/>
+                                        <Button text="📄 عرض الإيصالات" mnemonicParsing="false" onAction="#handleViewReceipts"
+                                                styleClass="button-secondary"
+                                                style="-fx-font-size: 14px; -fx-padding: 12 24; -fx-background-radius: 10; -fx-cursor: hand;"/>
                                     </HBox>
                                 </VBox>
 

@@ -37,6 +37,31 @@ public class AuthService {
             logger.error("Failed to ensure default admin exists", e);
         }
     }
+
+    public boolean verifyAdminPin(String pin) {
+        if (pin == null || pin.isBlank()) {
+            return false;
+        }
+
+        String hashedPin = hashPin(pin);
+        try (Session session = DatabaseManager.getSessionFactory().openSession()) {
+            Query<User> query = session.createQuery(
+                "FROM User u WHERE u.role = :role AND u.isActive = true",
+                User.class
+            );
+            query.setParameter("role", UserRole.ADMIN);
+            List<User> admins = query.list();
+            for (User admin : admins) {
+                if (admin != null && hashedPin.equals(admin.getPinHash())) {
+                    return true;
+                }
+            }
+            return false;
+        } catch (Exception e) {
+            logger.error("Failed to verify admin PIN", e);
+            return false;
+        }
+    }
     
     public Optional<User> authenticate(String username, String pin) {
         try (Session session = DatabaseManager.getSessionFactory().openSession()) {

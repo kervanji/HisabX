@@ -340,6 +340,57 @@ public class Repository<T> {
             super(Receipt.class);
         }
 
+        public void deleteByIdDirect(Long id) {
+            Transaction transaction = null;
+            try (Session session = DatabaseManager.getSessionFactory().openSession()) {
+                transaction = session.beginTransaction();
+                int deleted = session.createQuery("DELETE FROM Receipt WHERE id = :id")
+                        .setParameter("id", id)
+                        .executeUpdate();
+                if (deleted > 0) {
+                    logger.debug("Entity deleted: {}", Receipt.class.getSimpleName());
+                } else {
+                    logger.warn("Entity not found for deletion: {}", id);
+                }
+                transaction.commit();
+            } catch (Exception e) {
+                if (transaction != null) {
+                    try {
+                        transaction.rollback();
+                    } catch (Exception rollbackEx) {
+                        logger.error("Failed to rollback transaction", rollbackEx);
+                    }
+                }
+                logger.error("Failed to delete entity", e);
+                throw new RuntimeException("Failed to delete entity", e);
+            }
+        }
+
+        public void deleteByIdTransactional(Long id) {
+            Transaction transaction = null;
+            try (Session session = DatabaseManager.getSessionFactory().openSession()) {
+                transaction = session.beginTransaction();
+                Receipt receipt = session.get(Receipt.class, id);
+                if (receipt != null) {
+                    session.delete(receipt);
+                    logger.debug("Entity deleted: {}", Receipt.class.getSimpleName());
+                } else {
+                    logger.warn("Entity not found for deletion: {}", id);
+                }
+                transaction.commit();
+            } catch (Exception e) {
+                if (transaction != null) {
+                    try {
+                        transaction.rollback();
+                    } catch (Exception rollbackEx) {
+                        logger.error("Failed to rollback transaction", rollbackEx);
+                    }
+                }
+                logger.error("Failed to delete entity", e);
+                throw new RuntimeException("Failed to delete entity", e);
+            }
+        }
+
         public Optional<Receipt> findByIdWithDetails(Long id) {
             try (Session session = DatabaseManager.getSessionFactory().openSession()) {
                 Query<Receipt> query = session.createQuery(
@@ -404,10 +455,31 @@ public class Repository<T> {
 
         public long getNextReceiptNumberNumeric() {
             try (Session session = DatabaseManager.getSessionFactory().openSession()) {
-                Query<Long> query = session.createQuery("SELECT COALESCE(MAX(id), 0) FROM Receipt", Long.class);
-                Long maxId = query.uniqueResult();
-                long next = (maxId == null ? 0L : maxId) + 1L;
-                return next;
+                Query<String> query = session.createQuery(
+                    "SELECT r.receiptNumber FROM Receipt r",
+                    String.class
+                );
+                List<String> numbers = query.list();
+                long max = 0L;
+                if (numbers != null) {
+                    for (String n : numbers) {
+                        if (n == null) {
+                            continue;
+                        }
+                        String trimmed = n.trim();
+                        if (trimmed.isEmpty()) {
+                            continue;
+                        }
+                        try {
+                            long v = Long.parseLong(trimmed);
+                            if (v > max) {
+                                max = v;
+                            }
+                        } catch (NumberFormatException ignored) {
+                        }
+                    }
+                }
+                return max + 1L;
             } catch (Exception e) {
                 logger.error("Failed to generate next receipt number", e);
                 throw new RuntimeException("Failed to generate next receipt number", e);

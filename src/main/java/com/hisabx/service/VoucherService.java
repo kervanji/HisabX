@@ -250,7 +250,17 @@ public class VoucherService {
         String[] fontCandidates = new String[]{
             "C:\\Windows\\Fonts\\arial.ttf",
             "C:\\Windows\\Fonts\\tahoma.ttf",
-            "C:\\Windows\\Fonts\\arialuni.ttf"
+            "C:\\Windows\\Fonts\\arialuni.ttf",
+            "/System/Library/Fonts/Supplemental/Arial Unicode.ttf",
+            "/System/Library/Fonts/Supplemental/Diwan Kufi.ttc,0",
+            "/System/Library/Fonts/Supplemental/Damascus.ttc,0",
+            "/System/Library/Fonts/Supplemental/DecoTypeNaskh.ttc,0",
+            "/System/Library/Fonts/Supplemental/KufiStandardGK.ttc,0",
+            "/Library/Fonts/Arial Unicode.ttf",
+            "/usr/share/fonts/truetype/noto/NotoNaskhArabic-Regular.ttf",
+            "/usr/share/fonts/truetype/noto/NotoSansArabic-Regular.ttf",
+            "/usr/share/fonts/opentype/noto/NotoNaskhArabic-Regular.ttf",
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
         };
 
         for (String fontPath : fontCandidates) {

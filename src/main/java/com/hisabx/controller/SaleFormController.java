@@ -428,7 +428,7 @@ public class SaleFormController {
         productComboBox.setConverter(new StringConverter<>() {
             @Override
             public String toString(Product product) {
-                return product != null ? product.getName() + " (" + product.getProductCode() + ")" : "";
+                return product != null ? product.getName() : "";
             }
 
             @Override

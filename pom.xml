@@ -124,6 +124,7 @@
                 <configuration>
                     <source>17</source>
                     <target>17</target>
+                    <encoding>${project.build.sourceEncoding}</encoding>
                 </configuration>
             </plugin>
 
@@ -133,6 +134,12 @@
                 <version>0.0.8</version>
                 <configuration>
                     <mainClass>com.hisabx.MainApp</mainClass>
+                    <options>
+                        <option>-Dfile.encoding=UTF-8</option>
+                        <option>-Dsun.jnu.encoding=UTF-8</option>
+                        <option>-Dconsole.encoding=UTF-8</option>
+                        <option>-Djavafx.platform.encoding=UTF-8</option>
+                    </options>
                 </configuration>
             </plugin>
 
@@ -143,6 +150,16 @@
                 <configuration>
                     <mainClass>${exec.mainClass}</mainClass>
                     <commandlineArgs>${exec.args}</commandlineArgs>
+                    <systemProperties>
+                        <systemProperty>
+                            <key>file.encoding</key>
+                            <value>UTF-8</value>
+                        </systemProperty>
+                        <systemProperty>
+                            <key>sun.jnu.encoding</key>
+                            <value>UTF-8</value>
+                        </systemProperty>
+                    </systemProperties>
                 </configuration>
             </plugin>
 

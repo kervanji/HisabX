@@ -431,7 +431,11 @@ public class MainController {
                 "receipt-list",
                 "📄 الإيصالات",
                 "/views/ReceiptList.fxml",
-                (ReceiptListController controller) -> controller.setMainApp(mainApp)
+                (ReceiptListController controller) -> {
+                    controller.setMainApp(mainApp);
+                    controller.setTabMode(true);
+                    controller.setTabId("receipt-list");
+                }
         );
     }
     

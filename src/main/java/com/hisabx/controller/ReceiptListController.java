@@ -4,7 +4,9 @@ import com.hisabx.model.Receipt;
 import com.hisabx.model.Sale;
 import com.hisabx.model.Customer;
 import com.hisabx.service.CustomerService;
+import com.hisabx.service.AuthService;
 import com.hisabx.service.ReceiptService;
+import com.hisabx.util.TabManager;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -21,7 +23,11 @@ import java.io.File;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
 public class ReceiptListController {
     private static final Logger logger = LoggerFactory.getLogger(ReceiptListController.class);
@@ -29,30 +35,42 @@ public class ReceiptListController {
     @FXML private TextField searchField;
     @FXML private DatePicker fromDatePicker;
     @FXML private DatePicker toDatePicker;
-    @FXML private TableView<Receipt> receiptsTable;
-    @FXML private TableColumn<Receipt, String> receiptNumberColumn;
-    @FXML private TableColumn<Receipt, String> customerColumn;
-    @FXML private TableColumn<Receipt, String> dateColumn;
-    @FXML private TableColumn<Receipt, String> totalColumn;
-    @FXML private TableColumn<Receipt, String> printedColumn;
-    @FXML private TableColumn<Receipt, Void> actionsColumn;
+    @FXML private TreeTableView<ReceiptTreeRow> receiptsTable;
+    @FXML private TreeTableColumn<ReceiptTreeRow, String> receiptNumberColumn;
+    @FXML private TreeTableColumn<ReceiptTreeRow, String> customerColumn;
+    @FXML private TreeTableColumn<ReceiptTreeRow, String> dateColumn;
+    @FXML private TreeTableColumn<ReceiptTreeRow, String> totalColumn;
+    @FXML private TreeTableColumn<ReceiptTreeRow, String> printedColumn;
+    @FXML private TreeTableColumn<ReceiptTreeRow, Void> actionsColumn;
     @FXML private Label totalReceiptsLabel;
     @FXML private Label printedCountLabel;
     @FXML private Label todayCountLabel;
 
     private final ReceiptService receiptService;
     private final CustomerService customerService;
+    private final AuthService authService;
     private ObservableList<Receipt> allReceipts;
     private final DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
     private com.hisabx.MainApp mainApp;
+    private boolean tabMode = false;
+    private String tabId;
 
     public void setMainApp(com.hisabx.MainApp mainApp) {
         this.mainApp = mainApp;
     }
 
+    public void setTabMode(boolean tabMode) {
+        this.tabMode = tabMode;
+    }
+
+    public void setTabId(String tabId) {
+        this.tabId = tabId;
+    }
+
     public ReceiptListController() {
         this.receiptService = new ReceiptService();
         this.customerService = new CustomerService();
+        this.authService = new AuthService();
     }
 
     @FXML
@@ -63,28 +81,32 @@ public class ReceiptListController {
     }
 
     private void setupTable() {
-        receiptNumberColumn.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getReceiptNumber()));
-        customerColumn.setCellValueFactory(data -> {
-            Sale sale = data.getValue().getSale();
-            return new SimpleStringProperty(sale != null && sale.getCustomer() != null ? 
-                    sale.getCustomer().getName() : "-");
-        });
+        receiptNumberColumn.setCellValueFactory(data -> new SimpleStringProperty(
+                data.getValue() != null && data.getValue().getValue() != null
+                        ? data.getValue().getValue().getTreeText()
+                        : ""));
+        customerColumn.setCellValueFactory(data -> new SimpleStringProperty(
+                data.getValue() != null && data.getValue().getValue() != null
+                        ? data.getValue().getValue().getCustomerName()
+                        : ""));
         dateColumn.setCellValueFactory(data -> new SimpleStringProperty(
-                data.getValue().getReceiptDate() != null ? 
-                        data.getValue().getReceiptDate().format(dateFormatter) : "-"));
-        totalColumn.setCellValueFactory(data -> {
-            Sale sale = data.getValue().getSale();
-            Double total = sale != null ? sale.getFinalAmount() : null;
-            return new SimpleStringProperty(total != null ? String.format("%.2f", total) : "-");
-        });
+                data.getValue() != null && data.getValue().getValue() != null
+                        ? data.getValue().getValue().getDateText(dateFormatter)
+                        : ""));
+        totalColumn.setCellValueFactory(data -> new SimpleStringProperty(
+                data.getValue() != null && data.getValue().getValue() != null
+                        ? data.getValue().getValue().getTotalText()
+                        : ""));
         printedColumn.setCellValueFactory(data -> new SimpleStringProperty(
-                data.getValue().getIsPrinted() != null && data.getValue().getIsPrinted() ? "✓" : "✗"));
+                data.getValue() != null && data.getValue().getValue() != null
+                        ? data.getValue().getValue().getPrintedText()
+                        : ""));
 
-        printedColumn.setCellFactory(col -> new TableCell<>() {
+        printedColumn.setCellFactory(col -> new TreeTableCell<>() {
             @Override
             protected void updateItem(String printed, boolean empty) {
                 super.updateItem(printed, empty);
-                if (empty || printed == null) {
+                if (empty || printed == null || printed.isEmpty()) {
                     setText(null);
                     setStyle("");
                 } else {
@@ -98,7 +120,7 @@ public class ReceiptListController {
             }
         });
 
-        actionsColumn.setCellFactory(col -> new TableCell<>() {
+        actionsColumn.setCellFactory(col -> new TreeTableCell<>() {
             private final Button viewBtn = new Button("👁");
             private final Button printBtn = new Button("🖨");
             private final Button deleteBtn = new Button("🗑");
@@ -113,27 +135,61 @@ public class ReceiptListController {
                 printBtn.setTooltip(new Tooltip("طباعة"));
                 deleteBtn.setTooltip(new Tooltip("حذف"));
 
-                viewBtn.setOnAction(e -> handleViewReceipt(getTableView().getItems().get(getIndex())));
-                printBtn.setOnAction(e -> handlePrintReceipt(getTableView().getItems().get(getIndex())));
-                deleteBtn.setOnAction(e -> handleDeleteReceipt(getTableView().getItems().get(getIndex())));
+                viewBtn.setOnAction(e -> {
+                    Receipt r = getReceiptForCurrentRow();
+                    if (r != null) handleViewReceipt(r);
+                });
+                printBtn.setOnAction(e -> {
+                    Receipt r = getReceiptForCurrentRow();
+                    if (r != null) handlePrintReceipt(r);
+                });
+                deleteBtn.setOnAction(e -> {
+                    Receipt r = getReceiptForCurrentRow();
+                    if (r != null) handleDeleteReceipt(r);
+                });
+            }
+
+            private Receipt getReceiptForCurrentRow() {
+                TreeTableRow<ReceiptTreeRow> row = getTreeTableRow();
+                ReceiptTreeRow v = row != null ? row.getItem() : null;
+                return v != null && v.getType() == RowType.RECEIPT ? v.getReceipt() : null;
             }
 
             @Override
             protected void updateItem(Void item, boolean empty) {
                 super.updateItem(item, empty);
-                setGraphic(empty ? null : hbox);
+                if (empty) {
+                    setGraphic(null);
+                    return;
+                }
+                TreeTableRow<ReceiptTreeRow> row = getTreeTableRow();
+                ReceiptTreeRow v = row != null ? row.getItem() : null;
+                setGraphic(v != null && v.getType() == RowType.RECEIPT ? hbox : null);
             }
         });
 
         receiptsTable.setRowFactory(tv -> {
-            TableRow<Receipt> row = new TableRow<>();
+            TreeTableRow<ReceiptTreeRow> row = new TreeTableRow<>();
             row.setOnMouseClicked(event -> {
-                if (event.getClickCount() == 2 && (!row.isEmpty())) {
-                    handleViewReceipt(row.getItem());
+                if (row.isEmpty()) return;
+                ReceiptTreeRow v = row.getItem();
+                if (event.getClickCount() == 2) {
+                    if (v != null && v.getType() == RowType.RECEIPT && v.getReceipt() != null) {
+                        handleViewReceipt(v.getReceipt());
+                    }
+                    return;
+                }
+                if (event.getClickCount() == 1) {
+                    if (v != null && (v.getType() == RowType.CUSTOMER || v.getType() == RowType.PROJECT)) {
+                        TreeItem<ReceiptTreeRow> item = row.getTreeItem();
+                        if (item != null) item.setExpanded(!item.isExpanded());
+                    }
                 }
             });
             return row;
         });
+
+        receiptsTable.setShowRoot(false);
     }
 
     private void setupFilters() {
@@ -174,11 +230,15 @@ public class ReceiptListController {
                         String customerPhone = sale != null && sale.getCustomer() != null && sale.getCustomer().getPhoneNumber() != null
                             ? sale.getCustomer().getPhoneNumber().toLowerCase()
                             : "";
+                        String projectLocation = sale != null && sale.getProjectLocation() != null
+                            ? sale.getProjectLocation().toLowerCase()
+                            : "";
 
                         boolean matchesCustomer = customerName.contains(searchText);
                         boolean matchesPhone = customerPhone.contains(searchText);
+                        boolean matchesProject = projectLocation.contains(searchText);
 
-                        if (!matchesNumber && !matchesCustomer && !matchesPhone) return false;
+                        if (!matchesNumber && !matchesCustomer && !matchesPhone && !matchesProject) return false;
                     }
 
                     if (fromDate != null && receipt.getReceiptDate() != null) {
@@ -193,8 +253,64 @@ public class ReceiptListController {
                 })
                 .toList();
 
-        receiptsTable.setItems(FXCollections.observableArrayList(filtered));
+        receiptsTable.setRoot(buildTree(filtered));
         updateSummaryForFiltered(filtered);
+    }
+
+    private TreeItem<ReceiptTreeRow> buildTree(List<Receipt> receipts) {
+        TreeItem<ReceiptTreeRow> root = new TreeItem<>(ReceiptTreeRow.root());
+        if (receipts == null || receipts.isEmpty()) {
+            return root;
+        }
+
+        Map<Customer, Map<String, List<Receipt>>> grouped = new LinkedHashMap<>();
+        for (Receipt r : receipts) {
+            Sale sale = r.getSale();
+            Customer customer = sale != null ? sale.getCustomer() : null;
+            if (customer == null) {
+                continue;
+            }
+            String project = sale != null ? sale.getProjectLocation() : null;
+            if (project == null || project.trim().isEmpty()) {
+                project = "-";
+            }
+            grouped
+                    .computeIfAbsent(customer, k -> new LinkedHashMap<>())
+                    .computeIfAbsent(project, k -> new ArrayList<>())
+                    .add(r);
+        }
+
+        List<Map.Entry<Customer, Map<String, List<Receipt>>>> customers = new ArrayList<>(grouped.entrySet());
+        customers.sort(Comparator.comparing(e -> safeLower(e.getKey() != null ? e.getKey().getName() : null)));
+
+        for (Map.Entry<Customer, Map<String, List<Receipt>>> cEntry : customers) {
+            Customer c = cEntry.getKey();
+            TreeItem<ReceiptTreeRow> customerItem = new TreeItem<>(ReceiptTreeRow.customer(c));
+
+            List<Map.Entry<String, List<Receipt>>> projects = new ArrayList<>(cEntry.getValue().entrySet());
+            projects.sort(Comparator.comparing(e -> safeLower(e.getKey())));
+
+            for (Map.Entry<String, List<Receipt>> pEntry : projects) {
+                String project = pEntry.getKey();
+                TreeItem<ReceiptTreeRow> projectItem = new TreeItem<>(ReceiptTreeRow.project(c, project));
+
+                List<Receipt> pr = new ArrayList<>(pEntry.getValue());
+                pr.sort(Comparator.comparing((Receipt rr) -> rr.getReceiptDate() != null ? rr.getReceiptDate() : java.time.LocalDateTime.MIN).reversed());
+                for (Receipt r : pr) {
+                    projectItem.getChildren().add(new TreeItem<>(ReceiptTreeRow.receipt(r)));
+                }
+
+                customerItem.getChildren().add(projectItem);
+            }
+
+            root.getChildren().add(customerItem);
+        }
+
+        return root;
+    }
+
+    private String safeLower(String s) {
+        return s == null ? "" : s.toLowerCase();
     }
 
     private void updateSummary() {
@@ -296,12 +412,29 @@ public class ReceiptListController {
         alert.showAndWait().ifPresent(response -> {
             if (response == ButtonType.OK) {
                 try {
-                    if (receipt.getFilePath() != null) {
-                        File pdfFile = new File(receipt.getFilePath());
-                        if (pdfFile.exists()) {
-                            pdfFile.delete();
-                        }
+                    Dialog<String> pinDialog = new Dialog<>();
+                    pinDialog.setTitle("تأكيد الأدمن");
+                    pinDialog.setHeaderText("أدخل رمز PIN الأدمن لتأكيد الحذف");
+                    ButtonType okBtn = new ButtonType("تأكيد", ButtonBar.ButtonData.OK_DONE);
+                    pinDialog.getDialogPane().getButtonTypes().addAll(okBtn, ButtonType.CANCEL);
+
+                    PasswordField pinField = new PasswordField();
+                    pinField.setPromptText("PIN");
+                    pinDialog.getDialogPane().setContent(pinField);
+
+                    pinDialog.setResultConverter(btn -> btn == okBtn ? pinField.getText() : null);
+
+                    var pinResult = pinDialog.showAndWait();
+                    if (pinResult.isEmpty()) {
+                        return;
                     }
+
+                    String pin = pinResult.get();
+                    if (!authService.verifyAdminPin(pin)) {
+                        showError("غير مسموح", "رمز الأدمن غير صحيح");
+                        return;
+                    }
+
                     receiptService.deleteReceipt(receipt.getId());
                     loadReceipts();
                     showSuccess("تم الحذف", "تم حذف الوصل بنجاح");
@@ -504,6 +637,20 @@ public class ReceiptListController {
 
     @FXML
     private void handleClose() {
+        if (tabMode) {
+            if (tabId != null && !tabId.isBlank()) {
+                TabManager.getInstance().closeTab(tabId);
+                return;
+            }
+
+            if (TabManager.getInstance().getTabPane() != null) {
+                TabManager.getInstance().getTabPane().getTabs().remove(
+                        TabManager.getInstance().getTabPane().getSelectionModel().getSelectedItem()
+                );
+                return;
+            }
+        }
+
         Stage stage = (Stage) receiptsTable.getScene().getWindow();
         stage.close();
     }
@@ -530,5 +677,112 @@ public class ReceiptListController {
         alert.setHeaderText(null);
         alert.setContentText(message);
         alert.showAndWait();
+    }
+
+    private enum RowType {
+        ROOT,
+        CUSTOMER,
+        PROJECT,
+        RECEIPT
+    }
+
+    private static class ReceiptTreeRow {
+        private final RowType type;
+        private final Customer customer;
+        private final String project;
+        private final Receipt receipt;
+
+        private ReceiptTreeRow(RowType type, Customer customer, String project, Receipt receipt) {
+            this.type = type;
+            this.customer = customer;
+            this.project = project;
+            this.receipt = receipt;
+        }
+
+        public static ReceiptTreeRow root() {
+            return new ReceiptTreeRow(RowType.ROOT, null, null, null);
+        }
+
+        public static ReceiptTreeRow customer(Customer customer) {
+            return new ReceiptTreeRow(RowType.CUSTOMER, customer, null, null);
+        }
+
+        public static ReceiptTreeRow project(Customer customer, String project) {
+            return new ReceiptTreeRow(RowType.PROJECT, customer, project, null);
+        }
+
+        public static ReceiptTreeRow receipt(Receipt receipt) {
+            Sale sale = receipt != null ? receipt.getSale() : null;
+            Customer c = sale != null ? sale.getCustomer() : null;
+            String p = sale != null ? sale.getProjectLocation() : null;
+            return new ReceiptTreeRow(RowType.RECEIPT, c, p, receipt);
+        }
+
+        public RowType getType() {
+            return type;
+        }
+
+        public Receipt getReceipt() {
+            return receipt;
+        }
+
+        public String getTreeText() {
+            return switch (type) {
+                case CUSTOMER -> customer != null && customer.getName() != null ? customer.getName() : "-";
+                case PROJECT -> project != null && !project.trim().isEmpty() ? project : "-";
+                case RECEIPT -> receipt != null && receipt.getReceiptNumber() != null ? receipt.getReceiptNumber() : "-";
+                default -> "";
+            };
+        }
+
+        public String getCustomerName() {
+            if (type != RowType.RECEIPT) {
+                return "";
+            }
+            Sale sale = receipt != null ? receipt.getSale() : null;
+            Customer c = sale != null ? sale.getCustomer() : null;
+            return c != null && c.getName() != null ? c.getName() : "-";
+        }
+
+        public String getDateText(DateTimeFormatter formatter) {
+            if (type != RowType.RECEIPT || receipt == null || receipt.getReceiptDate() == null) {
+                return "";
+            }
+            return receipt.getReceiptDate().format(formatter);
+        }
+
+        public String getTotalText() {
+            if (type != RowType.RECEIPT || receipt == null) {
+                return "";
+            }
+            Sale sale = receipt.getSale();
+            Double total = sale != null ? sale.getFinalAmount() : null;
+            return total != null ? String.format("%.2f", total) : "-";
+        }
+
+        public String getPrintedText() {
+            if (type != RowType.RECEIPT || receipt == null) {
+                return "";
+            }
+            return receipt.getIsPrinted() != null && receipt.getIsPrinted() ? "✓" : "✗";
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (!(o instanceof ReceiptTreeRow that)) return false;
+            return type == that.type
+                    && Objects.equals(customer != null ? customer.getId() : null, that.customer != null ? that.customer.getId() : null)
+                    && Objects.equals(project, that.project)
+                    && Objects.equals(receipt != null ? receipt.getId() : null, that.receipt != null ? that.receipt.getId() : null);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(type,
+                    customer != null ? customer.getId() : null,
+                    project,
+                    receipt != null ? receipt.getId() : null);
+        }
     }
 }

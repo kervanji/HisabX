@@ -33,19 +33,19 @@
     </HBox>
 
     <!-- Receipts Table -->
-    <TableView fx:id="receiptsTable" VBox.vgrow="ALWAYS" style="-fx-background-color: white;">
+    <TreeTableView fx:id="receiptsTable" VBox.vgrow="ALWAYS" style="-fx-background-color: white;">
         <columns>
-            <TableColumn fx:id="receiptNumberColumn" text="رقم الوصل" prefWidth="120"/>
-            <TableColumn fx:id="customerColumn" text="العميل" prefWidth="160"/>
-            <TableColumn fx:id="dateColumn" text="التاريخ" prefWidth="140"/>
-            <TableColumn fx:id="totalColumn" text="المجموع" prefWidth="120"/>
-            <TableColumn fx:id="printedColumn" text="مطبوع" prefWidth="70"/>
-            <TableColumn fx:id="actionsColumn" text="الإجراءات" prefWidth="150"/>
+            <TreeTableColumn fx:id="receiptNumberColumn" text="العميل / المشروع / الوصل" prefWidth="220"/>
+            <TreeTableColumn fx:id="customerColumn" text="العميل" prefWidth="160"/>
+            <TreeTableColumn fx:id="dateColumn" text="التاريخ" prefWidth="140"/>
+            <TreeTableColumn fx:id="totalColumn" text="المجموع" prefWidth="120"/>
+            <TreeTableColumn fx:id="printedColumn" text="مطبوع" prefWidth="70"/>
+            <TreeTableColumn fx:id="actionsColumn" text="الإجراءات" prefWidth="150"/>
         </columns>
         <placeholder>
             <Label text="لا توجد وصولات"/>
         </placeholder>
-    </TableView>
+    </TreeTableView>
 
     <!-- Summary Footer -->
     <HBox spacing="30" alignment="CENTER" style="-fx-background-color: white; -fx-background-radius: 8; -fx-padding: 15;">

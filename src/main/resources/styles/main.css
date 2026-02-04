@@ -321,10 +321,10 @@
     -fx-border-width: 1px;
     border-width: 1px;
 
-    -fx-accent: #e5e7eb;
-    -fx-selection-bar: #e5e7eb;
-    -fx-selection-bar-non-focused: #e5e7eb;
-    -fx-selection-bar-text: -fx-text-primary;
+    -fx-accent: -fx-primary-light;
+    -fx-selection-bar: -fx-primary-color;
+    -fx-selection-bar-non-focused: -fx-primary-light;
+    -fx-selection-bar-text: #dbeafe;
 }
 
 .table-view .column-header {
@@ -352,43 +352,45 @@
 }
 
 .table-row-cell:selected {
-    -fx-background-color: #e5e7eb;
-    background-color: #e5e7eb;
-    -fx-text-fill: -fx-text-primary;
+    -fx-background-color: -fx-primary-color;
+    background-color: -fx-primary-color;
+    -fx-text-fill: #dbeafe;
 }
 
 .table-row-cell:filled:selected {
-    -fx-background-color: #e5e7eb;
-    background-color: #e5e7eb;
-    -fx-text-fill: -fx-text-primary;
+    -fx-background-color: -fx-primary-color;
+    background-color: -fx-primary-color;
+    -fx-text-fill: #dbeafe;
 }
 
 .table-view:focused .table-row-cell:filled:selected {
-    -fx-background-color: #e5e7eb;
-    background-color: #e5e7eb;
-    -fx-text-fill: -fx-text-primary;
+    -fx-background-color: -fx-primary-color;
+    background-color: -fx-primary-color;
+    -fx-text-fill: #dbeafe;
 }
 
 .table-row-cell:selected .table-cell {
-    -fx-background-color: #e5e7eb;
-    background-color: #e5e7eb;
+    -fx-background-color: -fx-primary-color;
+    background-color: -fx-primary-color;
+    -fx-text-fill: #dbeafe;
 }
 
 .table-view:focused .table-row-cell:selected .table-cell {
-    -fx-background-color: #e5e7eb;
-    background-color: #e5e7eb;
+    -fx-background-color: -fx-primary-color;
+    background-color: -fx-primary-color;
+    -fx-text-fill: #dbeafe;
 }
 
 .table-view .table-cell:filled:selected {
-    -fx-background-color: #e5e7eb;
-    background-color: #e5e7eb;
-    -fx-text-fill: -fx-text-primary;
+    -fx-background-color: -fx-primary-color;
+    background-color: -fx-primary-color;
+    -fx-text-fill: #dbeafe;
 }
 
 .table-view:focused .table-cell:filled:selected {
-    -fx-background-color: #e5e7eb;
-    background-color: #e5e7eb;
-    -fx-text-fill: -fx-text-primary;
+    -fx-background-color: -fx-primary-color;
+    background-color: -fx-primary-color;
+    -fx-text-fill: #dbeafe;
 }
 
 /* Scroll Bar Styling */
@@ -444,6 +446,18 @@
 .combo-box:focused {
     -fx-border-color: #3b82f6;
     border-color: #3b82f6;
+}
+
+.combo-box-popup .list-view {
+    -fx-selection-bar: -fx-primary-color;
+    -fx-selection-bar-non-focused: -fx-primary-light;
+    -fx-selection-bar-text: #dbeafe;
+}
+
+.combo-box-popup .list-cell:selected {
+    -fx-background-color: -fx-primary-color;
+    background-color: -fx-primary-color;
+    -fx-text-fill: #dbeafe;
 }
 
 /* Label Styling */
