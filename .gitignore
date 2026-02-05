@@ -1,6 +1,7 @@
 # outputs
 distribution/
 installer/
+installer-output/
 Compiler/
 target/
 
