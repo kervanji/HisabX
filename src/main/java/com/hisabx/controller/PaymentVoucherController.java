@@ -16,7 +16,6 @@ import javafx.fxml.Initializable;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
-import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.Modality;
@@ -43,6 +42,7 @@ public class PaymentVoucherController implements Initializable {
     @FXML private TextField discountAmountField;
     @FXML private Label amountInWordsLabel;
     @FXML private TextField descriptionField;
+    @FXML private TextArea notesArea;
     @FXML private Label previousBalanceLabel;
     @FXML private Label currentBalanceLabel;
     @FXML private Label balanceIqdLabel;
@@ -454,6 +454,9 @@ public class PaymentVoucherController implements Initializable {
             voucher.setNetAmount(amount - parseAmount(discountAmountField.getText()));
             voucher.setAmountInWords(amountInWordsLabel.getText());
             voucher.setDescription(descriptionField.getText());
+            if (notesArea != null && notesArea.getText() != null && !notesArea.getText().isEmpty()) {
+                voucher.setNotes(notesArea.getText());
+            }
             voucher.setCreatedBy(SessionManager.getInstance().getCurrentUser() != null ? 
                 SessionManager.getInstance().getCurrentUser().getDisplayName() : "System");
             
@@ -524,6 +527,9 @@ public class PaymentVoucherController implements Initializable {
         discountPercentField.setText("0");
         discountAmountField.setText("0");
         descriptionField.setText("");
+        if (notesArea != null) {
+            notesArea.setText("");
+        }
         amountInWordsLabel.setText("صفر");
         printCheckbox.setSelected(false);
         installmentCheckbox.setSelected(false);

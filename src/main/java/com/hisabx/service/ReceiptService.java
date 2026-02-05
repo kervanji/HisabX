@@ -49,6 +49,7 @@ public class ReceiptService {
     private final SaleReturnRepository returnRepository;
 
     private static final String PREF_BANNER_PATH = "receipt.banner.path";
+    private static final String PREF_LAST_RECEIPT_NUMBER = "receipt.last.number";
     
     // Company information
     private static final String APP_NAME = "HisabX";
@@ -950,7 +951,14 @@ public class ReceiptService {
     }
     
     private String generateReceiptNumber() {
-        return String.valueOf(receiptRepository.getNextReceiptNumberNumeric());
+        Preferences prefs = Preferences.userNodeForPackage(ReceiptService.class);
+        long lastUsed = prefs.getLong(PREF_LAST_RECEIPT_NUMBER, 0L);
+
+        long dbNext = receiptRepository.getNextReceiptNumberNumeric();
+        long next = Math.max(lastUsed + 1L, dbNext);
+
+        prefs.putLong(PREF_LAST_RECEIPT_NUMBER, next);
+        return String.valueOf(next);
     }
     
     private String getPaymentMethodArabic(String method) {

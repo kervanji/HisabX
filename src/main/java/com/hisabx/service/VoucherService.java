@@ -72,14 +72,18 @@ public class VoucherService {
     private byte[] generateVoucherPdf(Voucher voucher) throws DocumentException, IOException {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
 
-        final float bannerTargetHeight = 120f;
-        Document document = new Document(PageSize.A4, 30, 30, 30 + bannerTargetHeight, 30);
+        boolean isReceipt = voucher.getVoucherType() == VoucherType.RECEIPT;
+        // Use a visible banner height for all voucher types (previously 10f made payment banner a thin line)
+        float bannerTargetHeight = isReceipt ? 120f : 100f;
+        Rectangle pageSize = PageSize.A4;
+        float bottomMargin = isReceipt ? 40f : 20f;
+        Document document = new Document(pageSize, 20, 20, 20 + bannerTargetHeight, bottomMargin);
         PdfWriter writer = PdfWriter.getInstance(document, baos);
         document.open();
 
         BaseFont baseFont = loadArabicBaseFont();
         Font arabicFont = new Font(baseFont, 10, Font.NORMAL);
-        Font arabicBoldFont = new Font(baseFont, 12, Font.BOLD);
+        Font arabicBoldFont = new Font(baseFont, isReceipt ? 13 : 12, Font.BOLD);
         Font smallFont = new Font(baseFont, 9, Font.NORMAL);
 
         try {
@@ -87,7 +91,6 @@ public class VoucherService {
             if (banner != null) {
                 float pageWidth = document.getPageSize().getWidth();
                 float pageHeight = document.getPageSize().getHeight();
-
                 banner.scaleAbsolute(pageWidth, bannerTargetHeight);
                 banner.setAbsolutePosition(0f, pageHeight - bannerTargetHeight);
                 writer.getDirectContent().addImage(banner);
@@ -97,6 +100,12 @@ public class VoucherService {
         }
 
         document.add(new Paragraph(" ", arabicFont));
+
+        if (isReceipt) {
+            addReceiptVoucherLayout(document, voucher, arabicFont, arabicBoldFont, smallFont);
+            document.close();
+            return baos.toByteArray();
+        }
 
         PdfPTable infoTable = new PdfPTable(2);
         infoTable.setWidthPercentage(100);
@@ -129,7 +138,7 @@ public class VoucherService {
             "التاريخ والوقت: " + (voucher.getVoucherDate() != null ? voucher.getVoucherDate().format(fmt) : "-"),
             arabicFont
         ));
-        rightCell.addElement(new Phrase("بواسطة: " + (voucher.getCreatedBy() != null ? voucher.getCreatedBy() : "System"), arabicFont));
+        // Removed "بواسطة" per request
         infoTable.addCell(rightCell);
 
         document.add(infoTable);
@@ -189,11 +198,17 @@ public class VoucherService {
         PdfPTable inner = new PdfPTable(2);
         inner.setWidthPercentage(100);
         inner.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
-        addTotalRow(inner, "المبلغ", formatCurrency(voucher.getAmount(), voucher.getCurrency()), arabicFont, arabicBoldFont);
+        double itemsTotal = getItemsTotal(voucher);
+        double netAmount = voucher.getNetAmount() != null ? voucher.getNetAmount() : itemsTotal;
+        double paidAmount = voucher.getAmount() != null ? voucher.getAmount() : 0.0;
+        double remainingAmount = Math.max(netAmount - paidAmount, 0);
+
+        addTotalRow(inner, "إجمالي المواد", formatCurrency(itemsTotal, voucher.getCurrency()), arabicFont, arabicBoldFont);
         if (voucher.getDiscountAmount() != null && voucher.getDiscountAmount() > 0) {
             addTotalRow(inner, "الخصم", formatCurrency(voucher.getDiscountAmount(), voucher.getCurrency()), arabicFont, arabicBoldFont);
         }
-        addTotalRow(inner, "الصافي", formatCurrency(voucher.getNetAmount(), voucher.getCurrency()), arabicBoldFont, arabicBoldFont);
+        addTotalRow(inner, "المدفوع", formatCurrency(paidAmount, voucher.getCurrency()), arabicFont, arabicBoldFont);
+        addTotalRow(inner, "المتبقي", formatCurrency(remainingAmount, voucher.getCurrency()), arabicFont, arabicBoldFont);
 
         summaryCell.addElement(inner);
         totals.addCell(summaryCell);
@@ -202,6 +217,113 @@ public class VoucherService {
 
         document.close();
         return baos.toByteArray();
+    }
+
+    private void addReceiptVoucherLayout(Document document,
+                                         Voucher voucher,
+                                         Font arabicFont,
+                                         Font arabicBoldFont,
+                                         Font smallFont) throws DocumentException {
+        PdfPTable titleTable = new PdfPTable(1);
+        titleTable.setWidthPercentage(100);
+        titleTable.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+        PdfPCell titleCell = new PdfPCell(new Phrase("سند قبض", arabicBoldFont));
+        titleCell.setBorder(PdfPCell.NO_BORDER);
+        titleCell.setHorizontalAlignment(Element.ALIGN_CENTER);
+        titleCell.setPaddingBottom(8f);
+        titleTable.addCell(titleCell);
+        document.add(titleTable);
+
+        PdfPTable info = new PdfPTable(2);
+        info.setWidthPercentage(100);
+        info.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+        info.setWidths(new float[]{1.1f, 0.9f});
+        info.setSpacingAfter(6f);
+
+        // Right block: voucher meta
+        PdfPCell meta = new PdfPCell();
+        meta.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+        meta.setPadding(6f);
+        meta.setBackgroundColor(new BaseColor(232, 245, 233));
+        meta.addElement(new Phrase("رقم السند: " + safe(voucher.getVoucherNumber()), arabicFont));
+        DateTimeFormatter dateFmt = DateTimeFormatter.ofPattern("yyyy/MM/dd");
+        DateTimeFormatter timeFmt = DateTimeFormatter.ofPattern("hh:mm a");
+        meta.addElement(new Phrase("التاريخ: " + (voucher.getVoucherDate() != null ? voucher.getVoucherDate().format(dateFmt) : "-"), arabicFont));
+        meta.addElement(new Phrase("الوقت: " + (voucher.getVoucherDate() != null ? voucher.getVoucherDate().format(timeFmt) : "-"), arabicFont));
+        info.addCell(meta);
+
+        // Left block: account info
+        PdfPCell account = new PdfPCell();
+        account.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+        account.setPadding(6f);
+        String accountName = voucher.getCustomer() != null && voucher.getCustomer().getName() != null ? voucher.getCustomer().getName() : "نقدي";
+        String projectName = voucher.getProjectName();
+        String accountWithProject = accountName + ((projectName != null && !projectName.trim().isEmpty()) ? " / " + projectName.trim() : "");
+        account.addElement(new Phrase("الحساب: " + accountWithProject, arabicFont));
+        account.addElement(new Phrase("العملة: " + safe(voucher.getCurrency()), arabicFont));
+        info.addCell(account);
+
+        document.add(info);
+
+        double net = voucher.getNetAmount() != null ? voucher.getNetAmount() : 0.0;
+        boolean isUsd = "دولار".equals(voucher.getCurrency()) || "USD".equalsIgnoreCase(voucher.getCurrency());
+        double customerBalance = 0.0;
+        if (voucher.getCustomer() != null) {
+            customerBalance = isUsd
+                    ? (voucher.getCustomer().getBalanceUsd() != null ? voucher.getCustomer().getBalanceUsd() : 0.0)
+                    : (voucher.getCustomer().getBalanceIqd() != null ? voucher.getCustomer().getBalanceIqd() : 0.0);
+        }
+        double previousBalance = customerBalance - net;
+
+        PdfPTable body = new PdfPTable(2);
+        body.setWidthPercentage(100);
+        body.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+        body.setWidths(new float[]{0.75f, 0.25f});
+        body.setSpacingBefore(4f);
+
+        double itemsTotal = getItemsTotal(voucher);
+        double netAmount = voucher.getNetAmount() != null ? voucher.getNetAmount() : itemsTotal;
+        double paidAmount = voucher.getAmount() != null ? voucher.getAmount() : 0.0;
+        double remainingAmount = Math.max(netAmount - paidAmount, 0);
+        addLabeledRow(body, "استلمنا من السيد", accountWithProject, arabicFont, arabicBoldFont);
+        addLabeledRow(body, "إجمالي المواد", formatCurrency(itemsTotal, voucher.getCurrency()), arabicFont, arabicBoldFont);
+        addLabeledRow(body, "المدفوع", formatCurrency(paidAmount, voucher.getCurrency()), arabicFont, arabicBoldFont);
+        addLabeledRow(body, "المتبقي", formatCurrency(remainingAmount, voucher.getCurrency()), arabicFont, arabicBoldFont);
+        addLabeledRow(body, "المبلغ كتابةً", safe(voucher.getAmountInWords()), arabicFont, arabicBoldFont);
+        addLabeledRow(body, "البيان", safe(voucher.getDescription()), arabicFont, arabicBoldFont);
+        addLabeledRow(body, "ملاحظات", safe(voucher.getNotes()), arabicFont, arabicBoldFont);
+        addLabeledRow(body, "المبلغ السابق", formatCurrency(Math.abs(previousBalance), voucher.getCurrency()), arabicFont, arabicBoldFont);
+        addLabeledRow(body, "المبلغ الحالي", formatCurrency(Math.abs(customerBalance), voucher.getCurrency()), arabicFont, arabicBoldFont);
+
+        document.add(body);
+    }
+
+    private void addLabeledRow(PdfPTable table, String label, String value, Font labelFont, Font valueFont) {
+        PdfPCell labelCell = new PdfPCell(new Phrase(label, labelFont));
+        labelCell.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+        labelCell.setPadding(6f);
+        labelCell.setBackgroundColor(new BaseColor(245, 245, 245));
+        table.addCell(labelCell);
+
+        PdfPCell valueCell = new PdfPCell(new Phrase(value != null ? value : "-", valueFont));
+        valueCell.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+        valueCell.setPadding(6f);
+        valueCell.setHorizontalAlignment(Element.ALIGN_LEFT);
+        table.addCell(valueCell);
+    }
+
+    private PdfPCell signatureCell(String title, Font font) {
+        PdfPCell cell = new PdfPCell();
+        cell.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+        cell.setPadding(10f);
+        cell.setMinimumHeight(40f);
+        cell.addElement(new Phrase(title + ":", font));
+        cell.addElement(new Phrase("\n\n", font));
+        return cell;
+    }
+
+    private String safe(String val) {
+        return val != null && !val.trim().isEmpty() ? val : "-";
     }
 
     private void addHeaderCell(PdfPTable table, String text, Font font) {
@@ -244,6 +366,52 @@ public class VoucherService {
     private String formatCurrency(Double amount, String currency) {
         String symbol = "دينار".equals(currency) ? "د.ع" : "$";
         return formatAmount(amount) + " " + symbol;
+    }
+
+    /**
+     * مجموع مواد السند (total_price أو quantity * unit_price لكل مادة)
+     */
+    private double getItemsTotal(Voucher voucher) {
+        if (voucher == null || voucher.getItems() == null) return 0.0;
+        double sum = 0.0;
+        for (VoucherItem item : voucher.getItems()) {
+            if (item == null) continue;
+            if (item.getTotalPrice() != null) {
+                sum += item.getTotalPrice();
+            } else if (item.getQuantity() != null && item.getUnitPrice() != null) {
+                sum += item.getQuantity() * item.getUnitPrice();
+            }
+        }
+        return sum;
+    }
+
+    /**
+     * Determines the amount to show in PDF totals.
+     * If voucher items exist, use their summed total_price; otherwise fall back to net amount, then amount.
+     */
+    private double getDisplayAmount(Voucher voucher) {
+        if (voucher != null && voucher.getItems() != null && !voucher.getItems().isEmpty()) {
+            double sum = 0.0;
+            for (VoucherItem item : voucher.getItems()) {
+                if (item == null) continue;
+                if (item.getTotalPrice() != null) {
+                    sum += item.getTotalPrice();
+                } else if (item.getQuantity() != null && item.getUnitPrice() != null) {
+                    sum += item.getQuantity() * item.getUnitPrice();
+                }
+            }
+            if (sum > 0) return sum;
+        }
+
+        if (voucher != null) {
+            if (voucher.getNetAmount() != null) {
+                return voucher.getNetAmount();
+            }
+            if (voucher.getAmount() != null) {
+                return voucher.getAmount();
+            }
+        }
+        return 0.0;
     }
 
     private BaseFont loadArabicBaseFont() throws DocumentException, IOException {
@@ -495,6 +663,19 @@ public class VoucherService {
             return query.list();
         }
     }
+
+    // الحصول على أسماء المشاريع المميزة
+    public List<String> getDistinctProjectNames() {
+        try (Session session = DatabaseManager.getSessionFactory().openSession()) {
+            Query<String> query = session.createQuery(
+                "SELECT DISTINCT v.projectName FROM Voucher v WHERE v.projectName IS NOT NULL AND v.projectName <> '' ORDER BY v.projectName",
+                String.class);
+            return query.list();
+        } catch (Exception e) {
+            logger.error("Failed to get distinct project names", e);
+            return Collections.emptyList();
+        }
+    }
     
     // الحصول على سند بالرقم
     public Optional<Voucher> getVoucherByNumber(String voucherNumber) {
@@ -617,6 +798,11 @@ public class VoucherService {
     
     // البحث في السندات
     public List<Voucher> searchVouchers(String searchTerm, VoucherType type, LocalDateTime from, LocalDateTime to) {
+        return searchVouchers(searchTerm, type, from, to, null, null);
+    }
+
+    public List<Voucher> searchVouchers(String searchTerm, VoucherType type, LocalDateTime from, LocalDateTime to,
+                                        String projectName, Long customerId) {
         try (Session session = DatabaseManager.getSessionFactory().openSession()) {
             StringBuilder hql = new StringBuilder("FROM Voucher v WHERE v.isCancelled = false ");
             
@@ -628,6 +814,12 @@ public class VoucherService {
             }
             if (searchTerm != null && !searchTerm.isEmpty()) {
                 hql.append("AND (v.voucherNumber LIKE :search OR v.description LIKE :search OR v.customer.name LIKE :search) ");
+            }
+            if (projectName != null && !projectName.isBlank()) {
+                hql.append("AND v.projectName LIKE :projectName ");
+            }
+            if (customerId != null) {
+                hql.append("AND v.customer.id = :customerId ");
             }
             hql.append("ORDER BY v.createdAt DESC");
             
@@ -643,6 +835,12 @@ public class VoucherService {
             if (searchTerm != null && !searchTerm.isEmpty()) {
                 query.setParameter("search", "%" + searchTerm + "%");
             }
+            if (projectName != null && !projectName.isBlank()) {
+                query.setParameter("projectName", "%" + projectName.trim() + "%");
+            }
+            if (customerId != null) {
+                query.setParameter("customerId", customerId);
+            }
             
             return query.list();
         }
@@ -651,16 +849,20 @@ public class VoucherService {
     // ========== Helper Methods ==========
     
     private void calculateNetAmount(Voucher voucher) {
-        double amount = voucher.getAmount() != null ? voucher.getAmount() : 0;
+        double itemsTotal = getItemsTotal(voucher);
+        double base = itemsTotal > 0 ? itemsTotal : (voucher.getAmount() != null ? voucher.getAmount() : 0.0);
+
         double discountPercent = voucher.getDiscountPercentage() != null ? voucher.getDiscountPercentage() : 0;
         double discountAmount = voucher.getDiscountAmount() != null ? voucher.getDiscountAmount() : 0;
-        
+
         if (discountPercent > 0) {
-            discountAmount = amount * discountPercent / 100;
+            discountAmount = base * discountPercent / 100;
             voucher.setDiscountAmount(discountAmount);
         }
-        
-        voucher.setNetAmount(amount - discountAmount);
+
+        double net = base - discountAmount;
+        voucher.setNetAmount(net);
+        // لا نغير amount هنا؛ يبقى مدفوع المستخدم (مثلاً دفعة جزئية)
     }
     
     private void updateCustomerBalance(Voucher voucher) {

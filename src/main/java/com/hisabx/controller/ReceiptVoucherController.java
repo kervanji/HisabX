@@ -17,6 +17,8 @@ import javafx.scene.layout.VBox;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.util.StringConverter;
+import javafx.beans.property.SimpleStringProperty;
+import javafx.collections.transformation.FilteredList;
 
 import java.io.File;
 import java.nio.charset.StandardCharsets;
@@ -24,6 +26,7 @@ import java.net.URL;
 import java.text.DecimalFormat;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.ResourceBundle;
 
@@ -38,6 +41,8 @@ public class ReceiptVoucherController implements Initializable {
     @FXML private TextField discountAmountField;
     @FXML private Label amountInWordsLabel;
     @FXML private TextField descriptionField;
+    @FXML private ComboBox<String> projectNameField;
+    @FXML private TextArea notesArea;
     @FXML private Label previousBalanceLabel;
     @FXML private Label currentBalanceLabel;
     @FXML private Label balanceIqdLabel;
@@ -45,6 +50,12 @@ public class ReceiptVoucherController implements Initializable {
     @FXML private Label lastPaymentLabel;
     @FXML private CheckBox printCheckbox;
     @FXML private VBox otherCurrenciesBox;
+    @FXML private TableView<PreviousVoucherRow> previousVouchersTable;
+    @FXML private TableColumn<PreviousVoucherRow, String> pvNumberColumn;
+    @FXML private TableColumn<PreviousVoucherRow, String> pvDateColumn;
+    @FXML private TableColumn<PreviousVoucherRow, String> pvAmountColumn;
+    @FXML private TableColumn<PreviousVoucherRow, String> pvProjectColumn;
+    @FXML private TableColumn<PreviousVoucherRow, String> pvRemainingColumn;
     
     private final VoucherService voucherService = new VoucherService();
     private final CustomerService customerService = new CustomerService();
@@ -54,11 +65,57 @@ public class ReceiptVoucherController implements Initializable {
     private ObservableList<Customer> customers;
     private Customer selectedCustomer;
 
+    private ObservableList<PreviousVoucherRow> previousVoucherSource;
+    private FilteredList<PreviousVoucherRow> previousVoucherRows;
+
     private boolean tabMode = false;
     private String tabId;
 
     public void setTabMode(boolean tabMode) {
         this.tabMode = tabMode;
+    }
+
+    private void loadPreviousVouchers() {
+        if (previousVoucherSource == null) {
+            return;
+        }
+        previousVoucherSource.clear();
+
+        if (selectedCustomer == null || selectedCustomer.getId() == null) {
+            return;
+        }
+
+        String currency = amountCurrencyCombo != null ? amountCurrencyCombo.getValue() : "دينار";
+        boolean isUsd = "دولار".equals(currency);
+        double currentBalance = isUsd ? selectedCustomer.getBalanceUsd() : selectedCustomer.getBalanceIqd();
+
+        List<Voucher> vouchers = voucherService.getVouchersByCustomerAndType(selectedCustomer.getId(), VoucherType.RECEIPT);
+        if (vouchers == null || vouchers.isEmpty()) {
+            return;
+        }
+
+        vouchers = vouchers.stream()
+                .filter(v -> v != null && currency.equals(v.getCurrency()))
+                .toList();
+
+        double running = currentBalance;
+        for (Voucher v : vouchers.stream().limit(50).toList()) {
+            String dateText = v.getVoucherDate() != null ? v.getVoucherDate().toLocalDate().toString() : "-";
+            String amountText = numberFormat.format(v.getNetAmount() != null ? v.getNetAmount() : 0.0) + (isUsd ? " $" : " د.ع");
+            String remainingText = numberFormat.format(running) + (isUsd ? " $" : " د.ع");
+            String projectText = v.getProjectName() != null ? v.getProjectName() : "";
+
+            previousVoucherSource.add(new PreviousVoucherRow(
+                    v.getVoucherNumber() != null ? v.getVoucherNumber() : "-",
+                    dateText,
+                    amountText,
+                    projectText,
+                    remainingText
+            ));
+
+            double net = v.getNetAmount() != null ? v.getNetAmount() : 0.0;
+            running -= net;
+        }
     }
 
     public void setTabId(String tabId) {
@@ -69,8 +126,25 @@ public class ReceiptVoucherController implements Initializable {
     public void initialize(URL url, ResourceBundle resourceBundle) {
         setupForm();
         loadCustomers();
+        setupPreviousVouchersTable();
         setupListeners();
         handleNew();
+    }
+
+    private void setupPreviousVouchersTable() {
+        if (previousVouchersTable == null) {
+            return;
+        }
+
+        pvNumberColumn.setCellValueFactory(d -> new SimpleStringProperty(d.getValue().voucherNumber));
+        pvDateColumn.setCellValueFactory(d -> new SimpleStringProperty(d.getValue().dateText));
+        pvAmountColumn.setCellValueFactory(d -> new SimpleStringProperty(d.getValue().amountText));
+        pvProjectColumn.setCellValueFactory(d -> new SimpleStringProperty(d.getValue().projectText));
+        pvRemainingColumn.setCellValueFactory(d -> new SimpleStringProperty(d.getValue().remainingText));
+
+        previousVoucherSource = FXCollections.observableArrayList();
+        previousVoucherRows = new FilteredList<>(previousVoucherSource, r -> true);
+        previousVouchersTable.setItems(previousVoucherRows);
     }
     
     private void setupForm() {
@@ -108,8 +182,18 @@ public class ReceiptVoucherController implements Initializable {
         customerCombo.valueProperty().addListener((obs, oldVal, newVal) -> {
             selectedCustomer = newVal;
             updateCustomerBalanceDisplay();
+            updateProjectDropdown();
             updateDescription();
+            loadPreviousVouchers();
         });
+
+        if (projectNameField != null) {
+            projectNameField.valueProperty().addListener((obs, o, n) -> updateDescription());
+            if (projectNameField.getEditor() != null) {
+                projectNameField.getEditor().textProperty().addListener((obs, o, n) -> updateDescription());
+            }
+        }
+
         
         // Amount change listener
         amountField.textProperty().addListener((obs, oldVal, newVal) -> {
@@ -175,9 +259,44 @@ public class ReceiptVoucherController implements Initializable {
     
     private void updateDescription() {
         if (selectedCustomer != null) {
-            descriptionField.setText("قبض من حساب .. " + selectedCustomer.getName());
+            String project = null;
+            if (projectNameField != null) {
+                project = projectNameField.getValue();
+                if ((project == null || project.isBlank()) && projectNameField.getEditor() != null) {
+                    project = projectNameField.getEditor().getText();
+                }
+            }
+            String projectPart = project != null && !project.trim().isEmpty() ? " / " + project.trim() : "";
+            descriptionField.setText("قبض من حساب .. " + selectedCustomer.getName() + projectPart);
         } else {
             descriptionField.setText("");
+        }
+    }
+
+    private void updateProjectDropdown() {
+        if (projectNameField == null) {
+            return;
+        }
+        projectNameField.getItems().clear();
+
+        if (selectedCustomer == null) {
+            projectNameField.setValue(null);
+            return;
+        }
+
+        String locationsText = selectedCustomer.getProjectLocation();
+        if (locationsText == null || locationsText.trim().isEmpty()) {
+            projectNameField.setValue(null);
+            return;
+        }
+
+        List<String> locations = locationsText.lines()
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .toList();
+        projectNameField.setItems(FXCollections.observableArrayList(locations));
+        if (locations.size() == 1) {
+            projectNameField.setValue(locations.get(0));
         }
     }
     
@@ -286,7 +405,8 @@ public class ReceiptVoucherController implements Initializable {
             Voucher voucher = new Voucher();
             voucher.setVoucherType(VoucherType.RECEIPT);
             voucher.setVoucherNumber(voucherNumberField.getText());
-            voucher.setVoucherDate(voucherDatePicker.getValue().atStartOfDay());
+            LocalDate voucherDay = voucherDatePicker.getValue() != null ? voucherDatePicker.getValue() : LocalDate.now();
+            voucher.setVoucherDate(LocalDateTime.of(voucherDay, LocalTime.now()));
             voucher.setCurrency(amountCurrencyCombo.getValue());
             voucher.setExchangeRate(1.0);
             voucher.setCustomer(selectedCustomer);
@@ -297,6 +417,15 @@ public class ReceiptVoucherController implements Initializable {
             voucher.setNetAmount(amount - parseAmount(discountAmountField.getText()));
             voucher.setAmountInWords(amountInWordsLabel.getText());
             voucher.setDescription(descriptionField.getText());
+            String projectName = null;
+            if (projectNameField != null) {
+                projectName = projectNameField.getValue();
+                if ((projectName == null || projectName.isBlank()) && projectNameField.getEditor() != null) {
+                    projectName = projectNameField.getEditor().getText();
+                }
+            }
+            voucher.setProjectName(projectName);
+            voucher.setNotes(notesArea != null ? notesArea.getText() : null);
             voucher.setCreatedBy(SessionManager.getInstance().getCurrentUser() != null ? 
                 SessionManager.getInstance().getCurrentUser().getDisplayName() : "System");
             
@@ -358,6 +487,15 @@ public class ReceiptVoucherController implements Initializable {
         discountPercentField.setText("0");
         discountAmountField.setText("0");
         descriptionField.setText("");
+        if (projectNameField != null) {
+            projectNameField.setValue(null);
+            if (projectNameField.getEditor() != null) {
+                projectNameField.getEditor().setText("");
+            }
+        }
+        if (notesArea != null) {
+            notesArea.setText("");
+        }
         amountInWordsLabel.setText("صفر");
         printCheckbox.setSelected(false);
         
@@ -400,18 +538,40 @@ public class ReceiptVoucherController implements Initializable {
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/views/VoucherList.fxml"));
             Parent root = loader.load();
-            
+
             VoucherListController controller = loader.getController();
             controller.setVoucherType(VoucherType.RECEIPT);
-            
+            if (selectedCustomer != null && selectedCustomer.getName() != null) {
+                controller.setInitialSearchTerm(selectedCustomer.getName());
+            }
+
             Stage stage = new Stage();
             stage.setTitle("سندات القبض السابقة");
             stage.setScene(new Scene(root));
             stage.initModality(Modality.APPLICATION_MODAL);
             stage.show();
-            
         } catch (Exception e) {
             showAlert(Alert.AlertType.ERROR, "خطأ", "فشل في فتح قائمة السندات");
+        }
+    }
+
+    private static class PreviousVoucherRow {
+        final String voucherNumber;
+        final String dateText;
+        final String amountText;
+        final String projectText;
+        final String remainingText;
+
+        private PreviousVoucherRow(String voucherNumber,
+                                   String dateText,
+                                   String amountText,
+                                   String projectText,
+                                   String remainingText) {
+            this.voucherNumber = voucherNumber;
+            this.dateText = dateText;
+            this.amountText = amountText;
+            this.projectText = projectText;
+            this.remainingText = remainingText;
         }
     }
     

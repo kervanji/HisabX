@@ -10,6 +10,7 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.ResultSet;
 
 public class DatabaseManager {
     private static final Logger logger = LoggerFactory.getLogger(DatabaseManager.class);
@@ -45,8 +46,33 @@ public class DatabaseManager {
             
             // Apply lightweight migrations for existing databases
             applyMigrations(stmt);
+
+            // Ensure database integrity and repair corrupted indexes without deleting data
+            runIntegrityCheckAndRepair(conn);
             
             logger.info("SQLite database initialized: {}", dbFile.getAbsolutePath());
+        }
+    }
+
+    /**
+     * Runs PRAGMA integrity_check and attempts non-destructive repair if corruption is detected.
+     * We only reindex and vacuum; no data is dropped.
+     */
+    private static void runIntegrityCheckAndRepair(Connection conn) {
+        try (Statement stmt = conn.createStatement()) {
+            try (ResultSet rs = stmt.executeQuery("PRAGMA integrity_check")) {
+                if (rs.next()) {
+                    String result = rs.getString(1);
+                    if (result != null && !"ok".equalsIgnoreCase(result.trim())) {
+                        logger.warn("SQLite integrity check reported issues: {}. Attempting REINDEX and VACUUM.", result);
+                        stmt.execute("REINDEX;");
+                        stmt.execute("VACUUM;");
+                        logger.info("SQLite REINDEX and VACUUM completed after integrity issues.");
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            logger.error("Failed to run SQLite integrity check/repair", e);
         }
     }
     
@@ -61,6 +87,13 @@ public class DatabaseManager {
         // Add paid_amount to sales table if missing
         try {
             stmt.execute("ALTER TABLE sales ADD COLUMN paid_amount REAL DEFAULT 0");
+        } catch (SQLException ignored) {
+            // Column already exists or table missing; ignore
+        }
+
+        // Add project_name to vouchers table if missing
+        try {
+            stmt.execute("ALTER TABLE vouchers ADD COLUMN project_name TEXT");
         } catch (SQLException ignored) {
             // Column already exists or table missing; ignore
         }

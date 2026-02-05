@@ -3,7 +3,7 @@
 ; Non-commercial use only
 
 #define MyAppName "HisabX"
-#define MyAppVersion "1.0.0"
+#define MyAppVersion "1.0.5"
 #define MyAppPublisher "KervanjiHolding"
 #define MyAppURL "https://www.KervanjiHolding.com/"
 #define MyAppExeName "HisabX.exe"

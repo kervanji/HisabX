@@ -53,6 +53,35 @@ public final class UpdateInstallerLauncher {
         }
     }
 
+    public static void launchInstaller(Path installerExe) {
+        if (installerExe == null) {
+            throw new IllegalArgumentException("installerExe is null");
+        }
+
+        try {
+            String silentArgs = "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART";
+
+            String batName = "hisabx_update_" + UUID.randomUUID() + ".bat";
+            Path bat = Path.of(System.getProperty("java.io.tmpdir"), batName);
+
+            String script = "@echo off\r\n"
+                    + "setlocal\r\n"
+                    + "timeout /t 2 /nobreak >nul\r\n"
+                    + "powershell -NoProfile -ExecutionPolicy Bypass -Command \"Start-Process -FilePath '" + escapeForPowerShell(installerExe.toString()) + "' -ArgumentList '" + silentArgs + "' -Verb RunAs\"\r\n"
+                    + "del \"%~f0\"\r\n";
+
+            Files.writeString(bat, script, StandardCharsets.UTF_8);
+
+            new ProcessBuilder("cmd.exe", "/c", bat.toString())
+                    .inheritIO()
+                    .start();
+
+        } catch (IOException e) {
+            logger.error("Failed to launch installer", e);
+            throw new RuntimeException(e);
+        }
+    }
+
     private static String escapeForPowerShell(String s) {
         return s.replace("'", "''");
     }

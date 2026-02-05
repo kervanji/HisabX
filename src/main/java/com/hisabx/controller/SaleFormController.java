@@ -205,7 +205,7 @@ public class SaleFormController {
 
         // Force single selection (and prevent clearing selection)
         if (paymentGroup.getSelectedToggle() == null) {
-            cashRadio.setSelected(true);
+            creditRadio.setSelected(true); // default to دين (دين)
         }
 
         if (paidAmountField != null) {
@@ -922,7 +922,7 @@ public class SaleFormController {
     }
 
     private void setupDefaults() {
-        cashRadio.setSelected(true);
+        creditRadio.setSelected(true); // default to دين (دين)
         quantityField.setText("1");
         additionalDiscountField.setText("0");
     }
@@ -1263,7 +1263,7 @@ public class SaleFormController {
         balanceStatusLabel.setText("");
         notesArea.clear();
         if (paymentGroup != null) {
-            paymentGroup.selectToggle(cashRadio);
+            paymentGroup.selectToggle(creditRadio); // reset to دين
         }
     }
 

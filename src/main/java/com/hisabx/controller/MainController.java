@@ -66,6 +66,7 @@ public class MainController {
     @FXML private Label updateStatusLabel;
     @FXML private ProgressIndicator updateProgress;
     @FXML private Button updateButton;
+    @FXML private Button checkUpdateButton;
     @FXML private MenuItem userManagementMenuItem;
     @FXML private MenuItem salesReportMenuItem;
     @FXML private MenuItem settingsMenuItem;
@@ -113,7 +114,7 @@ public class MainController {
                 if (err != null) {
                     logger.warn("Update check failed", err);
                     if (updateStatusLabel != null) {
-                        updateStatusLabel.setText("");
+                        updateStatusLabel.setText("تعذر فحص التحديثات");
                     }
                     if (updateButton != null) {
                         updateButton.setVisible(false);
@@ -534,8 +535,18 @@ public class MainController {
                 }
 
                 try {
-                    UpdateInstallerLauncher.launchInstallerAndRestart(path);
-                    System.exit(0);
+                    UpdateInstallerLauncher.launchInstaller(path);
+                    if (updateProgress != null) {
+                        updateProgress.setVisible(false);
+                    }
+                    if (updateButton != null) {
+                        updateButton.setDisable(false);
+                        updateButton.setVisible(false);
+                    }
+                    if (updateStatusLabel != null) {
+                        updateStatusLabel.setText("تم بدء التحديث");
+                    }
+                    showInfo("تم بدء التحديث", "تم تشغيل مثبت التحديث.\n\nبعد اكتمال التثبيت يمكنك إعادة فتح البرنامج.");
                 } catch (Exception e) {
                     logger.error("Failed to launch installer", e);
                     if (updateProgress != null) {
@@ -556,6 +567,66 @@ public class MainController {
         loadCurrentUserInfo();
         applyRolePermissions();
         refreshDashboard();
+    }
+
+    @FXML
+    private void handleCheckForUpdates() {
+        if (checkUpdateButton != null) {
+            checkUpdateButton.setDisable(true);
+        }
+        if (updateStatusLabel != null) {
+            updateStatusLabel.setText("جاري فحص التحديثات...");
+        }
+        if (updateProgress != null) {
+            updateProgress.setVisible(true);
+        }
+        if (updateButton != null) {
+            updateButton.setVisible(false);
+        }
+
+        String currentVersion = AppVersion.current();
+        updateService.checkForUpdateAsync(currentVersion).whenComplete((result, err) -> {
+            Platform.runLater(() -> {
+                if (checkUpdateButton != null) {
+                    checkUpdateButton.setDisable(false);
+                }
+                if (updateProgress != null) {
+                    updateProgress.setVisible(false);
+                }
+
+                if (err != null) {
+                    logger.warn("Manual update check failed", err);
+                    if (updateStatusLabel != null) {
+                        updateStatusLabel.setText("تعذر فحص التحديثات");
+                    }
+                    if (updateButton != null) {
+                        updateButton.setVisible(false);
+                    }
+                    showError("فشل فحص التحديثات", "تعذر الاتصال بخادم التحديثات. تأكد من اتصالك بالإنترنت.");
+                    return;
+                }
+
+                if (result != null && result.isUpdateAvailable()) {
+                    availableUpdate = result;
+                    if (updateStatusLabel != null) {
+                        updateStatusLabel.setText("يوجد تحديث v" + result.getLatestVersion());
+                    }
+                    if (updateButton != null) {
+                        updateButton.setVisible(true);
+                        updateButton.setDisable(false);
+                    }
+                    showInfo("تحديث متوفر", "يوجد إصدار جديد v" + result.getLatestVersion() + "\n\nاضغط على زر 'تحديث الآن' للتحديث.");
+                } else {
+                    if (updateStatusLabel != null) {
+                        updateStatusLabel.setText("لا توجد تحديثات");
+                    }
+                    if (updateButton != null) {
+                        updateButton.setVisible(false);
+                    }
+                    showInfo("لا توجد تحديثات", "أنت تستخدم أحدث إصدار من البرنامج (v" + currentVersion + ")");
+                }
+            });
+        });
     }
     
     @FXML
@@ -663,7 +734,7 @@ public class MainController {
     @FXML
     private void handleAbout() {
         showInfo("عن البرنامج", 
-                "HisabX v1.0.0\n\n" +
+                "HisabX v1.0.5\n\n" +
                 "من تطوير: KervanjiHolding\n" +
                 "الموقع: Kervanjiholding.com\n\n" +
                 "نظام متكامل لإدارة المخازن والمبيعات\n\n" +

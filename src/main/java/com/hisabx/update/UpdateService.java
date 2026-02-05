@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.InputStream;
+import java.net.ProxySelector;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -17,6 +18,7 @@ import java.nio.file.StandardCopyOption;
 import java.time.Duration;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
+import javax.net.ssl.SSLParameters;
 
 public class UpdateService {
     private static final Logger logger = LoggerFactory.getLogger(UpdateService.class);
@@ -30,12 +32,22 @@ public class UpdateService {
     private static final String ASSET_SUFFIX = ".exe";
 
     private final ObjectMapper mapper = new ObjectMapper();
-    private final HttpClient httpClient = HttpClient.newBuilder()
-            .followRedirects(HttpClient.Redirect.NORMAL)
-            .connectTimeout(Duration.ofSeconds(10))
-            .build();
+    private final HttpClient httpClient = buildHttpClient();
 
     private final AppConfigStore configStore = new AppConfigStore();
+
+    private static HttpClient buildHttpClient() {
+        SSLParameters sslParameters = new SSLParameters();
+        sslParameters.setProtocols(new String[] {"TLSv1.3", "TLSv1.2"});
+
+        return HttpClient.newBuilder()
+                .version(HttpClient.Version.HTTP_1_1)
+                .followRedirects(HttpClient.Redirect.NORMAL)
+                .proxy(ProxySelector.getDefault())
+                .connectTimeout(Duration.ofSeconds(10))
+                .sslParameters(sslParameters)
+                .build();
+    }
 
     public CompletableFuture<UpdateCheckResult> checkForUpdateAsync(String currentVersion) {
         return CompletableFuture.supplyAsync(() -> checkForUpdate(currentVersion));
@@ -94,7 +106,7 @@ public class UpdateService {
             return new UpdateCheckResult(newer, latestVersion, tag, downloadUrl, body);
         } catch (Exception e) {
             logger.warn("Update check error", e);
-            return new UpdateCheckResult(false, currentVersion, null, null, null);
+            throw new RuntimeException("Update check failed", e);
         }
     }
 

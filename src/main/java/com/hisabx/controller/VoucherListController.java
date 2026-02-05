@@ -1,6 +1,7 @@
 package com.hisabx.controller;
 
 import com.hisabx.model.*;
+import com.hisabx.service.CustomerService;
 import com.hisabx.service.VoucherService;
 import com.hisabx.util.SessionManager;
 import javafx.beans.property.SimpleStringProperty;
@@ -23,13 +24,15 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
-import java.util.Optional;
 import java.util.ResourceBundle;
+import javafx.collections.transformation.FilteredList;
+import javafx.util.StringConverter;
 
 public class VoucherListController implements Initializable {
     
     @FXML private Label titleLabel;
-    @FXML private TextField searchField;
+    @FXML private ComboBox<Customer> customerFilterCombo;
+    @FXML private ComboBox<String> projectFilterCombo;
     @FXML private DatePicker fromDatePicker;
     @FXML private DatePicker toDatePicker;
     @FXML private TableView<Voucher> vouchersTable;
@@ -45,22 +48,168 @@ public class VoucherListController implements Initializable {
     @FXML private Label totalUsdLabel;
     
     private final VoucherService voucherService = new VoucherService();
+    private final CustomerService customerService = new CustomerService();
     private final DecimalFormat numberFormat = new DecimalFormat("#,###.##");
     private final DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy/MM/dd");
     
     private VoucherType voucherType = VoucherType.RECEIPT;
     private ObservableList<Voucher> vouchers = FXCollections.observableArrayList();
+    private ObservableList<Customer> customers = FXCollections.observableArrayList();
+    private FilteredList<Customer> filteredCustomers;
+    private Customer selectedCustomer;
+    private String customerSearchQuery;
+    private String initialSearchTerm;
     
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
         setupTable();
         setupDatePickers();
+        setupCustomerFilter();
+        setupProjectFilter();
+        loadCustomers();
     }
     
     public void setVoucherType(VoucherType type) {
         this.voucherType = type;
         updateTitle();
         loadVouchers();
+    }
+
+    public void setInitialSearchTerm(String term) {
+        this.initialSearchTerm = term;
+        if (term != null && !term.isBlank()) {
+            selectCustomerByName(term.trim());
+        }
+        handleSearch();
+    }
+
+    private void setupCustomerFilter() {
+        if (customerFilterCombo == null) {
+            return;
+        }
+        filteredCustomers = new FilteredList<>(customers, c -> true);
+        customerFilterCombo.setItems(filteredCustomers);
+        customerFilterCombo.setEditable(true);
+        customerFilterCombo.setConverter(new StringConverter<>() {
+            @Override
+            public String toString(Customer customer) {
+                if (customer == null) return "";
+                String code = customer.getCustomerCode() != null ? customer.getCustomerCode() : "";
+                return (code.isEmpty() ? "" : code + " - ") + customer.getName();
+            }
+
+            @Override
+            public Customer fromString(String s) {
+                if (s == null || s.isEmpty()) return null;
+                return filteredCustomers.getSource().stream()
+                        .filter(c -> {
+                            String label = toString(c);
+                            return label.equals(s) || (c.getName() != null && c.getName().contains(s));
+                        })
+                        .findFirst()
+                        .orElse(null);
+            }
+        });
+
+        if (customerFilterCombo.getEditor() != null) {
+            customerFilterCombo.getEditor().textProperty().addListener((obs, oldText, newText) -> {
+                if (customerFilterCombo.getValue() != null) {
+                    String rendered = customerFilterCombo.getConverter().toString(customerFilterCombo.getValue());
+                    if (rendered.equals(newText)) {
+                        return;
+                    }
+                }
+
+                if (newText != null) {
+                    boolean isSelection = filteredCustomers.getSource().stream()
+                            .anyMatch(c -> {
+                                String label = customerFilterCombo.getConverter().toString(c);
+                                return label != null && label.equals(newText);
+                            });
+                    if (isSelection) {
+                        return;
+                    }
+                }
+
+                customerSearchQuery = newText == null ? "" : newText.trim().toLowerCase();
+                filteredCustomers.setPredicate(c -> {
+                    if (customerSearchQuery.isEmpty()) return true;
+                    String name = c.getName() != null ? c.getName().toLowerCase() : "";
+                    String code = c.getCustomerCode() != null ? c.getCustomerCode().toLowerCase() : "";
+                    String full = (code + " - " + name).toLowerCase();
+                    return name.contains(customerSearchQuery) || code.contains(customerSearchQuery) || full.contains(customerSearchQuery);
+                });
+
+                if (!customerFilterCombo.isShowing()) {
+                    customerFilterCombo.show();
+                }
+            });
+        }
+
+        customerFilterCombo.valueProperty().addListener((obs, oldVal, newVal) -> {
+            selectedCustomer = newVal;
+            updateProjectLocations(newVal);
+        });
+    }
+
+    private void setupProjectFilter() {
+        if (projectFilterCombo == null) {
+            return;
+        }
+        projectFilterCombo.setEditable(true);
+        projectFilterCombo.setDisable(true);
+    }
+
+    private void loadCustomers() {
+        customers.setAll(customerService.getAllCustomers());
+        if (filteredCustomers != null) {
+            filteredCustomers.setPredicate(c -> true);
+        }
+        if (initialSearchTerm != null && !initialSearchTerm.isBlank()) {
+            selectCustomerByName(initialSearchTerm.trim());
+        }
+    }
+
+    private void selectCustomerByName(String name) {
+        if (name == null || name.isBlank()) {
+            return;
+        }
+        Customer match = customers.stream()
+                .filter(c -> c.getName() != null && c.getName().contains(name))
+                .findFirst()
+                .orElse(null);
+        if (match != null && customerFilterCombo != null) {
+            customerFilterCombo.setValue(match);
+        }
+    }
+
+    private void updateProjectLocations(Customer customer) {
+        if (projectFilterCombo == null) {
+            return;
+        }
+
+        projectFilterCombo.getItems().clear();
+        projectFilterCombo.setValue(null);
+
+        if (customer == null) {
+            projectFilterCombo.setDisable(true);
+            return;
+        }
+
+        projectFilterCombo.setDisable(false);
+        String locationsText = customer.getProjectLocation();
+        if (locationsText == null || locationsText.trim().isEmpty()) {
+            return;
+        }
+
+        List<String> locations = locationsText.lines()
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .toList();
+        projectFilterCombo.setItems(FXCollections.observableArrayList(locations));
+        if (locations.size() == 1) {
+            projectFilterCombo.setValue(locations.get(0));
+        }
     }
     
     private void setupTable() {
@@ -128,13 +277,18 @@ public class VoucherListController implements Initializable {
     
     @FXML
     private void handleSearch() {
-        String searchTerm = searchField.getText();
+        String searchTerm = null;
+        String projectName = projectFilterCombo != null ? projectFilterCombo.getValue() : null;
+        if ((projectName == null || projectName.isBlank()) && projectFilterCombo != null && projectFilterCombo.getEditor() != null) {
+            projectName = projectFilterCombo.getEditor().getText();
+        }
+        Long customerId = selectedCustomer != null ? selectedCustomer.getId() : null;
         LocalDateTime from = fromDatePicker.getValue() != null ? 
             fromDatePicker.getValue().atStartOfDay() : null;
         LocalDateTime to = toDatePicker.getValue() != null ? 
             toDatePicker.getValue().atTime(23, 59, 59) : null;
         
-        List<Voucher> results = voucherService.searchVouchers(searchTerm, voucherType, from, to);
+        List<Voucher> results = voucherService.searchVouchers(searchTerm, voucherType, from, to, projectName, customerId);
         vouchers.setAll(results);
         updateSummary();
     }
@@ -225,38 +379,6 @@ public class VoucherListController implements Initializable {
         } catch (Exception e) {
             showAlert(Alert.AlertType.ERROR, "خطأ", "فشل في عرض معاينة الطباعة: " + e.getMessage());
         }
-    }
-    
-    @FXML
-    private void cancelVoucher() {
-        Voucher selected = vouchersTable.getSelectionModel().getSelectedItem();
-        if (selected == null) {
-            showAlert(Alert.AlertType.WARNING, "تنبيه", "يرجى اختيار سند للإلغاء");
-            return;
-        }
-        
-        if (selected.getIsCancelled()) {
-            showAlert(Alert.AlertType.WARNING, "تنبيه", "هذا السند ملغي مسبقاً");
-            return;
-        }
-        
-        TextInputDialog dialog = new TextInputDialog();
-        dialog.setTitle("إلغاء السند");
-        dialog.setHeaderText("إلغاء السند: " + selected.getVoucherNumber());
-        dialog.setContentText("سبب الإلغاء:");
-        
-        Optional<String> result = dialog.showAndWait();
-        result.ifPresent(reason -> {
-            try {
-                String cancelledBy = SessionManager.getInstance().getCurrentUser() != null ? 
-                    SessionManager.getInstance().getCurrentUser().getDisplayName() : "System";
-                voucherService.cancelVoucher(selected.getId(), cancelledBy, reason);
-                showAlert(Alert.AlertType.INFORMATION, "نجاح", "تم إلغاء السند بنجاح");
-                loadVouchers();
-            } catch (Exception e) {
-                showAlert(Alert.AlertType.ERROR, "خطأ", "فشل في إلغاء السند: " + e.getMessage());
-            }
-        });
     }
     
     @FXML

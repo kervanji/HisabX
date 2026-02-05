@@ -15,8 +15,10 @@
         <Region HBox.hgrow="ALWAYS"/>
         
         <!-- Search & Filter -->
-        <TextField fx:id="searchField" promptText="بحث..." prefWidth="200"
-                   style="-fx-padding: 8; -fx-background-radius: 8;"/>
+        <ComboBox fx:id="customerFilterCombo" promptText="اختر العميل" editable="true" prefWidth="220"
+                  style="-fx-padding: 6; -fx-background-radius: 8;"/>
+        <ComboBox fx:id="projectFilterCombo" promptText="المشروع" editable="true" prefWidth="160"
+                  style="-fx-padding: 6; -fx-background-radius: 8;"/>
         <DatePicker fx:id="fromDatePicker" promptText="من تاريخ" prefWidth="140"/>
         <DatePicker fx:id="toDatePicker" promptText="إلى تاريخ" prefWidth="140"/>
         <Button text="بحث" onAction="#handleSearch"
@@ -58,8 +60,6 @@
                 style="-fx-background-color: #3b82f6; -fx-text-fill: white; -fx-padding: 10 25; -fx-background-radius: 8;"/>
         <Button text="طباعة" onAction="#printVoucher"
                 style="-fx-background-color: #10b981; -fx-text-fill: white; -fx-padding: 10 25; -fx-background-radius: 8;"/>
-        <Button text="إلغاء السند" onAction="#cancelVoucher"
-                style="-fx-background-color: #ef4444; -fx-text-fill: white; -fx-padding: 10 25; -fx-background-radius: 8;"/>
         <Button text="إغلاق" onAction="#handleClose"
                 style="-fx-background-color: #6b7280; -fx-text-fill: white; -fx-padding: 10 25; -fx-background-radius: 8;"/>
     </HBox>
