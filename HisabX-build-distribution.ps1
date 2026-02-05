@@ -8,7 +8,7 @@ $ErrorActionPreference = "Stop"
 # Configuration
 # -----------------------------
 $APP_NAME = "HisabX"
-$APP_VERSION = "1.0.1"
+$APP_VERSION = "1.0.6"
 $JAVAFX_VERSION = "17.0.10"
 
 # Main class (must contain public static void main)
@@ -111,6 +111,7 @@ $modules = @(
     "java.prefs",
     "java.net.http",
     "java.security.jgss",
+    "jdk.crypto.ec",
     "jdk.unsupported",
     "javafx.base",
     "javafx.graphics",
@@ -233,7 +234,10 @@ $readmeContent = @"
 
 الإصدار: $APP_VERSION
 "@
-Set-Content -Path (Join-Path $DIST_DIR "README.txt") -Value $readmeContent -Encoding UTF8
+# Write README with UTF-8 BOM for proper Arabic display in Windows Notepad
+$readmePath = Join-Path $DIST_DIR "README.txt"
+$utf8Bom = New-Object System.Text.UTF8Encoding $true
+[System.IO.File]::WriteAllText($readmePath, $readmeContent, $utf8Bom)
 
 # Summary
 Write-Host "`n========================================" -ForegroundColor Green

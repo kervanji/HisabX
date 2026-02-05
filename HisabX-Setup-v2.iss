@@ -6,7 +6,7 @@
 ; Output EXE will be generated into: .\installer\
 
 #define AppName "HisabX"
-#define AppVersion "1.0.0"
+#define AppVersion "1.0.6"
 #define AppPublisher "Kervanji"
 #define AppURL "https://example.local/"
 #define DistDir "distribution"
