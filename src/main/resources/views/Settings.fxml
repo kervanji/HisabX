@@ -111,7 +111,7 @@
             
             <VBox spacing="10" style="-fx-background-color: #10233d; -fx-padding: 15; -fx-background-radius: 8;">
                 <Label text="معلومات البرنامج" style="-fx-font-weight: bold; -fx-font-size: 14px;"/>
-                <Label text="HisabX v1.0.9"/>
+                <Label text="HisabX v1.1.0"/>
                 <Label text="نظام إدارة المخازن والمبيعات"/>
                 <Label text="© 2025 HisabX. جميع الحقوق محفوظة."/>
             </VBox>

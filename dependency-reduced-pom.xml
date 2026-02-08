@@ -4,7 +4,7 @@
   <groupId>com.hisabx</groupId>
   <artifactId>inventory-management</artifactId>
   <name>HisabX Inventory Management</name>
-  <version>1.0.9</version>
+  <version>1.1.0</version>
   <description>برنامج محاسبة لادارة المخازن والمبيعات مع إصدار الوصولات</description>
   <build>
     <plugins>

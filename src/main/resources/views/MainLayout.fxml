@@ -131,7 +131,7 @@
             </HBox>
             <Label text="© 2025 KervanjiHolding" style="-fx-font-size: 11px; -fx-text-fill: #546e7a;"/>
             <Label text="•" style="-fx-font-size: 11px; -fx-text-fill: #37474f;"/>
-            <Label text="HisabX v1.0.9" style="-fx-font-size: 11px; -fx-text-fill: #78909c; -fx-font-weight: 600;"/>
+            <Label text="HisabX v1.1.0" style="-fx-font-size: 11px; -fx-text-fill: #78909c; -fx-font-weight: 600;"/>
         </HBox>
     </bottom>
 </BorderPane>

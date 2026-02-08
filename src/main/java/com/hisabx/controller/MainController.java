@@ -1253,7 +1253,7 @@ public class MainController {
     @FXML
     private void handleAbout() {
         showInfo("عن البرنامج", 
-                "HisabX v1.0.9\n\n" +
+                "HisabX v1.1.0\n\n" +
                 "من تطوير: KervanjiHolding\n" +
                 "الموقع: Kervanjiholding.com\n\n" +
                 "نظام متكامل لإدارة المخازن والمبيعات\n\n" +

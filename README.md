@@ -68,7 +68,7 @@ mvn javafx:run
 أو بناء ملف Jar قابل للتنفيذ:
 ```bash
 mvn clean package
-java -jar target/inventory-management-1.0.9.jar
+java -jar target/inventory-management-1.1.0.jar
 ```
 
 ## هيكل المشروع
