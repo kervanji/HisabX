@@ -319,6 +319,7 @@ public class CustomerListController {
             stage.setTitle(customer == null ? "إضافة عميل جديد" : "تعديل بيانات العميل");
             stage.initModality(Modality.APPLICATION_MODAL);
             Scene scene = new Scene(root);
+            com.hisabx.MainApp.applyCurrentFontSize(scene);
             stage.setScene(scene);
             stage.setMaximized(false);
             

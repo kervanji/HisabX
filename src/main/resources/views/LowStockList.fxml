@@ -5,36 +5,36 @@
 
 <VBox xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="com.hisabx.controller.LowStockController"
-      spacing="16" prefWidth="800" prefHeight="550"
-      style="-fx-background-color: #f8fafc; -fx-padding: 24;">
+      spacing="16"
+      style="-fx-background-color: linear-gradient(to bottom right, #0f1b2d, #1a2744); -fx-padding: 24;">
     
     <HBox alignment="CENTER_LEFT" spacing="16">
         <VBox spacing="4">
             <Label text="تنبيهات المخزون المنخفض" 
-                   style="-fx-font-size: 24px; -fx-font-weight: bold; -fx-text-fill: #1f3c56;"/>
+                   style="-fx-font-size: 24px; -fx-font-weight: bold; -fx-text-fill: #e8edf4;"/>
             <Label text="المنتجات التي وصلت أو تجاوزت الحد الأدنى للمخزون"
-                   style="-fx-font-size: 14px; -fx-text-fill: #6b7280;"/>
+                   style="-fx-font-size: 14px; -fx-text-fill: #90a4ae;"/>
         </VBox>
         <Region HBox.hgrow="ALWAYS"/>
         <Button text="تحديث" onAction="#handleRefresh"
                 style="-fx-background-color: #10b981; -fx-text-fill: white; -fx-font-size: 14px; -fx-padding: 10 20; -fx-background-radius: 10;"/>
         <Button text="تصدير التقرير" onAction="#handleExport"
-                style="-fx-background-color: #ffffff; -fx-text-fill: #1f3c56; -fx-font-size: 14px; -fx-padding: 10 16; -fx-background-radius: 10; -fx-border-color: #d5e2f4; -fx-border-radius: 10;"/>
+                style="-fx-background-color: #1a2744; -fx-text-fill: #e8edf4; -fx-border-color: rgba(255,255,255,0.12); -fx-border-radius: 10; -fx-font-size: 14px; -fx-padding: 10 16; -fx-background-radius: 10; -fx-border-color: rgba(255,255,255,0.12); -fx-border-radius: 10;"/>
     </HBox>
     
     <HBox spacing="16">
-        <VBox alignment="CENTER" spacing="4" prefWidth="200"
-              style="-fx-background-color: #fef2f2; -fx-padding: 16; -fx-background-radius: 12; -fx-border-color: #fecaca; -fx-border-radius: 12;">
+        <VBox alignment="CENTER" spacing="4" HBox.hgrow="ALWAYS"
+              style="-fx-background-color: #2b1515; -fx-padding: 16; -fx-background-radius: 12; -fx-border-color: #5c2020; -fx-border-radius: 12;">
             <Label text="منتجات منخفضة المخزون" style="-fx-font-size: 13px; -fx-text-fill: #dc2626;"/>
             <Label fx:id="lowStockCountLabel" text="0" style="-fx-font-size: 32px; -fx-font-weight: bold; -fx-text-fill: #dc2626;"/>
         </VBox>
-        <VBox alignment="CENTER" spacing="4" prefWidth="200"
-              style="-fx-background-color: #fffbeb; -fx-padding: 16; -fx-background-radius: 12; -fx-border-color: #fde68a; -fx-border-radius: 12;">
+        <VBox alignment="CENTER" spacing="4" HBox.hgrow="ALWAYS"
+              style="-fx-background-color: #2b2200; -fx-padding: 16; -fx-background-radius: 12; -fx-border-color: #5c4a00; -fx-border-radius: 12;">
             <Label text="منتجات نفدت" style="-fx-font-size: 13px; -fx-text-fill: #d97706;"/>
             <Label fx:id="outOfStockLabel" text="0" style="-fx-font-size: 32px; -fx-font-weight: bold; -fx-text-fill: #d97706;"/>
         </VBox>
         <VBox alignment="CENTER" spacing="4" HBox.hgrow="ALWAYS"
-              style="-fx-background-color: #f0fdf4; -fx-padding: 16; -fx-background-radius: 12; -fx-border-color: #bbf7d0; -fx-border-radius: 12;">
+              style="-fx-background-color: #0d2818; -fx-padding: 16; -fx-background-radius: 12; -fx-border-color: #1a5c30; -fx-border-radius: 12;">
             <Label text="تكلفة إعادة التخزين المقدرة" style="-fx-font-size: 13px; -fx-text-fill: #16a34a;"/>
             <Label fx:id="restockCostLabel" text="0.00 د.ع" style="-fx-font-size: 26px; -fx-font-weight: bold; -fx-text-fill: #16a34a;"/>
         </VBox>
@@ -58,6 +58,6 @@
     </TableView>
     
     <HBox alignment="CENTER_RIGHT" spacing="12">
-        <Label fx:id="lastUpdateLabel" text="آخر تحديث: --" style="-fx-font-size: 13px; -fx-text-fill: #6b7280;"/>
+        <Label fx:id="lastUpdateLabel" text="آخر تحديث: --" style="-fx-font-size: 13px; -fx-text-fill: #90a4ae;"/>
     </HBox>
 </VBox>

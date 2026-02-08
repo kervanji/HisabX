@@ -237,7 +237,9 @@ public class InventoryListController {
             Stage stage = new Stage();
             stage.setTitle("منتج جديد");
             stage.initModality(Modality.APPLICATION_MODAL);
-            stage.setScene(new Scene(root));
+            Scene scene = new Scene(root);
+            com.hisabx.MainApp.applyCurrentFontSize(scene);
+            stage.setScene(scene);
             stage.setMaximized(true);
             
             ProductController controller = loader.getController();
@@ -260,7 +262,9 @@ public class InventoryListController {
             Stage stage = new Stage();
             stage.setTitle("تعديل منتج");
             stage.initModality(Modality.APPLICATION_MODAL);
-            stage.setScene(new Scene(root));
+            Scene scene = new Scene(root);
+            com.hisabx.MainApp.applyCurrentFontSize(scene);
+            stage.setScene(scene);
             stage.setMaximized(true);
             
             ProductController controller = loader.getController();
@@ -307,7 +311,9 @@ public class InventoryListController {
             Stage stage = new Stage();
             stage.setTitle("إدارة الفئات");
             stage.initModality(Modality.APPLICATION_MODAL);
-            stage.setScene(new Scene(root));
+            Scene scene = new Scene(root);
+            com.hisabx.MainApp.applyCurrentFontSize(scene);
+            stage.setScene(scene);
             stage.setMaximized(true);
             
             CategoryController controller = loader.getController();

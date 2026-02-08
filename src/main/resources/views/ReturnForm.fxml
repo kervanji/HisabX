@@ -9,8 +9,8 @@
 <VBox xmlns="http://javafx.com/javafx/17"
       xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="com.hisabx.controller.ReturnController"
-      spacing="15" alignment="TOP_CENTER" prefWidth="900" prefHeight="650"
-      style="-fx-background-color: #f5f5f5;">
+      spacing="15" alignment="TOP_CENTER"
+      style="-fx-background-color: linear-gradient(to bottom right, #0f1b2d, #1a2744);">
     <padding>
         <Insets top="20" right="20" bottom="20" left="20"/>
     </padding>
@@ -21,7 +21,7 @@
     </HBox>
 
     <!-- Sale Selection -->
-    <HBox spacing="15" alignment="CENTER_LEFT" style="-fx-background-color: white; -fx-background-radius: 8; -fx-padding: 15;">
+    <HBox spacing="15" alignment="CENTER_LEFT" style="-fx-background-color: #10233d; -fx-background-radius: 8; -fx-padding: 15;">
         <Label text="العميل:" style="-fx-font-weight: bold;"/>
         <ComboBox fx:id="customerComboBox" prefWidth="200" onAction="#handleCustomerChange"/>
         
@@ -33,7 +33,7 @@
     </HBox>
 
     <!-- Sale Items Table - Items that can be returned -->
-    <VBox spacing="10" VBox.vgrow="ALWAYS" style="-fx-background-color: white; -fx-background-radius: 8; -fx-padding: 15;">
+    <VBox spacing="10" VBox.vgrow="ALWAYS" style="-fx-background-color: #10233d; -fx-background-radius: 8; -fx-padding: 15;">
         <Label text="المواد المتاحة للإرجاع:" style="-fx-font-weight: bold; -fx-font-size: 14px;"/>
         <TableView fx:id="saleItemsTable" VBox.vgrow="ALWAYS">
             <columns>
@@ -53,7 +53,7 @@
     </VBox>
 
     <!-- Return Details -->
-    <HBox spacing="20" style="-fx-background-color: white; -fx-background-radius: 8; -fx-padding: 15;">
+    <HBox spacing="20" style="-fx-background-color: #10233d; -fx-background-radius: 8; -fx-padding: 15;">
         <VBox spacing="10" HBox.hgrow="ALWAYS">
             <Label text="ملاحظات:" style="-fx-font-weight: bold;"/>
             <TextArea fx:id="notesArea" prefHeight="60" promptText="أضف ملاحظات إضافية..."/>

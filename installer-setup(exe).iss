@@ -3,7 +3,7 @@
 
 #define MyAppName "HisabX"
 #define MyAppNameArabic "حساب إكس - نظام إدارة المخازن والمبيعات"
-#define MyAppVersion "1.0.6"
+#define MyAppVersion "1.0.9"
 #define MyAppPublisher "HisabX"
 #define MyAppExeName "HisabX.exe"
 #define MyAppIcon "src\main\resources\templates\HisabX.ico"
@@ -29,7 +29,10 @@ UninstallDisplayIcon={app}\{#MyAppExeName}
 SetupLogging=yes
 DiskSpanning=no
 InternalCompressLevel=fast
-UsePreviousAppDir=no
+UsePreviousAppDir=yes
+CloseApplications=force
+RestartApplications=yes
+AppMutex=HisabXMutex
 AllowNoIcons=yes
 ShowTasksTreeLines=yes
 AlwaysShowComponentsList=no
@@ -62,7 +65,7 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Name: "quicklaunchicon"; Description: "{cm:CreateQuickLaunchIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
-; Main Application Files
+; Main Application Files - using replacesameversion to only replace if different
 Source: "distribution\HisabX.jar"; DestDir: "{app}"; Flags: ignoreversion
 Source: "distribution\HisabX.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "distribution\HisabX.vbs"; DestDir: "{app}"; Flags: ignoreversion
@@ -71,6 +74,9 @@ Source: "distribution\README.txt"; DestDir: "{app}"; Flags: ignoreversion isread
 
 ; Runtime (Java) - copy everything to avoid missing security/config files
 Source: "distribution\runtime\*"; DestDir: "{app}\runtime"; Flags: ignoreversion recursesubdirs createallsubdirs
+
+; Preserve user data files - only copy if not exists (onlyifdoesntexist)
+; Database and config files are NOT included here - they are preserved automatically
 
 [Icons]
 ; Start Menu
@@ -86,11 +92,18 @@ Name: "{userappdata}\Microsoft\Internet Explorer\Quick Launch\{#MyAppName}"; Fil
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent shellexec
 
+[InstallDelete]
+; Only delete old logs during update, preserve everything else
+Type: filesandordirs; Name: "{app}\logs"
+
 [UninstallDelete]
+; Only delete generated folders on uninstall - database and config are preserved
 Type: filesandordirs; Name: "{app}\receipts"
 Type: filesandordirs; Name: "{app}\reports"
 Type: filesandordirs; Name: "{app}\statements"
 Type: filesandordirs; Name: "{app}\logs"
+; NOTE: hisabx.mv.db, hisabx.trace.db, and app_config.properties are NOT deleted
+; They are only deleted if user confirms in CurUninstallStepChanged
 
 [Code]
 
@@ -100,12 +113,19 @@ var
 begin
   Result := True;
   
-  // Check if already installed
+  // In silent mode (update), just proceed without asking
+  if WizardSilent then
+  begin
+    Result := True;
+    Exit;
+  end;
+  
+  // Check if already installed (only in interactive mode)
   if RegKeyExists(HKEY_LOCAL_MACHINE, 'SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\{#SetupSetting("AppId")}_is1') or
      RegKeyExists(HKEY_CURRENT_USER, 'SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\{#SetupSetting("AppId")}_is1') then
   begin
-    if MsgBox('يبدو أن البرنامج مثبت بالفعل. هل تريد إلغاء التثبيت القديم والمتابعة؟' + #13#10 + 
-              'HisabX is already installed. Do you want to uninstall the old version and continue?', 
+    if MsgBox('يبدو أن البرنامج مثبت بالفعل. هل تريد التحديث؟' + #13#10 + 
+              'HisabX is already installed. Do you want to update?', 
               mbConfirmation, MB_YESNO) = IDYES then
     begin
       Result := True;

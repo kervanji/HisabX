@@ -5,20 +5,20 @@
 
 <TabPane xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
          fx:controller="com.hisabx.controller.SettingsController"
-         tabClosingPolicy="UNAVAILABLE" prefWidth="700" prefHeight="550"
-         style="-fx-background-color: #f8fafc;">
+         tabClosingPolicy="UNAVAILABLE"
+         style="-fx-background-color: linear-gradient(to bottom right, #0f1b2d, #1a2744);">
     
     <Tab text="النسخ الاحتياطي">
-        <VBox spacing="15" style="-fx-background-color: #f8fafc;">
+        <VBox spacing="15" style="-fx-background-color: linear-gradient(to bottom right, #0f1b2d, #1a2744);">
             <padding>
                 <Insets top="20" right="20" bottom="20" left="20"/>
             </padding>
             
-            <Label text="النسخ الاحتياطي واستعادة البيانات" style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #1f3c56;"/>
+            <Label text="النسخ الاحتياطي واستعادة البيانات" style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #e8edf4;"/>
             
-            <VBox spacing="10" style="-fx-background-color: white; -fx-padding: 15; -fx-background-radius: 8;">
+            <VBox spacing="10" style="-fx-background-color: #10233d; -fx-padding: 15; -fx-background-radius: 8;">
                 <Label text="إنشاء نسخة احتياطية" style="-fx-font-weight: bold; -fx-font-size: 14px;"/>
-                <Label text="سيتم حفظ نسخة من قاعدة البيانات في المجلد المحدد" style="-fx-text-fill: #6b7280;"/>
+                <Label text="سيتم حفظ نسخة من قاعدة البيانات في المجلد المحدد" style="-fx-text-fill: #90a4ae;"/>
                 <HBox spacing="10" alignment="CENTER_LEFT">
                     <TextField fx:id="backupPathField" prefWidth="400" promptText="مسار حفظ النسخة الاحتياطية"/>
                     <Button text="تصفح..." onAction="#handleBrowseBackupPath"
@@ -28,7 +28,7 @@
                         style="-fx-background-color: #10b981; -fx-text-fill: white; -fx-font-size: 14px; -fx-padding: 10 20;"/>
             </VBox>
             
-            <VBox spacing="10" style="-fx-background-color: white; -fx-padding: 15; -fx-background-radius: 8;">
+            <VBox spacing="10" style="-fx-background-color: #10233d; -fx-padding: 15; -fx-background-radius: 8;">
                 <Label text="استعادة من نسخة احتياطية" style="-fx-font-weight: bold; -fx-font-size: 14px;"/>
                 <Label text="⚠️ تحذير: سيتم استبدال البيانات الحالية بالبيانات من النسخة الاحتياطية" 
                        style="-fx-text-fill: #ef4444; -fx-font-weight: bold;"/>
@@ -46,16 +46,16 @@
     </Tab>
     
     <Tab text="إعدادات الإيصالات">
-        <VBox spacing="15" style="-fx-background-color: #f8fafc;">
+        <VBox spacing="15" style="-fx-background-color: linear-gradient(to bottom right, #0f1b2d, #1a2744);">
             <padding>
                 <Insets top="20" right="20" bottom="20" left="20"/>
             </padding>
             
-            <Label text="إعدادات الإيصالات والفواتير" style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #1f3c56;"/>
+            <Label text="إعدادات الإيصالات والفواتير" style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #e8edf4;"/>
             
-            <VBox spacing="10" style="-fx-background-color: white; -fx-padding: 15; -fx-background-radius: 8;">
+            <VBox spacing="10" style="-fx-background-color: #10233d; -fx-padding: 15; -fx-background-radius: 8;">
                 <Label text="اسم الشركة / المخزن" style="-fx-font-weight: bold; -fx-font-size: 14px;"/>
-                <Label text="سيظهر تحت اسم البرنامج HisabX في الصفحة الرئيسية" style="-fx-text-fill: #6b7280;"/>
+                <Label text="سيظهر تحت اسم البرنامج HisabX في الصفحة الرئيسية" style="-fx-text-fill: #90a4ae;"/>
                 <HBox spacing="10" alignment="CENTER_LEFT">
                     <TextField fx:id="companyNameField" prefWidth="400" promptText="مثال: مخزن النور للتجارة"/>
                     <Button text="حفظ" onAction="#handleSaveCompanyName"
@@ -63,9 +63,9 @@
                 </HBox>
             </VBox>
             
-            <VBox spacing="10" style="-fx-background-color: white; -fx-padding: 15; -fx-background-radius: 8;">
+            <VBox spacing="10" style="-fx-background-color: #10233d; -fx-padding: 15; -fx-background-radius: 8;">
                 <Label text="شعار الإيصال (Banner)" style="-fx-font-weight: bold; -fx-font-size: 14px;"/>
-                <Label text="اختر صورة لتظهر في أعلى الإيصالات (يفضل بعرض 595 بكسل)" style="-fx-text-fill: #6b7280;"/>
+                <Label text="اختر صورة لتظهر في أعلى الإيصالات (يفضل بعرض 595 بكسل)" style="-fx-text-fill: #90a4ae;"/>
                 <HBox spacing="10" alignment="CENTER_LEFT">
                     <TextField fx:id="bannerPathField" prefWidth="400" promptText="مسار صورة الشعار"/>
                     <Button text="تصفح..." onAction="#handleBrowseBannerPath"
@@ -79,7 +79,7 @@
                 </HBox>
             </VBox>
             
-            <VBox spacing="10" style="-fx-background-color: white; -fx-padding: 15; -fx-background-radius: 8;">
+            <VBox spacing="10" style="-fx-background-color: #10233d; -fx-padding: 15; -fx-background-radius: 8;">
                 <Label text="مجلد حفظ الإيصالات" style="-fx-font-weight: bold; -fx-font-size: 14px;"/>
                 <HBox spacing="10" alignment="CENTER_LEFT">
                     <TextField fx:id="receiptsPathField" prefWidth="400" text="receipts" promptText="مجلد حفظ الإيصالات"/>
@@ -91,14 +91,14 @@
     </Tab>
     
     <Tab text="معلومات النظام">
-        <VBox spacing="15" style="-fx-background-color: #f8fafc;">
+        <VBox spacing="15" style="-fx-background-color: linear-gradient(to bottom right, #0f1b2d, #1a2744);">
             <padding>
                 <Insets top="20" right="20" bottom="20" left="20"/>
             </padding>
             
-            <Label text="معلومات النظام" style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #1f3c56;"/>
+            <Label text="معلومات النظام" style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #e8edf4;"/>
             
-            <VBox spacing="10" style="-fx-background-color: white; -fx-padding: 15; -fx-background-radius: 8;">
+            <VBox spacing="10" style="-fx-background-color: #10233d; -fx-padding: 15; -fx-background-radius: 8;">
                 <Label text="إحصائيات قاعدة البيانات" style="-fx-font-weight: bold; -fx-font-size: 14px;"/>
                 <Label fx:id="customersCountLabel" text="عدد العملاء: -"/>
                 <Label fx:id="productsCountLabel" text="عدد المنتجات: -"/>
@@ -109,9 +109,9 @@
                         style="-fx-background-color: #3b82f6; -fx-text-fill: white;"/>
             </VBox>
             
-            <VBox spacing="10" style="-fx-background-color: white; -fx-padding: 15; -fx-background-radius: 8;">
+            <VBox spacing="10" style="-fx-background-color: #10233d; -fx-padding: 15; -fx-background-radius: 8;">
                 <Label text="معلومات البرنامج" style="-fx-font-weight: bold; -fx-font-size: 14px;"/>
-                <Label text="HisabX v1.0.6"/>
+                <Label text="HisabX v1.0.9"/>
                 <Label text="نظام إدارة المخازن والمبيعات"/>
                 <Label text="© 2025 HisabX. جميع الحقوق محفوظة."/>
             </VBox>
@@ -119,23 +119,23 @@
     </Tab>
     
     <Tab text="إعدادات متقدمة">
-        <VBox spacing="15" style="-fx-background-color: #f8fafc;">
+        <VBox spacing="15" style="-fx-background-color: linear-gradient(to bottom right, #0f1b2d, #1a2744);">
             <padding>
                 <Insets top="20" right="20" bottom="20" left="20"/>
             </padding>
             
-            <Label text="إعدادات متقدمة" style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #1f3c56;"/>
+            <Label text="إعدادات متقدمة" style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #e8edf4;"/>
 
-            <VBox spacing="10" style="-fx-background-color: white; -fx-padding: 15; -fx-background-radius: 8;">
+            <VBox spacing="10" style="-fx-background-color: #10233d; -fx-padding: 15; -fx-background-radius: 8;">
                 <Label text="حجم الخط" style="-fx-font-weight: bold; -fx-font-size: 14px;"/>
-                <Label text="غيّر حجم الخط في واجهة البرنامج" style="-fx-text-fill: #6b7280;"/>
+                <Label text="غيّر حجم الخط في واجهة البرنامج" style="-fx-text-fill: #90a4ae;"/>
                 <HBox spacing="10" alignment="CENTER_LEFT">
                     <Slider fx:id="fontSizeSlider" min="10" max="24" value="13" prefWidth="260"/>
                     <Label fx:id="fontSizeValueLabel" text="13px" style="-fx-font-weight: bold;"/>
                 </HBox>
             </VBox>
             
-            <VBox spacing="10" style="-fx-background-color: white; -fx-padding: 15; -fx-background-radius: 8;">
+            <VBox spacing="10" style="-fx-background-color: #10233d; -fx-padding: 15; -fx-background-radius: 8;">
                 <Label text="إعادة تعيين البيانات" style="-fx-font-weight: bold; -fx-font-size: 14px; -fx-text-fill: #ef4444;"/>
                 <Label text="⚠️ تحذير: هذا الإجراء سيحذف جميع البيانات نهائياً!" 
                        style="-fx-text-fill: #ef4444;"/>
@@ -143,7 +143,7 @@
                         style="-fx-background-color: #ef4444; -fx-text-fill: white; -fx-font-size: 14px; -fx-padding: 10 20;"/>
             </VBox>
             
-            <VBox spacing="10" style="-fx-background-color: white; -fx-padding: 15; -fx-background-radius: 8;">
+            <VBox spacing="10" style="-fx-background-color: #10233d; -fx-padding: 15; -fx-background-radius: 8;">
                 <Label text="تصدير البيانات" style="-fx-font-weight: bold; -fx-font-size: 14px;"/>
                 <HBox spacing="10">
                     <Button text="تصدير العملاء إلى CSV" onAction="#handleExportCustomers"

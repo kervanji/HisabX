@@ -369,6 +369,7 @@ public class VoucherListController implements Initializable {
             dialogStage.initModality(Modality.WINDOW_MODAL);
             dialogStage.initOwner(vouchersTable.getScene().getWindow());
             Scene scene = new Scene(page);
+            com.hisabx.MainApp.applyCurrentFontSize(scene);
             dialogStage.setScene(scene);
 
             PdfPreviewController controller = loader.getController();

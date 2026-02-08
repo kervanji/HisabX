@@ -5,13 +5,13 @@
 
 <VBox xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="com.hisabx.controller.CreateReceiptController"
-      spacing="15" prefWidth="700" prefHeight="550"
-      style="-fx-background-color: #f8fafc;">
+      spacing="15"
+      style="-fx-background-color: linear-gradient(to bottom right, #0f1b2d, #1a2744);">
     <padding>
         <Insets top="20" right="20" bottom="20" left="20"/>
     </padding>
     
-    <Label text="إنشاء إيصال جديد" style="-fx-font-size: 22px; -fx-font-weight: bold; -fx-text-fill: #1f3c56;"/>
+    <Label text="إنشاء إيصال جديد" style="-fx-font-size: 22px; -fx-font-weight: bold; -fx-text-fill: #e8edf4;"/>
     
     <HBox spacing="15" alignment="CENTER_LEFT">
         <VBox spacing="5">
@@ -68,5 +68,5 @@
                 style="-fx-background-color: #6b7280; -fx-text-fill: white; -fx-font-size: 14px; -fx-padding: 10 20; -fx-background-radius: 6;"/>
     </HBox>
     
-    <Label fx:id="statusLabel" text="اختر فاتورة لإنشاء إيصال لها" style="-fx-text-fill: #6b7280;"/>
+    <Label fx:id="statusLabel" text="اختر فاتورة لإنشاء إيصال لها" style="-fx-text-fill: #90a4ae;"/>
 </VBox>

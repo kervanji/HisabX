@@ -99,6 +99,14 @@ public class TabManager {
                 controllerInitializer.accept(controller);
             }
             
+            // Apply font size scaling to the loaded content
+            if (content instanceof javafx.scene.Parent) {
+                int fontSize = com.hisabx.util.SessionManager.getInstance().getUiFontSize();
+                if (fontSize != 13) {
+                    com.hisabx.MainApp.applyFontSizeRecursive((javafx.scene.Parent) content, fontSize);
+                }
+            }
+            
             // إنشاء التبويب
             Tab tab = createTab(tabId, title, content);
             

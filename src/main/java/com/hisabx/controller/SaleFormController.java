@@ -845,7 +845,9 @@ public class SaleFormController {
             if (dialogStage != null) {
                 stage.initOwner(dialogStage);
             }
-            stage.setScene(new Scene(root));
+            Scene scene = new Scene(root);
+            com.hisabx.MainApp.applyCurrentFontSize(scene);
+            stage.setScene(scene);
 
             ProductController controller = loader.getController();
             controller.setDialogStage(stage);
@@ -956,7 +958,9 @@ public class SaleFormController {
             if (dialogStage != null) {
                 stage.initOwner(dialogStage);
             }
-            stage.setScene(new Scene(root));
+            Scene scene = new Scene(root);
+            com.hisabx.MainApp.applyCurrentFontSize(scene);
+            stage.setScene(scene);
             stage.setMaximized(false);
 
             CustomerController controller = loader.getController();

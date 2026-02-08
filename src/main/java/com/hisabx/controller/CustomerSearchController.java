@@ -185,6 +185,7 @@ public class CustomerSearchController {
                 stage.initOwner(dialogStage);
             }
             Scene scene = new Scene(root, 1000, 700);
+            com.hisabx.MainApp.applyCurrentFontSize(scene);
             stage.setScene(scene);
             stage.setMaximized(true);
             

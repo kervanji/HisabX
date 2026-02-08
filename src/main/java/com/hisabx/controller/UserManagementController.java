@@ -81,9 +81,9 @@ public class UserManagementController {
             private final Button deleteBtn = new Button("🗑️");
             
             {
-                editBtn.setStyle("-fx-background-color: #dbeafe; -fx-cursor: hand; -fx-padding: 4 8;");
-                resetBtn.setStyle("-fx-background-color: #d1fae5; -fx-cursor: hand; -fx-padding: 4 8;");
-                deleteBtn.setStyle("-fx-background-color: #fee2e2; -fx-cursor: hand; -fx-padding: 4 8;");
+                editBtn.setStyle("-fx-background-color: #1a2744; -fx-text-fill: #e8edf4; -fx-border-color: rgba(100,181,246,0.3); -fx-border-radius: 8; -fx-background-radius: 8; -fx-padding: 6 10; -fx-cursor: hand;");
+                resetBtn.setStyle("-fx-background-color: #0d3a1a; -fx-text-fill: #e8edf4; -fx-border-color: rgba(76,175,80,0.35); -fx-border-radius: 8; -fx-background-radius: 8; -fx-padding: 6 10; -fx-cursor: hand;");
+                deleteBtn.setStyle("-fx-background-color: #501a1a; -fx-text-fill: #fdeaea; -fx-border-color: rgba(239,83,80,0.4); -fx-border-radius: 8; -fx-background-radius: 8; -fx-padding: 6 10; -fx-cursor: hand;");
                 
                 editBtn.setTooltip(new Tooltip("تعديل"));
                 resetBtn.setTooltip(new Tooltip("فك القفل"));

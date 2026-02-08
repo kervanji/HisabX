@@ -7,8 +7,8 @@
 <VBox xmlns="http://javafx.com/javafx/17"
       xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="com.hisabx.controller.ReturnListController"
-      spacing="15" alignment="TOP_CENTER" prefWidth="900" prefHeight="600"
-      style="-fx-background-color: #f5f5f5;">
+      spacing="15" alignment="TOP_CENTER"
+      style="-fx-background-color: linear-gradient(to bottom right, #0f1b2d, #1a2744);">
     <padding>
         <Insets top="20" right="20" bottom="20" left="20"/>
     </padding>
@@ -19,7 +19,7 @@
     </HBox>
 
     <!-- Filters -->
-    <HBox spacing="15" alignment="CENTER_LEFT" style="-fx-background-color: white; -fx-background-radius: 8; -fx-padding: 15;">
+    <HBox spacing="15" alignment="CENTER_LEFT" style="-fx-background-color: #10233d; -fx-background-radius: 8; -fx-padding: 15;">
         <Label text="البحث:" style="-fx-font-weight: bold;"/>
         <TextField fx:id="searchField" promptText="رقم المرتجع أو اسم العميل..." prefWidth="200" onKeyReleased="#handleSearch"/>
         
@@ -35,7 +35,7 @@
     </HBox>
 
     <!-- Returns Table -->
-    <TableView fx:id="returnsTable" VBox.vgrow="ALWAYS" style="-fx-background-color: white;">
+    <TableView fx:id="returnsTable" VBox.vgrow="ALWAYS">
         <columns>
             <TableColumn fx:id="returnCodeColumn" text="رقم المرتجع" prefWidth="120"/>
             <TableColumn fx:id="saleCodeColumn" text="رقم الفاتورة" prefWidth="100"/>
@@ -52,14 +52,14 @@
     </TableView>
 
     <!-- Summary Footer -->
-    <HBox spacing="30" alignment="CENTER" style="-fx-background-color: white; -fx-background-radius: 8; -fx-padding: 15;">
+    <HBox spacing="30" alignment="CENTER" style="-fx-background-color: #10233d; -fx-background-radius: 8; -fx-padding: 15;">
         <VBox alignment="CENTER" spacing="5">
-            <Label text="إجمالي المرتجعات" style="-fx-font-size: 12px; -fx-text-fill: #7f8c8d;"/>
-            <Label fx:id="totalReturnsLabel" text="0" style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #2c3e50;"/>
+            <Label text="إجمالي المرتجعات" style="-fx-font-size: 12px; -fx-text-fill: #90a4ae;"/>
+            <Label fx:id="totalReturnsLabel" text="0" style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #e8edf4;"/>
         </VBox>
         <Separator orientation="VERTICAL"/>
         <VBox alignment="CENTER" spacing="5">
-            <Label text="إجمالي المبلغ المرتجع" style="-fx-font-size: 12px; -fx-text-fill: #7f8c8d;"/>
+            <Label text="إجمالي المبلغ المرتجع" style="-fx-font-size: 12px; -fx-text-fill: #90a4ae;"/>
             <Label fx:id="totalAmountLabel" text="0.00 د.ع" style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #e74c3c;"/>
         </VBox>
     </HBox>

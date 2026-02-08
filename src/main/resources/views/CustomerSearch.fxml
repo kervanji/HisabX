@@ -5,13 +5,13 @@
 
 <VBox xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="com.hisabx.controller.CustomerSearchController"
-      spacing="15" prefWidth="600" prefHeight="500"
-      style="-fx-background-color: #f8fafc;">
+      spacing="15"
+      style="-fx-background-color: linear-gradient(to bottom right, #0f1b2d, #1a2744);">
     <padding>
         <Insets top="20" right="20" bottom="20" left="20"/>
     </padding>
     
-    <Label text="البحث عن عميل" style="-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: #1f3c56;"/>
+    <Label text="البحث عن عميل" style="-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: #e8edf4;"/>
     
     <HBox spacing="10" alignment="CENTER_LEFT">
         <TextField fx:id="searchField" promptText="ابحث بالاسم أو الكود أو رقم الهاتف..." 
@@ -44,5 +44,5 @@
                 style="-fx-background-color: #ef4444; -fx-text-fill: white; -fx-font-size: 13px; -fx-padding: 8 16; -fx-background-radius: 6;"/>
     </HBox>
     
-    <Label fx:id="statusLabel" text="جاهز للبحث" style="-fx-text-fill: #6b7280; -fx-font-size: 12px;"/>
+    <Label fx:id="statusLabel" text="جاهز للبحث" style="-fx-text-fill: #90a4ae; -fx-font-size: 12px;"/>
 </VBox>

@@ -2,12 +2,9 @@ package com.hisabx.controller;
 
 import com.hisabx.model.*;
 import com.hisabx.service.CustomerService;
-import com.hisabx.service.InventoryService;
 import com.hisabx.service.VoucherService;
 import com.hisabx.util.SessionManager;
 import com.hisabx.util.TabManager;
-import javafx.beans.property.SimpleDoubleProperty;
-import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
@@ -27,8 +24,6 @@ import java.nio.charset.StandardCharsets;
 import java.net.URL;
 import java.text.DecimalFormat;
 import java.time.LocalDate;
-import java.util.List;
-import java.util.Optional;
 import java.util.ResourceBundle;
 
 public class PaymentVoucherController implements Initializable {
@@ -56,31 +51,14 @@ public class PaymentVoucherController implements Initializable {
     @FXML private TextField installmentCountField;
     @FXML private DatePicker firstInstallmentDatePicker;
     
-    // Products table
-    @FXML private TitledPane productsPane;
-    @FXML private CheckBox addToInventoryCheckbox;
-    @FXML private TableView<VoucherItem> itemsTable;
-    @FXML private TableColumn<VoucherItem, String> productNameCol;
-    @FXML private TableColumn<VoucherItem, Double> quantityCol;
-    @FXML private TableColumn<VoucherItem, Double> unitPriceCol;
-    @FXML private TableColumn<VoucherItem, Double> totalPriceCol;
-    @FXML private TableColumn<VoucherItem, Void> actionsCol;
-    @FXML private Label itemsTotalLabel;
-    @FXML private Label paidAmountLabel;
-    @FXML private Label remainingAmountLabel;
     
     private final VoucherService voucherService = new VoucherService();
     private final CustomerService customerService = new CustomerService();
-    private final InventoryService inventoryService = new InventoryService();
     private final DecimalFormat numberFormat = new DecimalFormat("#,###.##");
     private static final String DEFAULT_CASH_ACCOUNT = "صندوق 181";
     
     private ObservableList<Customer> customers;
-    private ObservableList<VoucherItem> voucherItems = FXCollections.observableArrayList();
     private Customer selectedCustomer;
-
-    private boolean amountManuallyEdited = false;
-    private boolean updatingAmountProgrammatically = false;
 
     private boolean tabMode = false;
     private String tabId;
@@ -98,7 +76,6 @@ public class PaymentVoucherController implements Initializable {
         setupForm();
         loadCustomers();
         setupListeners();
-        setupItemsTable();
         handleNew();
     }
     
@@ -140,12 +117,8 @@ public class PaymentVoucherController implements Initializable {
         });
         
         amountField.textProperty().addListener((obs, oldVal, newVal) -> {
-            if (!updatingAmountProgrammatically) {
-                amountManuallyEdited = true;
-            }
             calculateNetAmount();
             updateAmountInWords();
-            updatePaidAndRemainingLabels();
         });
         
         discountPercentField.textProperty().addListener((obs, oldVal, newVal) -> {
@@ -163,53 +136,14 @@ public class PaymentVoucherController implements Initializable {
         discountAmountField.textProperty().addListener((obs, oldVal, newVal) -> {
             calculateNetAmount();
             updateAmountInWords();
-            updatePaidAndRemainingLabels();
         });
 
         amountCurrencyCombo.valueProperty().addListener((obs, oldVal, newVal) -> {
             updateAmountInWords();
             calculateNetAmount();
-            updatePaidAndRemainingLabels();
         });
     }
     
-    private void setupItemsTable() {
-        productNameCol.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getProductName()));
-        quantityCol.setCellValueFactory(data -> new SimpleDoubleProperty(data.getValue().getQuantity()).asObject());
-        unitPriceCol.setCellValueFactory(data -> new SimpleDoubleProperty(data.getValue().getUnitPrice()).asObject());
-        totalPriceCol.setCellValueFactory(data -> new SimpleDoubleProperty(data.getValue().getTotalPrice()).asObject());
-        
-        actionsCol.setCellFactory(col -> new TableCell<>() {
-            private final Button editBtn = new Button("تعديل");
-            private final Button deleteBtn = new Button("حذف");
-            private final HBox box = new HBox(6);
-            {
-                editBtn.setStyle("-fx-background-color: #3b82f6; -fx-text-fill: white; -fx-font-size: 10px; -fx-padding: 4 10;");
-                deleteBtn.setStyle("-fx-background-color: #ef4444; -fx-text-fill: white; -fx-font-size: 10px; -fx-padding: 4 10;");
-
-                box.getChildren().addAll(editBtn, deleteBtn);
-                box.setStyle("-fx-alignment: CENTER;");
-
-                editBtn.setOnAction(e -> {
-                    VoucherItem item = getTableView().getItems().get(getIndex());
-                    editProductItem(item);
-                });
-                deleteBtn.setOnAction(e -> {
-                    VoucherItem item = getTableView().getItems().get(getIndex());
-                    voucherItems.remove(item);
-                    updateItemsTotal();
-                });
-            }
-            
-            @Override
-            protected void updateItem(Void item, boolean empty) {
-                super.updateItem(item, empty);
-                setGraphic(empty ? null : box);
-            }
-        });
-        
-        itemsTable.setItems(voucherItems);
-    }
     
     private void updateCustomerBalanceDisplay() {
         if (selectedCustomer != null) {
@@ -328,102 +262,6 @@ public class PaymentVoucherController implements Initializable {
         installmentOptionsBox.setManaged(show);
     }
     
-    @FXML
-    private void addProductItem() {
-        VoucherItem item = showVoucherItemForm(null);
-        if (item != null) {
-            voucherItems.add(item);
-            updateItemsTotal();
-        }
-    }
-
-    private void editProductItem(VoucherItem existingItem) {
-        if (existingItem == null) {
-            return;
-        }
-        VoucherItem updated = showVoucherItemForm(existingItem);
-        if (updated != null) {
-            itemsTable.refresh();
-            updateItemsTotal();
-        }
-    }
-
-    private VoucherItem showVoucherItemForm(VoucherItem existingItem) {
-        try {
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/views/VoucherItemForm.fxml"));
-            Parent root = loader.load();
-
-            VoucherItemFormController controller = loader.getController();
-
-            Stage stage = new Stage();
-            stage.setTitle(existingItem == null ? "إضافة مادة" : "تعديل مادة");
-            stage.setScene(new Scene(root));
-            stage.initModality(Modality.APPLICATION_MODAL);
-            controller.setDialogStage(stage);
-
-            boolean defaultAddToInventory = addToInventoryCheckbox != null && addToInventoryCheckbox.isSelected();
-            controller.setDefaultAddToInventory(defaultAddToInventory);
-
-            if (existingItem != null) {
-                controller.setVoucherItem(existingItem);
-            }
-
-            stage.showAndWait();
-
-            if (controller.isSaved()) {
-                return controller.getVoucherItem();
-            }
-            return null;
-        } catch (Exception e) {
-            showAlert(Alert.AlertType.ERROR, "خطأ", "فشل في فتح نافذة المادة: " + e.getMessage());
-            return null;
-        }
-    }
-    
-    private void updateItemsTotal() {
-        double total = voucherItems.stream()
-            .mapToDouble(VoucherItem::getTotalPrice)
-            .sum();
-        itemsTotalLabel.setText(numberFormat.format(total));
-
-        syncAmountWithItemsTotalIfNeeded(total);
-        updatePaidAndRemainingLabels();
-    }
-
-    private void syncAmountWithItemsTotalIfNeeded(double itemsTotal) {
-        if (amountField == null) {
-            return;
-        }
-
-        boolean shouldAutoFill = !amountManuallyEdited;
-        if (shouldAutoFill) {
-            updatingAmountProgrammatically = true;
-            amountField.setText(numberFormat.format(itemsTotal));
-            updatingAmountProgrammatically = false;
-            calculateNetAmount();
-            updateAmountInWords();
-        }
-    }
-
-    private void updatePaidAndRemainingLabels() {
-        if (paidAmountLabel == null || remainingAmountLabel == null) {
-            return;
-        }
-        double itemsTotal = 0;
-        try {
-            String t = itemsTotalLabel != null ? itemsTotalLabel.getText() : "0";
-            itemsTotal = Double.parseDouble(t.replace(",", ""));
-        } catch (Exception ignored) {
-        }
-
-        double paid = parseAmount(amountField != null ? amountField.getText() : "0");
-        double discount = parseAmount(discountAmountField != null ? discountAmountField.getText() : "0");
-        double netPaid = Math.max(0, paid - discount);
-        double remaining = itemsTotal - netPaid;
-
-        paidAmountLabel.setText(numberFormat.format(netPaid));
-        remainingAmountLabel.setText(numberFormat.format(remaining));
-    }
     
     @FXML
     private void handleSave() {
@@ -459,11 +297,6 @@ public class PaymentVoucherController implements Initializable {
             }
             voucher.setCreatedBy(SessionManager.getInstance().getCurrentUser() != null ? 
                 SessionManager.getInstance().getCurrentUser().getDisplayName() : "System");
-            
-            // Add items
-            for (VoucherItem item : voucherItems) {
-                voucher.addItem(item);
-            }
             
             // Save with or without installments
             if (installmentCheckbox.isSelected()) {
@@ -538,9 +371,6 @@ public class PaymentVoucherController implements Initializable {
         installmentCountField.setText("");
         firstInstallmentDatePicker.setValue(LocalDate.now().plusMonths(1));
         
-        voucherItems.clear();
-        updateItemsTotal();
-        
         selectedCustomer = null;
         updateCustomerBalanceDisplay();
     }
@@ -563,7 +393,9 @@ public class PaymentVoucherController implements Initializable {
             
             Stage stage = new Stage();
             stage.setTitle("إضافة حساب/مورد جديد");
-            stage.setScene(new Scene(root));
+            Scene scene = new Scene(root);
+            com.hisabx.MainApp.applyCurrentFontSize(scene);
+            stage.setScene(scene);
             stage.initModality(Modality.APPLICATION_MODAL);
             stage.showAndWait();
             
@@ -585,7 +417,9 @@ public class PaymentVoucherController implements Initializable {
             
             Stage stage = new Stage();
             stage.setTitle("سندات الدفع السابقة");
-            stage.setScene(new Scene(root));
+            Scene scene = new Scene(root);
+            com.hisabx.MainApp.applyCurrentFontSize(scene);
+            stage.setScene(scene);
             stage.initModality(Modality.APPLICATION_MODAL);
             stage.show();
             

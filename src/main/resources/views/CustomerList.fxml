@@ -11,28 +11,28 @@
 
 <VBox xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="com.hisabx.controller.CustomerListController"
-      spacing="16" prefWidth="950" prefHeight="650"
-      style="-fx-background-color: #f8fafc; -fx-padding: 24;">
+      spacing="16"
+      style="-fx-background-color: linear-gradient(to bottom right, #0f1b2d, #1a2744); -fx-padding: 24;">
     
     <!-- Header -->
     <HBox alignment="CENTER_RIGHT" spacing="16">
         <Label text="إدارة العملاء" 
-               style="-fx-font-size: 24px; -fx-font-weight: bold; -fx-text-fill: #1e3a5f;"/>
+               style="-fx-font-size: 24px; -fx-font-weight: bold; -fx-text-fill: #e8edf4;"/>
         <HBox HBox.hgrow="ALWAYS"/>
         <Label fx:id="totalCustomersLabel" text="إجمالي العملاء: 0"
-               style="-fx-font-size: 14px; -fx-text-fill: #6b7280; -fx-background-color: #e5e7eb; -fx-padding: 8 16; -fx-background-radius: 16;"/>
+               style="-fx-font-size: 14px; -fx-text-fill: #90a4ae; -fx-background-color: #10233d; -fx-padding: 8 16; -fx-background-radius: 16;"/>
     </HBox>
     
     <!-- Search and Actions Bar -->
     <HBox spacing="12" alignment="CENTER_RIGHT"
-          style="-fx-background-color: white; -fx-padding: 16; -fx-background-radius: 12; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.05), 8, 0, 0, 2);">
+          style="-fx-background-color: #10233d; -fx-padding: 16; -fx-background-radius: 12; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 8, 0, 0, 2);">
         <TextField fx:id="searchField" promptText="🔍 بحث بالاسم أو الكود أو الهاتف..."
                    prefWidth="300"
-                   style="-fx-padding: 10; -fx-background-radius: 8; -fx-border-color: #e5e7eb; -fx-border-radius: 8;"/>
+                   style="-fx-padding: 10; -fx-background-radius: 8; -fx-border-color: rgba(255,255,255,0.12); -fx-border-radius: 8;"/>
         <Button text="بحث" onAction="#handleSearch"
                 style="-fx-background-color: #3b82f6; -fx-text-fill: white; -fx-font-size: 13px; -fx-font-weight: bold; -fx-padding: 10 20; -fx-background-radius: 8;"/>
         <Button text="إعادة تعيين" onAction="#handleReset"
-                style="-fx-background-color: #f3f4f6; -fx-text-fill: #374151; -fx-font-size: 13px; -fx-padding: 10 16; -fx-background-radius: 8;"/>
+                style="-fx-background-color: #1a2744; -fx-text-fill: #e8edf4; -fx-border-color: rgba(255,255,255,0.12); -fx-border-radius: 8; -fx-font-size: 13px; -fx-padding: 10 16; -fx-background-radius: 8;"/>
         <HBox HBox.hgrow="ALWAYS"/>
         <Button text="+ إضافة عميل جديد" onAction="#handleAddCustomer"
                 style="-fx-background-color: linear-gradient(to right, #10b981, #059669); -fx-text-fill: white; -fx-font-size: 13px; -fx-font-weight: bold; -fx-padding: 10 20; -fx-background-radius: 8;"/>
@@ -40,7 +40,7 @@
     
     <!-- Customers Table -->
     <TableView fx:id="customersTable" VBox.vgrow="ALWAYS"
-               style="-fx-background-color: white; -fx-background-radius: 12;">
+               style="-fx-background-radius: 12;">
         <columns>
             <TableColumn fx:id="idColumn" text="#" prefWidth="50" style="-fx-alignment: CENTER;"/>
             <TableColumn fx:id="customerCodeColumn" text="كود العميل" prefWidth="120"/>
@@ -60,21 +60,21 @@
     
     <!-- Footer Stats -->
     <HBox spacing="20" alignment="CENTER"
-          style="-fx-background-color: white; -fx-padding: 16; -fx-background-radius: 12; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.05), 8, 0, 0, 2);">
+          style="-fx-background-color: #10233d; -fx-padding: 16; -fx-background-radius: 12; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 8, 0, 0, 2);">
         <VBox alignment="CENTER" spacing="4">
             <Label fx:id="totalDebtLabel" text="0.00 د.ع" 
                    style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #ef4444;"/>
-            <Label text="ديون دينار" style="-fx-font-size: 11px; -fx-text-fill: #6b7280;"/>
+            <Label text="ديون دينار" style="-fx-font-size: 11px; -fx-text-fill: #90a4ae;"/>
         </VBox>
         <VBox alignment="CENTER" spacing="4">
             <Label fx:id="totalDebtUsdLabel" text="0.00 $" 
                    style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #ef4444;"/>
-            <Label text="ديون دولار" style="-fx-font-size: 11px; -fx-text-fill: #6b7280;"/>
+            <Label text="ديون دولار" style="-fx-font-size: 11px; -fx-text-fill: #90a4ae;"/>
         </VBox>
         <VBox alignment="CENTER" spacing="4" style="-fx-padding: 0 20;">
             <Label fx:id="totalCreditLabel" text="0.00 د.ع" 
                    style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #10b981;"/>
-            <Label text="أرصدة دينار" style="-fx-font-size: 11px; -fx-text-fill: #6b7280;"/>
+            <Label text="أرصدة دينار" style="-fx-font-size: 11px; -fx-text-fill: #90a4ae;"/>
         </VBox>
         <HBox HBox.hgrow="ALWAYS"/>
         <Button text="تصدير إلى Excel" onAction="#handleExport"

@@ -9,8 +9,8 @@
 <VBox xmlns="http://javafx.com/javafx/17"
       xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="com.hisabx.controller.PendingPaymentsController"
-      spacing="15" alignment="TOP_CENTER" prefWidth="850" prefHeight="550"
-      style="-fx-background-color: #f5f5f5;">
+      spacing="15" alignment="TOP_CENTER"
+      style="-fx-background-color: linear-gradient(to bottom right, #0f1b2d, #1a2744);">
     <padding>
         <Insets top="20" right="20" bottom="20" left="20"/>
     </padding>
@@ -22,22 +22,22 @@
 
     <!-- Summary Cards -->
     <HBox spacing="20" alignment="CENTER">
-        <VBox alignment="CENTER" spacing="5" style="-fx-background-color: white; -fx-background-radius: 10; -fx-padding: 20; -fx-min-width: 180;">
-            <Label text="إجمالي المعلق" style="-fx-font-size: 12px; -fx-text-fill: #7f8c8d;"/>
+        <VBox alignment="CENTER" spacing="5" style="-fx-background-color: #10233d; -fx-background-radius: 10; -fx-padding: 20; -fx-min-width: 180;">
+            <Label text="إجمالي المعلق" style="-fx-font-size: 12px; -fx-text-fill: #90a4ae;"/>
             <Label fx:id="totalPendingLabel" text="0.00 دينار" style="-fx-font-size: 22px; -fx-font-weight: bold; -fx-text-fill: #e74c3c;"/>
         </VBox>
-        <VBox alignment="CENTER" spacing="5" style="-fx-background-color: white; -fx-background-radius: 10; -fx-padding: 20; -fx-min-width: 180;">
-            <Label text="عدد الفواتير" style="-fx-font-size: 12px; -fx-text-fill: #7f8c8d;"/>
+        <VBox alignment="CENTER" spacing="5" style="-fx-background-color: #10233d; -fx-background-radius: 10; -fx-padding: 20; -fx-min-width: 180;">
+            <Label text="عدد الفواتير" style="-fx-font-size: 12px; -fx-text-fill: #90a4ae;"/>
             <Label fx:id="invoiceCountLabel" text="0" style="-fx-font-size: 22px; -fx-font-weight: bold; -fx-text-fill: #f39c12;"/>
         </VBox>
-        <VBox alignment="CENTER" spacing="5" style="-fx-background-color: white; -fx-background-radius: 10; -fx-padding: 20; -fx-min-width: 180;">
-            <Label text="المتأخر" style="-fx-font-size: 12px; -fx-text-fill: #7f8c8d;"/>
+        <VBox alignment="CENTER" spacing="5" style="-fx-background-color: #10233d; -fx-background-radius: 10; -fx-padding: 20; -fx-min-width: 180;">
+            <Label text="المتأخر" style="-fx-font-size: 12px; -fx-text-fill: #90a4ae;"/>
             <Label fx:id="overdueLabel" text="0.00 دينار" style="-fx-font-size: 22px; -fx-font-weight: bold; -fx-text-fill: #c0392b;"/>
         </VBox>
     </HBox>
 
     <!-- Filters -->
-    <HBox spacing="15" alignment="CENTER_LEFT" style="-fx-background-color: white; -fx-background-radius: 8; -fx-padding: 12;">
+    <HBox spacing="15" alignment="CENTER_LEFT" style="-fx-background-color: #10233d; -fx-background-radius: 8; -fx-padding: 12;">
         <Label text="العميل:" style="-fx-font-weight: bold;"/>
         <ComboBox fx:id="customerFilterComboBox" prefWidth="180" onAction="#handleCustomerFilter">
             <items>
@@ -65,7 +65,7 @@
     </HBox>
 
     <!-- Pending Payments Table -->
-    <TableView fx:id="pendingTable" VBox.vgrow="ALWAYS" style="-fx-background-color: white;">
+    <TableView fx:id="pendingTable" VBox.vgrow="ALWAYS">
         <columns>
             <TableColumn fx:id="saleCodeColumn" text="رقم الفاتورة" prefWidth="130"/>
             <TableColumn fx:id="customerColumn" text="العميل" prefWidth="150"/>

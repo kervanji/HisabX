@@ -521,7 +521,9 @@ public class ReceiptVoucherController implements Initializable {
             
             Stage stage = new Stage();
             stage.setTitle("إضافة عميل جديد");
-            stage.setScene(new Scene(root));
+            Scene scene = new Scene(root);
+            com.hisabx.MainApp.applyCurrentFontSize(scene);
+            stage.setScene(scene);
             stage.initModality(Modality.APPLICATION_MODAL);
             stage.showAndWait();
             
@@ -547,7 +549,9 @@ public class ReceiptVoucherController implements Initializable {
 
             Stage stage = new Stage();
             stage.setTitle("سندات القبض السابقة");
-            stage.setScene(new Scene(root));
+            Scene scene = new Scene(root);
+            com.hisabx.MainApp.applyCurrentFontSize(scene);
+            stage.setScene(scene);
             stage.initModality(Modality.APPLICATION_MODAL);
             stage.show();
         } catch (Exception e) {

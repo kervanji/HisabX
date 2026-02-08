@@ -5,11 +5,11 @@
 
 <VBox xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="com.hisabx.controller.CategoryController"
-      spacing="16" prefWidth="600" prefHeight="500"
-      style="-fx-background-color: #f8fafc; -fx-padding: 24;">
+      spacing="16"
+      style="-fx-background-color: linear-gradient(to bottom right, #0f1b2d, #1a2744); -fx-padding: 24;">
     
     <Label text="إدارة الفئات" 
-           style="-fx-font-size: 22px; -fx-font-weight: bold; -fx-text-fill: #1f3c56;"/>
+           style="-fx-font-size: 22px; -fx-font-weight: bold; -fx-text-fill: #e8edf4;"/>
     
     <HBox spacing="12" alignment="CENTER_LEFT">
         <TextField fx:id="categoryNameField" promptText="اسم الفئة الجديدة" HBox.hgrow="ALWAYS"
@@ -36,9 +36,9 @@
     </TableView>
     
     <HBox alignment="CENTER_RIGHT" spacing="12">
-        <Label fx:id="totalCategoriesLabel" text="إجمالي الفئات: 0" style="-fx-font-size: 13px; -fx-text-fill: #6b7280;"/>
+        <Label fx:id="totalCategoriesLabel" text="إجمالي الفئات: 0" style="-fx-font-size: 13px; -fx-text-fill: #90a4ae;"/>
         <Region HBox.hgrow="ALWAYS"/>
         <Button text="إغلاق" onAction="#handleClose"
-                style="-fx-background-color: #e5e7eb; -fx-text-fill: #374151; -fx-font-size: 14px; -fx-padding: 10 24; -fx-background-radius: 8;"/>
+                style="-fx-background-color: #1a2744; -fx-text-fill: #e8edf4; -fx-border-color: rgba(255,255,255,0.12); -fx-border-radius: 8; -fx-font-size: 14px; -fx-padding: 10 24; -fx-background-radius: 8;"/>
     </HBox>
 </VBox>
