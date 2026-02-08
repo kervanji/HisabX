@@ -1,16 +1,27 @@
 package com.hisabx.controller;
 
 import com.hisabx.model.User;
+import com.hisabx.model.UserRole;
 import com.hisabx.service.AuthService;
 import com.hisabx.util.SessionManager;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
+import javafx.geometry.Pos;
+import javafx.scene.Cursor;
 import javafx.scene.control.*;
+import javafx.scene.effect.DropShadow;
+import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
+import javafx.scene.paint.Color;
+import javafx.scene.shape.Circle;
+import javafx.scene.text.Font;
+import javafx.scene.text.FontWeight;
+import javafx.scene.text.Text;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.List;
 import java.util.Optional;
 
 public class LoginController {
@@ -18,8 +29,12 @@ public class LoginController {
     
     @FXML private VBox loginContainer;
     @FXML private Label titleLabel;
-    @FXML private Label lastUserLabel;
-    @FXML private HBox lastUserBox;
+    @FXML private FlowPane userBubblesPane;
+    @FXML private HBox selectedUserBox;
+    @FXML private Label selectedUserIcon;
+    @FXML private Label selectedUserLabel;
+    @FXML private Label selectedUserRoleLabel;
+    @FXML private VBox pinBox;
     @FXML private TextField usernameField;
     @FXML private VBox usernameBox;
     @FXML private PasswordField pinField;
@@ -31,21 +46,16 @@ public class LoginController {
     
     private final AuthService authService = new AuthService();
     private Runnable onLoginSuccess;
-    private boolean quickLoginMode = false;
-    private String lastUsername;
+    private User selectedUser;
+    private VBox selectedBubbleNode;
+    
+    private static final String[] BUBBLE_COLORS = {
+        "#2563eb", "#7c3aed", "#059669", "#d97706", "#dc2626", "#0891b2", "#4f46e5", "#be185d"
+    };
     
     @FXML
     private void initialize() {
-        // Check for remembered username
-        lastUsername = SessionManager.getInstance().getLastUsername();
-        
-        if (lastUsername != null && !lastUsername.isEmpty()) {
-            // Quick login mode
-            showQuickLoginMode();
-        } else {
-            // Full login mode
-            showFullLoginMode();
-        }
+        loadUserBubbles();
         
         // Enter key triggers login
         pinField.setOnAction(e -> handleLogin());
@@ -55,64 +65,169 @@ public class LoginController {
             }
         });
         
-        // Focus on appropriate field
-        Platform.runLater(() -> {
-            if (quickLoginMode) {
-                pinField.requestFocus();
-            } else {
-                usernameField.requestFocus();
-            }
-        });
-    }
-    
-    private void showQuickLoginMode() {
-        quickLoginMode = true;
-        
-        // Get user display info
-        Optional<User> userOpt = authService.getUserByUsername(lastUsername);
-        String displayText = lastUsername;
-        if (userOpt.isPresent()) {
-            User user = userOpt.get();
-            displayText = user.getDisplayName() + " (" + user.getRole().getDisplayName() + ")";
+        // Auto-select last remembered user
+        String lastUsername = SessionManager.getInstance().getLastUsername();
+        if (lastUsername != null && !lastUsername.isEmpty()) {
+            Optional<User> userOpt = authService.getUserByUsername(lastUsername);
+            userOpt.ifPresent(this::selectUser);
         }
-        
-        lastUserLabel.setText(displayText);
-        lastUserBox.setVisible(true);
-        lastUserBox.setManaged(true);
-        usernameBox.setVisible(false);
-        usernameBox.setManaged(false);
-        switchUserButton.setVisible(true);
-        switchUserButton.setManaged(true);
-        
-        titleLabel.setText("مرحباً بعودتك");
     }
     
-    private void showFullLoginMode() {
-        quickLoginMode = false;
+    private void loadUserBubbles() {
+        userBubblesPane.getChildren().clear();
+        List<User> activeUsers = authService.getActiveUsers();
         
-        lastUserBox.setVisible(false);
-        lastUserBox.setManaged(false);
-        usernameBox.setVisible(true);
-        usernameBox.setManaged(true);
+        for (int i = 0; i < activeUsers.size(); i++) {
+            User user = activeUsers.get(i);
+            String color = BUBBLE_COLORS[i % BUBBLE_COLORS.length];
+            VBox bubble = createUserBubble(user, color);
+            userBubblesPane.getChildren().add(bubble);
+        }
+    }
+    
+    private VBox createUserBubble(User user, String color) {
+        // Avatar circle
+        Circle circle = new Circle(32);
+        circle.setFill(Color.web(color));
+        circle.setEffect(new DropShadow(8, Color.web(color, 0.4)));
+        
+        // Initials text
+        String initials = getInitials(user.getDisplayName());
+        Text initialsText = new Text(initials);
+        initialsText.setFill(Color.WHITE);
+        initialsText.setFont(Font.font("System", FontWeight.BOLD, 18));
+        
+        // Stack circle + initials
+        javafx.scene.layout.StackPane avatar = new javafx.scene.layout.StackPane(circle, initialsText);
+        avatar.setMinSize(64, 64);
+        avatar.setMaxSize(64, 64);
+        
+        // Name label
+        Label nameLabel = new Label(user.getDisplayName());
+        nameLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #374151; -fx-font-weight: bold;");
+        nameLabel.setMaxWidth(80);
+        nameLabel.setAlignment(Pos.CENTER);
+        nameLabel.setWrapText(true);
+        
+        // Role label (larger to emphasize role)
+        Label roleLabel = new Label(user.getRole().getDisplayName());
+        String roleColor = user.getRole() == UserRole.ADMIN ? "#dc2626" : "#6b7280";
+        roleLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: " + roleColor + "; -fx-font-weight: bold;");
+        
+        // Container
+        VBox bubbleBox = new VBox(5);
+        bubbleBox.setAlignment(Pos.TOP_CENTER);
+        bubbleBox.setStyle("-fx-padding: 8; -fx-background-radius: 12; -fx-cursor: hand;");
+        bubbleBox.setPrefWidth(90);
+        bubbleBox.getChildren().addAll(avatar, nameLabel, roleLabel);
+        bubbleBox.setCursor(Cursor.HAND);
+        
+        // Hover effect
+        bubbleBox.setOnMouseEntered(e -> {
+            if (bubbleBox != selectedBubbleNode) {
+                bubbleBox.setStyle("-fx-padding: 8; -fx-background-radius: 12; -fx-background-color: #f0f9ff; -fx-cursor: hand;");
+            }
+            circle.setScaleX(1.1);
+            circle.setScaleY(1.1);
+        });
+        bubbleBox.setOnMouseExited(e -> {
+            if (bubbleBox != selectedBubbleNode) {
+                bubbleBox.setStyle("-fx-padding: 8; -fx-background-radius: 12; -fx-cursor: hand;");
+            }
+            circle.setScaleX(1.0);
+            circle.setScaleY(1.0);
+        });
+        
+        // Click to select
+        bubbleBox.setOnMouseClicked(e -> {
+            selectUser(user);
+            highlightBubble(bubbleBox, color);
+        });
+        
+        // Store user reference
+        bubbleBox.setUserData(user);
+        
+        return bubbleBox;
+    }
+    
+    private String getInitials(String displayName) {
+        if (displayName == null || displayName.isEmpty()) return "?";
+        String[] parts = displayName.trim().split("\\s+");
+        if (parts.length == 1) {
+            return parts[0].substring(0, Math.min(2, parts[0].length()));
+        }
+        return String.valueOf(parts[0].charAt(0)) + parts[parts.length - 1].charAt(0);
+    }
+    
+    private void highlightBubble(VBox bubbleBox, String color) {
+        // Reset all bubbles
+        for (javafx.scene.Node node : userBubblesPane.getChildren()) {
+            if (node instanceof VBox) {
+                ((VBox) node).setStyle("-fx-padding: 8; -fx-background-radius: 12; -fx-cursor: hand;");
+            }
+        }
+        // Highlight selected
+        bubbleBox.setStyle("-fx-padding: 8; -fx-background-radius: 12; -fx-background-color: #dbeafe; -fx-border-color: " + color + "; -fx-border-width: 2; -fx-border-radius: 10; -fx-cursor: hand;");
+        selectedBubbleNode = bubbleBox;
+    }
+    
+    private void selectUser(User user) {
+        selectedUser = user;
+        clearError();
+        
+        // Show selected user info
+        selectedUserIcon.setText(getInitials(user.getDisplayName()));
+        selectedUserIcon.setStyle("-fx-font-size: 20px; -fx-min-width: 48; -fx-min-height: 48; -fx-max-width: 48; -fx-max-height: 48; " +
+                "-fx-alignment: CENTER; -fx-background-radius: 24; -fx-background-color: #2563eb; -fx-text-fill: white; -fx-font-weight: bold;");
+        selectedUserLabel.setText(user.getDisplayName());
+        selectedUserRoleLabel.setText(user.getRole().getDisplayName());
+        
+        selectedUserBox.setVisible(true);
+        selectedUserBox.setManaged(true);
+        
+        // Show PIN field and login button
+        pinBox.setVisible(true);
+        pinBox.setManaged(true);
+        loginButton.setVisible(true);
+        loginButton.setManaged(true);
         switchUserButton.setVisible(false);
         switchUserButton.setManaged(false);
         
-        titleLabel.setText("تسجيل الدخول");
-        usernameField.clear();
-        pinField.clear();
+        // Hide username field
+        usernameBox.setVisible(false);
+        usernameBox.setManaged(false);
         
-        Platform.runLater(() -> usernameField.requestFocus());
+        titleLabel.setText("مرحباً بعودتك");
+        
+        pinField.clear();
+        Platform.runLater(() -> pinField.requestFocus());
+        
+        // Highlight the correct bubble
+        int idx = 0;
+        for (javafx.scene.Node node : userBubblesPane.getChildren()) {
+            if (node instanceof VBox && node.getUserData() == user) {
+                String color = BUBBLE_COLORS[idx % BUBBLE_COLORS.length];
+                highlightBubble((VBox) node, color);
+                break;
+            }
+            idx++;
+        }
     }
     
     @FXML
     private void handleLogin() {
         clearError();
         
-        String username = quickLoginMode ? lastUsername : usernameField.getText().trim();
+        String username;
+        if (selectedUser != null) {
+            username = selectedUser.getUsername();
+        } else {
+            username = usernameField.getText().trim();
+        }
         String pin = pinField.getText();
         
         if (username.isEmpty()) {
-            showError("الرجاء إدخال اسم المستخدم");
+            showError("الرجاء اختيار مستخدم أو إدخال اسم المستخدم");
             return;
         }
         
@@ -160,7 +275,31 @@ public class LoginController {
     
     @FXML
     private void handleSwitchUser() {
-        showFullLoginMode();
+        selectedUser = null;
+        selectedBubbleNode = null;
+        
+        // Reset all bubbles
+        for (javafx.scene.Node node : userBubblesPane.getChildren()) {
+            if (node instanceof VBox) {
+                ((VBox) node).setStyle("-fx-padding: 8; -fx-background-radius: 12; -fx-cursor: hand;");
+            }
+        }
+        
+        selectedUserBox.setVisible(false);
+        selectedUserBox.setManaged(false);
+        pinBox.setVisible(false);
+        pinBox.setManaged(false);
+        loginButton.setVisible(false);
+        loginButton.setManaged(false);
+        switchUserButton.setVisible(false);
+        switchUserButton.setManaged(false);
+        usernameBox.setVisible(false);
+        usernameBox.setManaged(false);
+        
+        titleLabel.setText("اختر حسابك");
+        pinField.clear();
+        clearError();
+        statusLabel.setText("");
     }
     
     @FXML

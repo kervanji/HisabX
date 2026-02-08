@@ -7,87 +7,91 @@
 
 <BorderPane style="-fx-background-color: linear-gradient(to bottom right, #1a1a2e, #16213e); -fx-font-family: 'Geeza Pro', 'SF Arabic', 'Arial', 'Tahoma';"
             xmlns:fx="http://javafx.com/fxml" fx:controller="com.hisabx.controller.LoginController"
-            prefWidth="500" prefHeight="600">
+            prefWidth="600" prefHeight="650">
     
     <center>
         <VBox alignment="CENTER">
             <!-- Login Card -->
-            <VBox fx:id="loginContainer" alignment="CENTER" spacing="20" 
+            <VBox fx:id="loginContainer" alignment="CENTER" spacing="18" 
                   style="-fx-background-color: white; -fx-background-radius: 20; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 20, 0, 0, 10);"
-                  maxWidth="380" maxHeight="500">
-        <padding>
-            <Insets top="40" right="40" bottom="40" left="40"/>
-        </padding>
-        
-        <!-- Logo/Title -->
-        <Label text="HisabX" style="-fx-font-size: 36px; -fx-font-weight: bold; -fx-text-fill: #2563eb;">
-            <font><Font name="System Bold" size="36"/></font>
-        </Label>
-        
-        <Label fx:id="titleLabel" text="تسجيل الدخول" 
-               style="-fx-font-size: 18px; -fx-text-fill: #64748b;">
-            <font><Font size="18"/></font>
-        </Label>
-        
-        <Region prefHeight="10"/>
-        
-        <!-- Last User Display (Quick Login) -->
-        <HBox fx:id="lastUserBox" alignment="CENTER" spacing="10" visible="false" managed="false"
-              style="-fx-background-color: #f0f9ff; -fx-background-radius: 10; -fx-padding: 15;">
-            <Label text="👤" style="-fx-font-size: 24px;"/>
-            <Label fx:id="lastUserLabel" text="" 
-                   style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #1e40af;"/>
-        </HBox>
-        
-        <!-- Username Field -->
-        <VBox fx:id="usernameBox" spacing="8" alignment="CENTER_RIGHT">
-            <Label text="اسم المستخدم" style="-fx-text-fill: #374151; -fx-font-size: 14px;"/>
-            <TextField fx:id="usernameField" promptText="أدخل اسم المستخدم"
-                       prefWidth="300" prefHeight="45"
-                       style="-fx-background-radius: 10; -fx-border-radius: 10; -fx-border-color: #e5e7eb; -fx-border-width: 1; -fx-font-size: 14px; -fx-padding: 10;"
-                       alignment="CENTER_RIGHT"/>
-        </VBox>
-        
-        <!-- PIN Field -->
-        <VBox spacing="8" alignment="CENTER_RIGHT">
-            <Label text="الرمز (PIN)" style="-fx-text-fill: #374151; -fx-font-size: 14px;"/>
-            <PasswordField fx:id="pinField" promptText="أدخل الرمز"
-                           prefWidth="300" prefHeight="45"
-                           style="-fx-background-radius: 10; -fx-border-radius: 10; -fx-border-color: #e5e7eb; -fx-border-width: 1; -fx-font-size: 18px; -fx-padding: 10;"
-                           alignment="CENTER"/>
-        </VBox>
-        
-        <!-- Remember User Checkbox -->
-        <CheckBox fx:id="rememberCheckBox" text="تذكرني على هذا الجهاز" selected="true"
-                  style="-fx-text-fill: #6b7280; -fx-font-size: 13px;"
-                  nodeOrientation="RIGHT_TO_LEFT"/>
-        
-        <!-- Error Label -->
-        <Label fx:id="errorLabel" text="" visible="false" managed="false"
-               style="-fx-text-fill: #dc2626; -fx-font-size: 13px; -fx-background-color: #fef2f2; -fx-padding: 8 15; -fx-background-radius: 8;"/>
-        
-        <!-- Status Label -->
-        <Label fx:id="statusLabel" text="" style="-fx-text-fill: #059669; -fx-font-size: 13px;"/>
-        
-        <Region prefHeight="5"/>
-        
-        <!-- Login Button -->
-        <Button fx:id="loginButton" text="دخول" onAction="#handleLogin"
-                prefWidth="300" prefHeight="50"
-                style="-fx-background-color: #2563eb; -fx-text-fill: white; -fx-font-size: 16px; -fx-font-weight: bold; -fx-background-radius: 10; -fx-cursor: hand;">
-        </Button>
-        
-        <!-- Switch User Link -->
-        <Button fx:id="switchUserButton" text="تبديل المستخدم" onAction="#handleSwitchUser"
-                visible="false" managed="false"
-                style="-fx-background-color: transparent; -fx-text-fill: #2563eb; -fx-font-size: 13px; -fx-cursor: hand; -fx-underline: true;"/>
-        
-        <Region prefHeight="5"/>
-        
-        <!-- Exit Button -->
-        <Button text="خروج" onAction="#handleExit"
-                style="-fx-background-color: transparent; -fx-text-fill: #9ca3af; -fx-font-size: 12px; -fx-cursor: hand;"/>
-    </VBox>
+                  maxWidth="480" maxHeight="600">
+                <padding>
+                    <Insets top="35" right="40" bottom="30" left="40"/>
+                </padding>
+                
+                <!-- Logo/Title -->
+                <Label text="HisabX" style="-fx-font-size: 36px; -fx-font-weight: bold; -fx-text-fill: #2563eb;">
+                    <font><Font name="System Bold" size="36"/></font>
+                </Label>
+                
+                <Label fx:id="titleLabel" text="اختر حسابك" 
+                       style="-fx-font-size: 16px; -fx-text-fill: #64748b;">
+                    <font><Font size="16"/></font>
+                </Label>
+                
+                <!-- User Bubbles Container -->
+                <FlowPane fx:id="userBubblesPane" alignment="CENTER" hgap="14" vgap="14"
+                          style="-fx-padding: 10 0;"
+                          prefWrapLength="400"/>
+                
+                <Separator style="-fx-background-color: #e5e7eb;"/>
+                
+                <!-- Selected User Display -->
+                <HBox fx:id="selectedUserBox" alignment="CENTER" spacing="10" visible="false" managed="false"
+                      style="-fx-background-color: #f0f9ff; -fx-background-radius: 10; -fx-padding: 12;">
+                    <Label fx:id="selectedUserIcon" text="" style="-fx-font-size: 28px; -fx-min-width: 40; -fx-alignment: CENTER;"/>
+                    <VBox spacing="2" alignment="CENTER_RIGHT">
+                        <Label fx:id="selectedUserLabel" text="" 
+                               style="-fx-font-size: 15px; -fx-font-weight: bold; -fx-text-fill: #1e40af;"/>
+                        <Label fx:id="selectedUserRoleLabel" text=""
+                               style="-fx-font-size: 13px; -fx-text-fill: #6b7280; -fx-font-weight: bold;"/>
+                    </VBox>
+                </HBox>
+                
+                <!-- PIN Field (shown after selecting a user) -->
+                <VBox fx:id="pinBox" spacing="8" alignment="CENTER" visible="false" managed="false">
+                    <Label text="الرمز (PIN)" style="-fx-text-fill: #374151; -fx-font-size: 14px;"/>
+                    <PasswordField fx:id="pinField" promptText="أدخل الرمز"
+                                   prefWidth="300" prefHeight="45"
+                                   style="-fx-background-radius: 10; -fx-border-radius: 10; -fx-border-color: #e5e7eb; -fx-border-width: 1; -fx-font-size: 18px; -fx-padding: 10;"
+                                   alignment="CENTER"/>
+                </VBox>
+                
+                <!-- Username Field (for manual entry / switch user) -->
+                <VBox fx:id="usernameBox" spacing="8" alignment="CENTER_RIGHT" visible="false" managed="false">
+                    <Label text="اسم المستخدم" style="-fx-text-fill: #374151; -fx-font-size: 14px;"/>
+                    <TextField fx:id="usernameField" promptText="أدخل اسم المستخدم"
+                               prefWidth="300" prefHeight="45"
+                               style="-fx-background-radius: 10; -fx-border-radius: 10; -fx-border-color: #e5e7eb; -fx-border-width: 1; -fx-font-size: 14px; -fx-padding: 10;"
+                               alignment="CENTER_RIGHT"/>
+                </VBox>
+                
+                <!-- Remember User Checkbox -->
+                <CheckBox fx:id="rememberCheckBox" text="تذكرني على هذا الجهاز" selected="true"
+                          style="-fx-text-fill: #6b7280; -fx-font-size: 13px;"
+                          nodeOrientation="RIGHT_TO_LEFT"/>
+                
+                <!-- Error Label -->
+                <Label fx:id="errorLabel" text="" visible="false" managed="false"
+                       style="-fx-text-fill: #dc2626; -fx-font-size: 13px; -fx-background-color: #fef2f2; -fx-padding: 8 15; -fx-background-radius: 8;"/>
+                
+                <!-- Status Label -->
+                <Label fx:id="statusLabel" text="" style="-fx-text-fill: #059669; -fx-font-size: 13px;"/>
+                
+                <!-- Login Button -->
+                <Button fx:id="loginButton" text="دخول" onAction="#handleLogin"
+                        prefWidth="300" prefHeight="48" visible="false" managed="false"
+                        style="-fx-background-color: #2563eb; -fx-text-fill: white; -fx-font-size: 16px; -fx-font-weight: bold; -fx-background-radius: 10; -fx-cursor: hand;"/>
+                
+                <!-- Switch User Link -->
+                <Button fx:id="switchUserButton" text="تبديل المستخدم" onAction="#handleSwitchUser"
+                        visible="false" managed="false"
+                        style="-fx-background-color: transparent; -fx-text-fill: #2563eb; -fx-font-size: 13px; -fx-cursor: hand; -fx-underline: true;"/>
+                
+                <!-- Exit Button -->
+                <Button text="خروج" onAction="#handleExit"
+                        style="-fx-background-color: transparent; -fx-text-fill: #9ca3af; -fx-font-size: 12px; -fx-cursor: hand;"/>
+            </VBox>
         </VBox>
     </center>
     

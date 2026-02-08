@@ -27,6 +27,7 @@ import java.util.List;
 
 public class MainApp extends Application {
     private static final Logger logger = LoggerFactory.getLogger(MainApp.class);
+    private static final String BASE_STYLE_KEY = "hisabx.baseStyle";
     private Stage primaryStage;
     private BorderPane mainLayout;
     private com.hisabx.controller.MainController mainController;
@@ -129,7 +130,6 @@ public class MainApp extends Application {
             });
             
             Scene scene = new Scene(loginRoot);
-            applyUiFontSizeToScene(scene, SessionManager.getInstance().getUiFontSize());
             primaryStage.setScene(scene);
             primaryStage.setMaximized(false);
             primaryStage.setResizable(false);
@@ -223,7 +223,6 @@ public class MainApp extends Application {
 
             Scene scene = new Scene(overlayRoot);
             scene.setFill(Color.TRANSPARENT);
-            applyUiFontSizeToScene(scene, SessionManager.getInstance().getUiFontSize());
             dialogStage.setScene(scene);
 
             // Match overlay window to the main window position/size
@@ -256,9 +255,7 @@ public class MainApp extends Application {
         int clamped = Math.max(10, Math.min(24, fontSizePx));
         for (Stage stage : new ArrayList<>(managedStages)) {
             if (stage != null && stage.getScene() != null && stage.getScene().getRoot() != null) {
-                stage.getScene().getRoot().setStyle(
-                        upsertFontSizeStyle(stage.getScene().getRoot().getStyle(), clamped)
-                );
+                applyFontSizeRecursive(stage.getScene().getRoot(), clamped);
             }
         }
     }
@@ -272,11 +269,117 @@ public class MainApp extends Application {
         return cleaned + "-fx-font-size: " + fontSizePx + "px;";
     }
 
+    /**
+     * Scale an inline -fx-font-size value proportionally based on the user's chosen base size.
+     * For example, if base=13 and user chose 16, a 24px title becomes ~29.5px.
+     */
+    public static String scaleInlineFontSizes(String existingStyle, int baseFontSizePx) {
+        if (existingStyle == null || existingStyle.isEmpty()) return existingStyle;
+        double scale = baseFontSizePx / 13.0;
+        java.util.regex.Matcher m = java.util.regex.Pattern
+                .compile("(?i)(-fx-font-size\\s*:\\s*)(\\d+(?:\\.\\d+)?)(px)")
+                .matcher(existingStyle);
+        StringBuffer sb = new StringBuffer();
+        while (m.find()) {
+            double original = Double.parseDouble(m.group(2));
+            int scaled = (int) Math.round(original * scale);
+            m.appendReplacement(sb, m.group(1) + scaled + m.group(3));
+        }
+        m.appendTail(sb);
+        return sb.toString();
+    }
+
+    /**
+     * Recursively apply font size scaling to a node and all its children.
+     * - Root node gets -fx-font-size set directly
+     * - Child nodes with inline -fx-font-size get their values scaled proportionally
+     */
+    public static void applyFontSizeRecursive(javafx.scene.Parent root, int fontSizePx) {
+        if (root == null) return;
+        // Set base font size on root
+        String baseStyle = getBaseStyle(root);
+        root.setStyle(upsertFontSizeStyle(baseStyle, fontSizePx));
+        // Scale inline font sizes on children
+        scaleChildFontSizes(root, fontSizePx);
+    }
+
+    private static void scaleChildFontSizes(javafx.scene.Parent parent, int fontSizePx) {
+        for (javafx.scene.Node child : parent.getChildrenUnmodifiable()) {
+            String style = child.getStyle();
+            if (style != null && !style.isEmpty() && style.toLowerCase().contains("-fx-font-size")) {
+                String baseStyle = getBaseStyle(child);
+                child.setStyle(scaleInlineFontSizes(baseStyle, fontSizePx));
+            }
+            if (child instanceof javafx.scene.Parent) {
+                scaleChildFontSizes((javafx.scene.Parent) child, fontSizePx);
+            }
+            // Handle Tab content inside TabPane
+            if (child instanceof javafx.scene.control.TabPane) {
+                for (javafx.scene.control.Tab tab : ((javafx.scene.control.TabPane) child).getTabs()) {
+                    if (tab.getContent() instanceof javafx.scene.Parent) {
+                        scaleChildFontSizes((javafx.scene.Parent) tab.getContent(), fontSizePx);
+                    }
+                }
+            }
+            // Handle ScrollPane content
+            if (child instanceof javafx.scene.control.ScrollPane) {
+                javafx.scene.Node content = ((javafx.scene.control.ScrollPane) child).getContent();
+                if (content != null) {
+                    String cStyle = content.getStyle();
+                    if (cStyle != null && !cStyle.isEmpty() && cStyle.toLowerCase().contains("-fx-font-size")) {
+                        String baseStyle = getBaseStyle(content);
+                        content.setStyle(scaleInlineFontSizes(baseStyle, fontSizePx));
+                    }
+                    if (content instanceof javafx.scene.Parent) {
+                        scaleChildFontSizes((javafx.scene.Parent) content, fontSizePx);
+                    }
+                }
+            }
+            // Handle TitledPane content
+            if (child instanceof javafx.scene.control.TitledPane) {
+                javafx.scene.Node content = ((javafx.scene.control.TitledPane) child).getContent();
+                if (content != null) {
+                    String cStyle = content.getStyle();
+                    if (cStyle != null && !cStyle.isEmpty() && cStyle.toLowerCase().contains("-fx-font-size")) {
+                        String baseStyle = getBaseStyle(content);
+                        content.setStyle(scaleInlineFontSizes(baseStyle, fontSizePx));
+                    }
+                    if (content instanceof javafx.scene.Parent) {
+                        scaleChildFontSizes((javafx.scene.Parent) content, fontSizePx);
+                    }
+                }
+            }
+        }
+    }
+
+    private static String getBaseStyle(javafx.scene.Node node) {
+        Object existing = node.getProperties().get(BASE_STYLE_KEY);
+        if (existing instanceof String) {
+            return (String) existing;
+        }
+        String style = node.getStyle();
+        String safeStyle = style == null ? "" : style;
+        node.getProperties().put(BASE_STYLE_KEY, safeStyle);
+        return safeStyle;
+    }
+
     private void applyUiFontSizeToScene(Scene scene, int fontSizePx) {
         if (scene == null || scene.getRoot() == null) {
             return;
         }
-        scene.getRoot().setStyle(upsertFontSizeStyle(scene.getRoot().getStyle(), fontSizePx));
+        applyFontSizeRecursive(scene.getRoot(), fontSizePx);
+    }
+
+    /**
+     * Static utility: apply current user font size to any Scene.
+     * Call this from any controller after creating a new Stage/Scene for dialogs.
+     */
+    public static void applyCurrentFontSize(Scene scene) {
+        if (scene == null || scene.getRoot() == null) return;
+        int fontSize = com.hisabx.util.SessionManager.getInstance().getUiFontSize();
+        if (fontSize != 13) {
+            applyFontSizeRecursive(scene.getRoot(), fontSize);
+        }
     }
 
     private void registerStage(Stage stage) {

@@ -3,18 +3,28 @@ package com.hisabx.controller;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
+import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
-import javafx.scene.control.MenuItem;
 import javafx.scene.control.ProgressIndicator;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
+import javafx.scene.input.ClipboardContent;
+import javafx.scene.input.DataFormat;
+import javafx.scene.input.DragEvent;
+import javafx.scene.input.Dragboard;
+import javafx.scene.input.MouseEvent;
+import javafx.scene.input.TransferMode;
 import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.FlowPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.VBox;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
+import com.hisabx.util.DashboardLayoutService;
 import com.hisabx.util.TabManager;
 import com.hisabx.util.SessionManager;
 import com.hisabx.MainApp;
@@ -37,8 +47,14 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.text.DecimalFormat;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.prefs.Preferences;
+import java.util.stream.Collectors;
 
 public class MainController {
     private static final Logger logger = LoggerFactory.getLogger(MainController.class);
@@ -67,11 +83,23 @@ public class MainController {
     @FXML private ProgressIndicator updateProgress;
     @FXML private Button updateButton;
     @FXML private Button checkUpdateButton;
-    @FXML private MenuItem userManagementMenuItem;
-    @FXML private MenuItem salesReportMenuItem;
-    @FXML private MenuItem settingsMenuItem;
+    @FXML private VBox userManagementTile;
+    @FXML private VBox salesReportTile;
+    @FXML private VBox settingsTile;
+    @FXML private FlowPane tilesFlowPane;
+    @FXML private HBox layoutEditControls;
+    @FXML private Button editLayoutBtn;
+    @FXML private Button sellerLayoutBtn;
+    @FXML private Button resetLayoutBtn;
     
     private static final String PREF_COMPANY_NAME = "company.name";
+    private static final DataFormat TILE_DATA_FORMAT = new DataFormat("application/x-hisabx-tile-id");
+    
+    private boolean editMode = false;
+    private boolean sellerEditMode = false;
+    private VBox dragSource = null;
+    private Set<String> hiddenTileIds = new HashSet<>();      // hidden from everyone
+    private Set<String> sellerHiddenTileIds = new HashSet<>(); // hidden from sellers only
     
     private MainApp mainApp;
     private final CustomerService customerService = new CustomerService();
@@ -81,11 +109,202 @@ public class MainController {
     private final UpdateService updateService = new UpdateService();
     private volatile UpdateCheckResult availableUpdate;
     
+    /**
+     * Represents a dashboard tile definition.
+     */
+    private static class TileDef {
+        final String id;
+        final String icon;
+        final String label;
+        final String style;
+        final String handlerMethod;
+        final boolean adminOnly;
+        final boolean reportOnly;
+        final boolean settingsOnly;
+        
+        TileDef(String id, String icon, String label, String style, String handlerMethod,
+                boolean adminOnly, boolean reportOnly, boolean settingsOnly) {
+            this.id = id;
+            this.icon = icon;
+            this.label = label;
+            this.style = style;
+            this.handlerMethod = handlerMethod;
+            this.adminOnly = adminOnly;
+            this.reportOnly = reportOnly;
+            this.settingsOnly = settingsOnly;
+        }
+        
+        TileDef(String id, String icon, String label, String style, String handlerMethod) {
+            this(id, icon, label, style, handlerMethod, false, false, false);
+        }
+    }
+
+    private void addVisibilityToggle(VBox tile) {
+        String tileId = tile.getId();
+        boolean isHidden = hiddenTileIds.contains(tileId);
+        boolean isSellerHidden = sellerHiddenTileIds.contains(tileId);
+
+        Button toggleBtn = new Button(isHidden ? "🚫" : (isSellerHidden ? "🙈" : "👁"));
+        toggleBtn.setId("visibility-toggle");
+        toggleBtn.setStyle("-fx-background-color: " + (isHidden ? "rgba(239,68,68,0.7)" : isSellerHidden ? "rgba(245,158,11,0.8)" : "rgba(76,175,80,0.7)") + "; " +
+                "-fx-text-fill: white; -fx-font-size: 12px; -fx-padding: 2 6; -fx-background-radius: 6; -fx-cursor: hand;");
+
+        toggleBtn.setOnAction(e -> {
+            if (sellerEditMode) {
+                // Seller edit mode: only toggle visible <-> seller-hidden
+                if (sellerHiddenTileIds.contains(tileId)) {
+                    sellerHiddenTileIds.remove(tileId);
+                    tile.setOpacity(1.0);
+                    tile.getStyleClass().remove("tile-hidden");
+                    toggleBtn.setText("👁");
+                    toggleBtn.setStyle("-fx-background-color: rgba(76,175,80,0.7); " +
+                            "-fx-text-fill: white; -fx-font-size: 12px; -fx-padding: 2 6; -fx-background-radius: 6; -fx-cursor: hand;");
+                } else {
+                    sellerHiddenTileIds.add(tileId);
+                    tile.setOpacity(0.35);
+                    tile.getStyleClass().add("tile-hidden");
+                    toggleBtn.setText("🙈");
+                    toggleBtn.setStyle("-fx-background-color: rgba(245,158,11,0.8); " +
+                            "-fx-text-fill: white; -fx-font-size: 12px; -fx-padding: 2 6; -fx-background-radius: 6; -fx-cursor: hand;");
+                }
+                hiddenTileIds.remove(tileId); // ensure not fully hidden in seller-only mode
+                return;
+            }
+
+            // Default mode: Cycle visible -> seller-hidden -> hidden -> visible
+            if (hiddenTileIds.contains(tileId)) {
+                hiddenTileIds.remove(tileId);
+                sellerHiddenTileIds.remove(tileId);
+                tile.setOpacity(1.0);
+                tile.getStyleClass().remove("tile-hidden");
+                toggleBtn.setText("👁");
+                toggleBtn.setStyle("-fx-background-color: rgba(76,175,80,0.7); " +
+                        "-fx-text-fill: white; -fx-font-size: 12px; -fx-padding: 2 6; -fx-background-radius: 6; -fx-cursor: hand;");
+            } else if (sellerHiddenTileIds.contains(tileId)) {
+                hiddenTileIds.add(tileId);
+                sellerHiddenTileIds.remove(tileId);
+                tile.setOpacity(0.35);
+                tile.getStyleClass().add("tile-hidden");
+                toggleBtn.setText("🚫");
+                toggleBtn.setStyle("-fx-background-color: rgba(239,68,68,0.7); " +
+                        "-fx-text-fill: white; -fx-font-size: 12px; -fx-padding: 2 6; -fx-background-radius: 6; -fx-cursor: hand;");
+            } else {
+                sellerHiddenTileIds.add(tileId);
+                tile.setOpacity(0.35);
+                tile.getStyleClass().add("tile-hidden");
+                toggleBtn.setText("🙈");
+                toggleBtn.setStyle("-fx-background-color: rgba(245,158,11,0.8); " +
+                        "-fx-text-fill: white; -fx-font-size: 12px; -fx-padding: 2 6; -fx-background-radius: 6; -fx-cursor: hand;");
+            }
+        });
+
+        tile.getChildren().add(toggleBtn);
+    }
+
+    private void removeVisibilityToggle(VBox tile) {
+        tile.getChildren().removeIf(n -> "visibility-toggle".equals(n.getId()));
+    }
+
+    private void disableEditMode() {
+        if (editLayoutBtn != null) {
+            editLayoutBtn.setText("✏️ تعديل الواجهة");
+            editLayoutBtn.setStyle("-fx-background-color: rgba(255,193,7,0.15); -fx-text-fill: #ffd54f;");
+        }
+        if (sellerLayoutBtn != null) {
+            sellerLayoutBtn.setText("🛍️ تعديل واجهة البائع");
+            sellerLayoutBtn.setStyle("-fx-background-color: rgba(59,130,246,0.18); -fx-text-fill: #bfdbfe;");
+        }
+        if (resetLayoutBtn != null) {
+            resetLayoutBtn.setVisible(false);
+            resetLayoutBtn.setManaged(false);
+        }
+
+        // Remove drag-and-drop and visual feedback
+        if (tilesFlowPane != null) {
+            for (Node node : tilesFlowPane.getChildren()) {
+                if (node instanceof VBox tile) {
+                    removeDragAndDrop(tile);
+                    removeVisibilityToggle(tile);
+                    tile.getStyleClass().remove("tile-edit-mode");
+                    tile.getStyleClass().remove("tile-hidden");
+
+                    // Re-apply hidden state in normal mode
+                    String tileId = tile.getId();
+                    boolean isHidden = hiddenTileIds.contains(tileId);
+                    boolean isSellerHidden = sellerHiddenTileIds.contains(tileId);
+                    boolean hideForSeller = isSellerHidden && SessionManager.getInstance().getCurrentRole() == UserRole.SELLER;
+                    boolean shouldHide = isHidden || hideForSeller;
+                    tile.setVisible(!shouldHide);
+                    tile.setManaged(!shouldHide);
+                    tile.setOpacity(1.0);
+                }
+            }
+        }
+    }
+    
+    private final List<TileDef> defaultTileDefinitions = List.of(
+        new TileDef("new-sale", "🧾", "فاتورة بيع", null, "handleNewSale"),
+        new TileDef("pos", "🛒", "نقطة بيع", null, "handleNewSale"),
+        new TileDef("view-sales", "📄", "عرض المبيعات", null, "handleViewSales"),
+        new TileDef("view-inventory", "📦", "عرض المخزون", null, "handleViewInventory"),
+        new TileDef("new-product", "➕", "إضافة منتج", null, "handleNewProduct"),
+        new TileDef("new-customer", "➕", "إضافة عميل", 
+                "linear-gradient(to bottom right, #1a3a6a, #1e4d8a)", "handleNewCustomer"),
+        new TileDef("view-customers", "👥", "عرض العملاء",
+                "linear-gradient(to bottom right, #1a3a6a, #1e4d8a)", "handleViewCustomers"),
+        new TileDef("search-customer", "🔍", "بحث عميل",
+                "linear-gradient(to bottom right, #1a3a6a, #1e4d8a)", "handleSearchCustomer"),
+        new TileDef("receipt-voucher", "📥", "سند قبض",
+                "linear-gradient(to bottom right, #0d3b3b, #145050)", "handleReceiptVoucher"),
+        new TileDef("payment-voucher", "📤", "سند دفع",
+                "linear-gradient(to bottom right, #3b1515, #501a1a)", "handlePaymentVoucher"),
+        new TileDef("view-receipt-vouchers", "📥", "سندات القبض",
+                "linear-gradient(to bottom right, #0d3b3b, #145050)", "handleViewReceiptVouchers"),
+        new TileDef("view-payment-vouchers", "📤", "سندات الدفع",
+                "linear-gradient(to bottom right, #3b1515, #501a1a)", "handleViewPaymentVouchers"),
+        new TileDef("create-receipt", "🧾", "إنشاء إيصال",
+                "linear-gradient(to bottom right, #0d2d4a, #144070)", "handleCreateReceipt"),
+        new TileDef("view-receipts", "📑", "عرض الإيصالات",
+                "linear-gradient(to bottom right, #0d2d4a, #144070)", "handleViewReceipts"),
+        new TileDef("product-return", "↩️", "إرجاع مواد",
+                "linear-gradient(to bottom right, #2a2a3a, #35354a)", "handleProductReturn"),
+        new TileDef("sales-report", "📊", "تقارير المبيعات",
+                "linear-gradient(to bottom right, #2a1a3a, #3d2050)", "handleSalesReport",
+                false, true, false),
+        new TileDef("pending-payments", "⏳", "المدفوعات المعلقة",
+                "linear-gradient(to bottom right, #3a2a0a, #503a10)", "handlePendingPayments"),
+        new TileDef("low-stock", "⚠️", "منخفض المخزون",
+                "linear-gradient(to bottom right, #3a1a0a, #502510)", "handleLowStock"),
+        new TileDef("add-stock", "➕", "إضافة مخزون",
+                "linear-gradient(to bottom right, #0d3a1a, #145025)", "handleAddStock"),
+        new TileDef("manage-categories", "🧩", "إدارة الفئات",
+                "linear-gradient(to bottom right, #1a1a3a, #252550)", "handleManageCategories"),
+        new TileDef("due-installments", "📅", "الأقساط المستحقة",
+                "linear-gradient(to bottom right, #3a2a0a, #503a10)", "handleDueInstallments"),
+        new TileDef("user-management", "👤", "إدارة المستخدمين",
+                "linear-gradient(to bottom right, #3a2a0a, #503a10)", "handleUserManagement",
+                true, false, false),
+        new TileDef("settings", "⚙️", "الإعدادات",
+                "linear-gradient(to bottom right, #2a2a2a, #3a3a3a)", "handleSettings",
+                false, false, true),
+        new TileDef("about", "ℹ️", "عن البرنامج",
+                "linear-gradient(to bottom right, #2a2a2a, #3a3a3a)", "handleAbout")
+    );
+    
+    private Map<String, TileDef> tileDefMap;
+    
     @FXML
     private void initialize() {
+        // Build tile definition map
+        tileDefMap = new LinkedHashMap<>();
+        for (TileDef def : defaultTileDefinitions) {
+            tileDefMap.put(def.id, def);
+        }
+        
         loadCompanyName();
         loadCurrentUserInfo();
         applyRolePermissions();
+        buildDashboardTiles();
         refreshDashboard();
         initUpdateUi();
         checkForUpdatesInBackground();
@@ -158,20 +377,323 @@ public class MainController {
     private void applyRolePermissions() {
         SessionManager session = SessionManager.getInstance();
         
-        // Hide user management for non-admins
-        if (userManagementMenuItem != null) {
-            userManagementMenuItem.setVisible(session.canManageUsers());
+        // Show layout edit controls for admins only
+        if (layoutEditControls != null) {
+            boolean isAdmin = session.getCurrentRole() == UserRole.ADMIN;
+            layoutEditControls.setVisible(isAdmin);
+            layoutEditControls.setManaged(isAdmin);
+        }
+    }
+    
+    // ==================== Dashboard Tile Builder ====================
+    
+    private void buildDashboardTiles() {
+        if (tilesFlowPane == null) return;
+        
+        // Clear existing FXML-defined tiles
+        tilesFlowPane.getChildren().clear();
+        
+        SessionManager session = SessionManager.getInstance();
+        String username = session.isLoggedIn() ? session.getCurrentUsername() : "default";
+        
+        // Load saved order from current user's layout
+        List<String> savedOrder = DashboardLayoutService.loadTileOrder(username);
+        // Always load hidden/seller-hidden tiles from admin's layout (admin controls visibility)
+        hiddenTileIds = DashboardLayoutService.loadHiddenTiles("admin");
+        sellerHiddenTileIds = DashboardLayoutService.loadSellerHiddenTiles("admin");
+        List<TileDef> orderedDefs;
+        
+        if (!savedOrder.isEmpty()) {
+            // Build ordered list from saved order, then append any new tiles not in saved order
+            orderedDefs = new ArrayList<>();
+            for (String id : savedOrder) {
+                TileDef def = tileDefMap.get(id);
+                if (def != null) {
+                    orderedDefs.add(def);
+                }
+            }
+            // Add any tiles not in saved order (new tiles added after layout was saved)
+            for (TileDef def : defaultTileDefinitions) {
+                if (!savedOrder.contains(def.id)) {
+                    orderedDefs.add(def);
+                }
+            }
+        } else {
+            orderedDefs = new ArrayList<>(defaultTileDefinitions);
         }
         
-        // Hide settings for non-admins
-        if (settingsMenuItem != null) {
-            settingsMenuItem.setVisible(session.canAccessSettings());
+        // Build tile nodes
+        for (TileDef def : orderedDefs) {
+            // Check permissions
+            if (def.adminOnly && !session.canManageUsers()) continue;
+            if (def.reportOnly && !session.canAccessReports()) continue;
+            if (def.settingsOnly && !session.canAccessSettings()) continue;
+            
+            VBox tile = createTileNode(def);
+            
+            // Apply hidden state (hide in normal mode)
+            boolean hideForAll = hiddenTileIds.contains(def.id);
+            boolean hideForSeller = sellerHiddenTileIds.contains(def.id) && session.getCurrentRole() == UserRole.SELLER;
+            if (hideForAll || hideForSeller) {
+                tile.setVisible(false);
+                tile.setManaged(false);
+            }
+            
+            tilesFlowPane.getChildren().add(tile);
         }
         
-        // Hide reports for sellers (optional - you can enable if sellers should see reports)
-        if (salesReportMenuItem != null) {
-            salesReportMenuItem.setVisible(session.canAccessReports());
+        // Keep references for permission-based tiles
+        updateTileReferences();
+    }
+    
+    private VBox createTileNode(TileDef def) {
+        VBox tile = new VBox();
+        tile.setAlignment(javafx.geometry.Pos.CENTER);
+        tile.setSpacing(8);
+        tile.getStyleClass().add("dashboard-tile");
+        tile.setId(def.id);
+        
+        // Apply custom style if defined
+        if (def.style != null) {
+            tile.setStyle("-fx-background-color: " + def.style + ";");
         }
+        
+        // Icon label
+        Label iconLabel = new Label(def.icon);
+        iconLabel.getStyleClass().add("tile-icon");
+        
+        // Text label
+        Label textLabel = new Label(def.label);
+        textLabel.getStyleClass().add("tile-label");
+        
+        tile.getChildren().addAll(iconLabel, textLabel);
+        
+        // Set click handler
+        tile.setOnMouseClicked(event -> {
+            if (editMode) return; // Don't trigger action in edit mode
+            invokeTileHandler(def.handlerMethod);
+        });
+        
+        return tile;
+    }
+    
+    private void invokeTileHandler(String methodName) {
+        try {
+            java.lang.reflect.Method method = this.getClass().getDeclaredMethod(methodName);
+            method.setAccessible(true);
+            method.invoke(this);
+        } catch (Exception e) {
+            logger.error("Failed to invoke tile handler: {}", methodName, e);
+        }
+    }
+    
+    private void updateTileReferences() {
+        // Update fx:id references for tiles that have them
+        if (tilesFlowPane == null) return;
+        for (Node node : tilesFlowPane.getChildren()) {
+            if (node instanceof VBox vbox) {
+                String id = vbox.getId();
+                if ("user-management".equals(id)) userManagementTile = vbox;
+                else if ("sales-report".equals(id)) salesReportTile = vbox;
+                else if ("settings".equals(id)) settingsTile = vbox;
+            }
+        }
+    }
+    
+    // ==================== Edit Mode & Drag-and-Drop ====================
+    
+    @FXML
+    private void handleToggleEditMode() {
+        editMode = !editMode;
+        sellerEditMode = false;
+        if (sellerLayoutBtn != null) {
+            sellerLayoutBtn.setText("🛍️ تعديل واجهة البائع");
+            sellerLayoutBtn.setStyle("-fx-background-color: rgba(59,130,246,0.18); -fx-text-fill: #bfdbfe;");
+        }
+
+        if (editMode) {
+            enableEditMode();
+        } else {
+            disableEditMode();
+            saveTileOrder();
+        }
+    }
+
+    @FXML
+    private void handleToggleSellerEditMode() {
+        sellerEditMode = !sellerEditMode;
+        editMode = sellerEditMode; // seller edit mode implies edit mode
+        if (sellerEditMode) {
+            if (editLayoutBtn != null) {
+                editLayoutBtn.setText("✏️ تعديل الواجهة");
+                editLayoutBtn.setStyle("-fx-background-color: rgba(255,193,7,0.15); -fx-text-fill: #ffd54f;");
+            }
+            if (sellerLayoutBtn != null) {
+                sellerLayoutBtn.setText("✅ حفظ واجهة البائع");
+                sellerLayoutBtn.setStyle("-fx-background-color: rgba(76,175,80,0.25); -fx-text-fill: #81c784;");
+            }
+            enableEditMode();
+        } else {
+            if (sellerLayoutBtn != null) {
+                sellerLayoutBtn.setText("🛍️ تعديل واجهة البائع");
+                sellerLayoutBtn.setStyle("-fx-background-color: rgba(59,130,246,0.18); -fx-text-fill: #bfdbfe;");
+            }
+            disableEditMode();
+            saveTileOrder();
+        }
+    }
+    
+    private void enableEditMode() {
+        if (editLayoutBtn != null) {
+            editLayoutBtn.setText("✅ حفظ الترتيب");
+            editLayoutBtn.setStyle("-fx-background-color: rgba(76,175,80,0.25); -fx-text-fill: #81c784;");
+        }
+        if (resetLayoutBtn != null) {
+            resetLayoutBtn.setVisible(true);
+            resetLayoutBtn.setManaged(true);
+        }
+        
+        // Add drag-and-drop to all tiles and visual feedback
+        if (tilesFlowPane != null) {
+            for (Node node : tilesFlowPane.getChildren()) {
+                if (node instanceof VBox tile) {
+                    // Show hidden tiles in edit mode (faded)
+                    tile.setVisible(true);
+                    tile.setManaged(true);
+                    
+                    String tileId = tile.getId();
+                    boolean isHidden = hiddenTileIds.contains(tileId);
+                    boolean isSellerHidden = sellerHiddenTileIds.contains(tileId);
+                    if (isHidden || isSellerHidden) {
+                        tile.setOpacity(0.35);
+                        tile.getStyleClass().add("tile-hidden");
+                    }
+                    
+                    setupDragAndDrop(tile);
+                    tile.getStyleClass().add("tile-edit-mode");
+                    addVisibilityToggle(tile);
+                }
+            }
+        }
+    }
+    
+    private void setupDragAndDrop(VBox tile) {
+        tile.setOnDragDetected(event -> {
+            if (!editMode) return;
+            dragSource = tile;
+            Dragboard db = tile.startDragAndDrop(TransferMode.MOVE);
+            ClipboardContent content = new ClipboardContent();
+            content.put(TILE_DATA_FORMAT, tile.getId());
+            db.setContent(content);
+            
+            // Visual feedback - make source semi-transparent
+            tile.setOpacity(0.5);
+            event.consume();
+        });
+        
+        tile.setOnDragOver(event -> {
+            if (!editMode) return;
+            if (event.getGestureSource() != tile && event.getDragboard().hasContent(TILE_DATA_FORMAT)) {
+                event.acceptTransferModes(TransferMode.MOVE);
+            }
+            event.consume();
+        });
+        
+        tile.setOnDragEntered(event -> {
+            if (!editMode) return;
+            if (event.getGestureSource() != tile && event.getDragboard().hasContent(TILE_DATA_FORMAT)) {
+                tile.getStyleClass().add("tile-drag-over");
+            }
+            event.consume();
+        });
+        
+        tile.setOnDragExited(event -> {
+            tile.getStyleClass().remove("tile-drag-over");
+            event.consume();
+        });
+        
+        tile.setOnDragDropped(event -> {
+            if (!editMode) return;
+            Dragboard db = event.getDragboard();
+            boolean success = false;
+            
+            if (db.hasContent(TILE_DATA_FORMAT) && dragSource != null) {
+                // Swap positions in the FlowPane
+                int sourceIndex = tilesFlowPane.getChildren().indexOf(dragSource);
+                int targetIndex = tilesFlowPane.getChildren().indexOf(tile);
+                
+                if (sourceIndex >= 0 && targetIndex >= 0 && sourceIndex != targetIndex) {
+                    // Remove source, insert at target position
+                    tilesFlowPane.getChildren().remove(dragSource);
+                    if (targetIndex > tilesFlowPane.getChildren().size()) {
+                        targetIndex = tilesFlowPane.getChildren().size();
+                    }
+                    tilesFlowPane.getChildren().add(targetIndex, dragSource);
+                    success = true;
+                }
+            }
+            
+            event.setDropCompleted(success);
+            event.consume();
+        });
+        
+        tile.setOnDragDone(event -> {
+            if (dragSource != null) {
+                dragSource.setOpacity(1.0);
+                dragSource = null;
+            }
+            event.consume();
+        });
+    }
+    
+    private void removeDragAndDrop(VBox tile) {
+        tile.setOnDragDetected(null);
+        tile.setOnDragOver(null);
+        tile.setOnDragEntered(null);
+        tile.setOnDragExited(null);
+        tile.setOnDragDropped(null);
+        tile.setOnDragDone(null);
+        tile.setOpacity(1.0);
+        
+        // Re-set the click handler
+        String tileId = tile.getId();
+        TileDef def = tileDefMap.get(tileId);
+        if (def != null) {
+            tile.setOnMouseClicked(event -> invokeTileHandler(def.handlerMethod));
+        }
+    }
+    
+    private void saveTileOrder() {
+        if (tilesFlowPane == null) return;
+        
+        SessionManager session = SessionManager.getInstance();
+        String username = session.isLoggedIn() ? session.getCurrentUsername() : "default";
+        
+        List<String> tileIds = tilesFlowPane.getChildren().stream()
+                .filter(n -> n instanceof VBox)
+                .map(Node::getId)
+                .filter(id -> id != null && !id.isEmpty())
+                .collect(Collectors.toList());
+        
+        DashboardLayoutService.saveTileLayout(username, tileIds, hiddenTileIds, sellerHiddenTileIds);
+        showInfo("تم الحفظ", "تم حفظ ترتيب الواجهة بنجاح");
+    }
+    
+    @FXML
+    private void handleResetLayout() {
+        SessionManager session = SessionManager.getInstance();
+        String username = session.isLoggedIn() ? session.getCurrentUsername() : "default";
+        
+        DashboardLayoutService.resetLayout(username);
+        hiddenTileIds.clear();
+        sellerHiddenTileIds.clear();
+        
+        // Exit edit mode and rebuild
+        editMode = false;
+        disableEditMode();
+        buildDashboardTiles();
+        
+        showInfo("تم إعادة الترتيب", "تم إعادة ترتيب الواجهة إلى الوضع الافتراضي");
     }
     
     private void loadCompanyName() {
@@ -533,31 +1055,23 @@ public class MainController {
                 if (updateStatusLabel != null) {
                     updateStatusLabel.setText("جاري تثبيت التحديث...");
                 }
+                if (updateProgress != null) {
+                    updateProgress.setVisible(false);
+                }
 
                 try {
+                    // Application will close automatically after launching installer
                     UpdateInstallerLauncher.launchInstaller(path);
-                    if (updateProgress != null) {
-                        updateProgress.setVisible(false);
-                    }
-                    if (updateButton != null) {
-                        updateButton.setDisable(false);
-                        updateButton.setVisible(false);
-                    }
-                    if (updateStatusLabel != null) {
-                        updateStatusLabel.setText("تم بدء التحديث");
-                    }
-                    showInfo("تم بدء التحديث", "تم تشغيل مثبت التحديث.\n\nبعد اكتمال التثبيت يمكنك إعادة فتح البرنامج.");
+                    // Code below won't execute as System.exit(0) is called
                 } catch (Exception e) {
                     logger.error("Failed to launch installer", e);
-                    if (updateProgress != null) {
-                        updateProgress.setVisible(false);
-                    }
                     if (updateButton != null) {
                         updateButton.setDisable(false);
                     }
                     if (updateStatusLabel != null) {
                         updateStatusLabel.setText("فشل تشغيل التحديث");
                     }
+                    showError("فشل التحديث", "تعذر تشغيل مثبت التحديث. حاول مرة أخرى.");
                 }
             });
         });
@@ -566,6 +1080,7 @@ public class MainController {
     public void refreshAfterLogin() {
         loadCurrentUserInfo();
         applyRolePermissions();
+        buildDashboardTiles();
         refreshDashboard();
     }
 
@@ -682,7 +1197,9 @@ public class MainController {
             
             Stage stage = new Stage();
             stage.setTitle("سندات القبض");
-            stage.setScene(new Scene(root));
+            Scene scene = new Scene(root);
+            com.hisabx.MainApp.applyCurrentFontSize(scene);
+            stage.setScene(scene);
             stage.initModality(Modality.APPLICATION_MODAL);
             stage.show();
         } catch (IOException e) {
@@ -702,7 +1219,9 @@ public class MainController {
             
             Stage stage = new Stage();
             stage.setTitle("سندات الدفع");
-            stage.setScene(new Scene(root));
+            Scene scene = new Scene(root);
+            com.hisabx.MainApp.applyCurrentFontSize(scene);
+            stage.setScene(scene);
             stage.initModality(Modality.APPLICATION_MODAL);
             stage.show();
         } catch (IOException e) {
@@ -734,7 +1253,7 @@ public class MainController {
     @FXML
     private void handleAbout() {
         showInfo("عن البرنامج", 
-                "HisabX v1.0.6\n\n" +
+                "HisabX v1.0.9\n\n" +
                 "من تطوير: KervanjiHolding\n" +
                 "الموقع: Kervanjiholding.com\n\n" +
                 "نظام متكامل لإدارة المخازن والمبيعات\n\n" +
