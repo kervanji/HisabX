@@ -14,9 +14,8 @@ import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
 import javafx.scene.input.ClipboardContent;
 import javafx.scene.input.DataFormat;
-import javafx.scene.input.DragEvent;
 import javafx.scene.input.Dragboard;
-import javafx.scene.input.MouseEvent;
+
 import javafx.scene.input.TransferMode;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.FlowPane;
@@ -46,7 +45,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.nio.file.Path;
+
 import java.text.DecimalFormat;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -790,14 +789,6 @@ public class MainController {
         refreshDashboard();
     }
 
-    private void registerDashboardRefresh(Stage stage) {
-        if (stage == null) {
-            return;
-        }
-        stage.setOnHidden(event -> refreshDashboard());
-        stage.setOnCloseRequest(event -> refreshDashboard());
-    }
-
     private void refreshDashboard() {
         try {
             // Total customers
@@ -914,8 +905,10 @@ public class MainController {
         result.ifPresent(value -> {
             try {
                 int days = Integer.parseInt(value.trim());
-                if (days < 1) days = 1;
-                if (days > 365) days = 365;
+                if (days < 1)
+                    days = 1;
+                if (days > 365)
+                    days = 365;
                 Preferences prefs = Preferences.userNodeForPackage(MainController.class);
                 prefs.putInt(PREF_INSTALLMENT_REMINDER_DAYS, days);
                 loadInstallmentReminderDays();
@@ -947,7 +940,8 @@ public class MainController {
                         text.append(overdueCount).append(" متأخر");
                     }
                     if (upcomingCount > 0) {
-                        if (text.length() > 0) text.append(" | ");
+                        if (text.length() > 0)
+                            text.append(" | ");
                         text.append(upcomingCount).append(" قادم");
                     }
                     installmentAlertLabel.setText(text.toString());
@@ -985,7 +979,8 @@ public class MainController {
                 msg.append("⛔ أقساط متأخرة (").append(overdueInstallments.size()).append("):\n");
                 for (Installment inst : overdueInstallments) {
                     String customerName = inst.getParentVoucher().getCustomer() != null
-                            ? inst.getParentVoucher().getCustomer().getName() : "-";
+                            ? inst.getParentVoucher().getCustomer().getName()
+                            : "-";
                     msg.append("  • ").append(customerName)
                             .append(" - سند ").append(inst.getParentVoucher().getVoucherNumber())
                             .append(" - القسط ").append(inst.getInstallmentNumber())
@@ -997,11 +992,14 @@ public class MainController {
             }
 
             if (!upcomingInstallments.isEmpty()) {
-                if (msg.length() > 0) msg.append("\n");
-                msg.append("⚠ أقساط قادمة خلال ").append(reminderDays).append(" أيام (").append(upcomingInstallments.size()).append("):\n");
+                if (msg.length() > 0)
+                    msg.append("\n");
+                msg.append("⚠ أقساط قادمة خلال ").append(reminderDays).append(" أيام (")
+                        .append(upcomingInstallments.size()).append("):\n");
                 for (Installment inst : upcomingInstallments) {
                     String customerName = inst.getParentVoucher().getCustomer() != null
-                            ? inst.getParentVoucher().getCustomer().getName() : "-";
+                            ? inst.getParentVoucher().getCustomer().getName()
+                            : "-";
                     msg.append("  • ").append(customerName)
                             .append(" - سند ").append(inst.getParentVoucher().getVoucherNumber())
                             .append(" - القسط ").append(inst.getInstallmentNumber())
@@ -1042,7 +1040,8 @@ public class MainController {
                     msg.append("⛔ لديك ").append(overdueInstallments.size()).append(" قسط متأخر!\n\n");
                     for (Installment inst : overdueInstallments) {
                         String customerName = inst.getParentVoucher().getCustomer() != null
-                                ? inst.getParentVoucher().getCustomer().getName() : "-";
+                                ? inst.getParentVoucher().getCustomer().getName()
+                                : "-";
                         msg.append("  • ").append(customerName)
                                 .append(" - ").append(currencyFormat.format(inst.getAmount()))
                                 .append(" - مستحق: ").append(inst.getDueDate().format(fmt))
@@ -1051,12 +1050,14 @@ public class MainController {
                 }
 
                 if (!upcomingInstallments.isEmpty()) {
-                    if (msg.length() > 0) msg.append("\n");
+                    if (msg.length() > 0)
+                        msg.append("\n");
                     msg.append("⚠ لديك ").append(upcomingInstallments.size())
                             .append(" قسط خلال ").append(reminderDays).append(" أيام:\n\n");
                     for (Installment inst : upcomingInstallments) {
                         String customerName = inst.getParentVoucher().getCustomer() != null
-                                ? inst.getParentVoucher().getCustomer().getName() : "-";
+                                ? inst.getParentVoucher().getCustomer().getName()
+                                : "-";
                         msg.append("  • ").append(customerName)
                                 .append(" - ").append(currencyFormat.format(inst.getAmount()))
                                 .append(" - مستحق: ").append(inst.getDueDate().format(fmt))
@@ -1225,7 +1226,6 @@ public class MainController {
                 });
     }
 
-
     @FXML
     private void handleViewInventory() {
         TabManager.getInstance().openTab(
@@ -1323,7 +1323,6 @@ public class MainController {
                 (ReturnController controller) -> controller.setTabMode(true));
     }
 
-
     @FXML
     private void handleSettings() {
         if (!SessionManager.getInstance().canAccessSettings()) {
@@ -1335,7 +1334,8 @@ public class MainController {
                 "الإعدادات",
                 "settings.svg",
                 "/views/Settings.fxml",
-                (SettingsController controller) -> controller.setTabMode(true));
+                (SettingsController controller) -> {
+                });
     }
 
     @FXML

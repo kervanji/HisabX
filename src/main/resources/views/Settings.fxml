@@ -17,6 +17,21 @@
             <Label text="النسخ الاحتياطي واستعادة البيانات" style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #e8edf4;"/>
             
             <VBox spacing="10" style="-fx-background-color: #10233d; -fx-padding: 15; -fx-background-radius: 8;">
+                <Label text="النسخ الاحتياطي السحابي (Google Drive)" style="-fx-font-weight: bold; -fx-font-size: 14px;"/>
+                <Label text="اربط حسابك في Google Drive لحفظ نسخة احتياطية تلقائياً كل ساعة" style="-fx-text-fill: #90a4ae;"/>
+                
+                <HBox spacing="15" alignment="CENTER_LEFT">
+                    <Button text="ربط Google Drive" onAction="#handleConnectGoogleDrive"
+                            style="-fx-background-color: #4285F4; -fx-text-fill: white; -fx-font-weight: bold;"/>
+                    <Button text="نسخ احتياطي الآن" onAction="#handleBackupNow"
+                            style="-fx-background-color: #34A853; -fx-text-fill: white;"/>
+                </HBox>
+                
+                <Label fx:id="driveStatusLabel" text="حالة الاتصال: غير متصل" style="-fx-text-fill: #ef4444;"/>
+                <Label fx:id="lastBackupLabel" text="آخر نسخة احتياطية: لا يوجد" style="-fx-text-fill: #90a4ae; -fx-font-size: 11px;"/>
+            </VBox>
+            
+            <VBox spacing="10" style="-fx-background-color: #10233d; -fx-padding: 15; -fx-background-radius: 8;">
                 <Label text="إنشاء نسخة احتياطية" style="-fx-font-weight: bold; -fx-font-size: 14px;"/>
                 <Label text="سيتم حفظ نسخة من قاعدة البيانات في المجلد المحدد" style="-fx-text-fill: #90a4ae;"/>
                 <HBox spacing="10" alignment="CENTER_LEFT">

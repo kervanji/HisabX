@@ -34,37 +34,62 @@ public class MainApp extends Application {
 
     private final List<Stage> managedStages = new ArrayList<>();
 
+    private com.hisabx.service.drive.GoogleDriveService googleDriveService;
+    private com.hisabx.service.drive.BackupService backupService;
+
+    public com.hisabx.service.drive.BackupService getBackupService() {
+        return backupService;
+    }
+
     @Override
     public void start(Stage primaryStage) {
         this.primaryStage = primaryStage;
         this.primaryStage.setTitle("HisabX - نظام إدارة المخازن والمبيعات");
 
         registerStage(primaryStage);
-        
+
+        // Initialize Services
+        try {
+            googleDriveService = new com.hisabx.service.drive.GoogleDriveService();
+            // Initialize drive service asynchronously to not block UI startup
+            new Thread(() -> {
+                try {
+                    googleDriveService.initialize();
+                } catch (Exception e) {
+                    logger.error("Failed to initialize Google Drive Service", e);
+                }
+            }).start();
+
+            backupService = new com.hisabx.service.drive.BackupService(googleDriveService);
+            backupService.startHourlyBackup();
+
+        } catch (Exception e) {
+            logger.error("Failed to initialize Backup Service", e);
+        }
+
         // Set application icon
         try {
             javafx.scene.image.Image icon = new javafx.scene.image.Image(
-                getClass().getResourceAsStream("/templates/HisabX.ico")
-            );
+                    getClass().getResourceAsStream("/templates/HisabX.ico"));
             this.primaryStage.getIcons().add(icon);
         } catch (Exception e) {
             logger.warn("Failed to load application icon", e);
         }
-        
+
         // Window size (main window maximized only)
         this.primaryStage.setWidth(900);
         this.primaryStage.setHeight(700);
         this.primaryStage.setResizable(true);
         this.primaryStage.setMaximized(true);
         this.primaryStage.setFullScreen(false);
-        
+
         try {
             // Initialize database
             DatabaseManager.initialize();
-            
+
             // Set up logout callback
             SessionManager.getInstance().setOnLogoutCallback(this::showLoginScreen);
-            
+
             // License gate (offline activation)
             if (new LicenseService().isActivated()) {
                 // Show login screen first
@@ -72,14 +97,30 @@ public class MainApp extends Application {
             } else {
                 showActivationScreen();
             }
-            
+
             logger.info("Application started successfully");
         } catch (Exception e) {
             logger.error("Failed to start application", e);
             showError("خطأ في بدء التطبيق", "فشل في بدء التطبيق: " + e.getMessage());
         }
     }
-    
+
+    @Override
+    public void stop() throws Exception {
+        if (backupService != null) {
+            backupService.shutdown();
+        }
+        super.stop();
+    }
+
+    private void showError(String title, String message) {
+        javafx.scene.control.Alert alert = new javafx.scene.control.Alert(javafx.scene.control.Alert.AlertType.ERROR);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
+    }
+
     private void showActivationScreen() {
         try {
             FXMLLoader loader = new FXMLLoader();
@@ -111,14 +152,14 @@ public class MainApp extends Application {
             showError("خطأ", "فشل في تحميل شاشة التفعيل");
         }
     }
-    
+
     private void showLoginScreen() {
         try {
             FXMLLoader loader = new FXMLLoader();
             loader.setLocation(MainApp.class.getResource("/views/Login.fxml"));
             loader.setCharset(StandardCharsets.UTF_8);
             Parent loginRoot = loader.load();
-            
+
             LoginController controller = loader.getController();
             controller.setOnLoginSuccess(() -> {
                 try {
@@ -128,7 +169,7 @@ public class MainApp extends Application {
                     showError("خطأ", "فشل في تحميل الواجهة الرئيسية");
                 }
             });
-            
+
             Scene scene = new Scene(loginRoot);
             primaryStage.setScene(scene);
             primaryStage.setMaximized(false);
@@ -137,7 +178,7 @@ public class MainApp extends Application {
             primaryStage.setHeight(840);
             primaryStage.centerOnScreen();
             primaryStage.show();
-            
+
         } catch (IOException e) {
             logger.error("Failed to show login screen", e);
             showError("خطأ", "فشل في تحميل شاشة الدخول");
@@ -149,11 +190,11 @@ public class MainApp extends Application {
         loader.setLocation(MainApp.class.getResource("/views/MainLayout.fxml"));
         loader.setCharset(StandardCharsets.UTF_8);
         mainLayout = loader.load();
-        
+
         // Get the controller and set the main app reference
         mainController = loader.getController();
         mainController.setMainApp(this);
-        
+
         Scene scene = new Scene(mainLayout);
         applyUiFontSizeToScene(scene, SessionManager.getInstance().getUiFontSize());
         primaryStage.setScene(scene);
@@ -161,7 +202,7 @@ public class MainApp extends Application {
         primaryStage.setMaximized(true);
         primaryStage.show();
     }
-    
+
     public void logout() {
         // Clear UI state that is kept in singletons between sessions
         TabManager.getInstance().reset();
@@ -270,11 +311,13 @@ public class MainApp extends Application {
     }
 
     /**
-     * Scale an inline -fx-font-size value proportionally based on the user's chosen base size.
+     * Scale an inline -fx-font-size value proportionally based on the user's chosen
+     * base size.
      * For example, if base=13 and user chose 16, a 24px title becomes ~29.5px.
      */
     public static String scaleInlineFontSizes(String existingStyle, int baseFontSizePx) {
-        if (existingStyle == null || existingStyle.isEmpty()) return existingStyle;
+        if (existingStyle == null || existingStyle.isEmpty())
+            return existingStyle;
         double scale = baseFontSizePx / 13.0;
         java.util.regex.Matcher m = java.util.regex.Pattern
                 .compile("(?i)(-fx-font-size\\s*:\\s*)(\\d+(?:\\.\\d+)?)(px)")
@@ -292,10 +335,12 @@ public class MainApp extends Application {
     /**
      * Recursively apply font size scaling to a node and all its children.
      * - Root node gets -fx-font-size set directly
-     * - Child nodes with inline -fx-font-size get their values scaled proportionally
+     * - Child nodes with inline -fx-font-size get their values scaled
+     * proportionally
      */
     public static void applyFontSizeRecursive(javafx.scene.Parent root, int fontSizePx) {
-        if (root == null) return;
+        if (root == null)
+            return;
         // Set base font size on root
         String baseStyle = getBaseStyle(root);
         root.setStyle(upsertFontSizeStyle(baseStyle, fontSizePx));
@@ -375,7 +420,8 @@ public class MainApp extends Application {
      * Call this from any controller after creating a new Stage/Scene for dialogs.
      */
     public static void applyCurrentFontSize(Scene scene) {
-        if (scene == null || scene.getRoot() == null) return;
+        if (scene == null || scene.getRoot() == null)
+            return;
         int fontSize = com.hisabx.util.SessionManager.getInstance().getUiFontSize();
         if (fontSize != 13) {
             applyFontSizeRecursive(scene.getRoot(), fontSize);
@@ -420,11 +466,4 @@ public class MainApp extends Application {
         }
     }
 
-    private void showError(String title, String message) {
-        javafx.scene.control.Alert alert = new javafx.scene.control.Alert(javafx.scene.control.Alert.AlertType.ERROR);
-        alert.setTitle(title);
-        alert.setHeaderText(null);
-        alert.setContentText(message);
-        alert.showAndWait();
-    }
 }
