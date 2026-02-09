@@ -8,7 +8,7 @@ $ErrorActionPreference = "Stop"
 # Configuration
 # -----------------------------
 $APP_NAME = "HisabX"
-$APP_VERSION = "1.1.0"
+$APP_VERSION = "1.1.2"
 $JAVAFX_VERSION = "17.0.10"
 
 # Main class (must contain public static void main)

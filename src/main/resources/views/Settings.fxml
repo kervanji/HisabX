@@ -25,10 +25,13 @@
                             style="-fx-background-color: #4285F4; -fx-text-fill: white; -fx-font-weight: bold;"/>
                     <Button text="نسخ احتياطي الآن" onAction="#handleBackupNow"
                             style="-fx-background-color: #34A853; -fx-text-fill: white;"/>
+                    <Button text="استعادة من السحابة" onAction="#handleRestoreFromCloud"
+                            style="-fx-background-color: #f59e0b; -fx-text-fill: white;"/>
                 </HBox>
                 
                 <Label fx:id="driveStatusLabel" text="حالة الاتصال: غير متصل" style="-fx-text-fill: #ef4444;"/>
                 <Label fx:id="lastBackupLabel" text="آخر نسخة احتياطية: لا يوجد" style="-fx-text-fill: #90a4ae; -fx-font-size: 11px;"/>
+                <ProgressBar fx:id="backupProgressBar" prefWidth="300" visible="false"/>
             </VBox>
             
             <VBox spacing="10" style="-fx-background-color: #10233d; -fx-padding: 15; -fx-background-radius: 8;">
@@ -126,7 +129,7 @@
             
             <VBox spacing="10" style="-fx-background-color: #10233d; -fx-padding: 15; -fx-background-radius: 8;">
                 <Label text="معلومات البرنامج" style="-fx-font-weight: bold; -fx-font-size: 14px;"/>
-                <Label text="HisabX v1.1.0"/>
+                <Label text="HisabX v1.1.2"/>
                 <Label text="نظام إدارة المخازن والمبيعات"/>
                 <Label text="© 2025 HisabX. جميع الحقوق محفوظة."/>
             </VBox>

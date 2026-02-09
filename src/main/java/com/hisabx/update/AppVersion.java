@@ -1,7 +1,7 @@
 package com.hisabx.update;
 
 public final class AppVersion {
-    private static final String FALLBACK = "1.1.0";
+    private static final String FALLBACK = "1.1.2";
 
     private AppVersion() {
     }

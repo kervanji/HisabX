@@ -48,7 +48,7 @@
 
 بعد اكتمال البناء، ستجد الـ installer في:
 ```
-installer-output\HisabX-Setup-1.1.0.exe
+installer-output\HisabX-Setup-1.1.2.exe
 ```
 
 ## مميزات الـ Installer
@@ -80,7 +80,7 @@ installer-output\HisabX-Setup-1.1.0.exe
 ### معلومات البرنامج
 ```pascal
 #define MyAppName "HisabX"
-#define MyAppVersion "1.1.0"
+#define MyAppVersion "1.1.2"
 #define MyAppPublisher "HisabX"
 ```
 
@@ -108,7 +108,7 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 - مساحة حرة: 200 MB على الأقل
 
 ### طريقة التثبيت للعميل
-1. تحميل ملف `HisabX-Setup-1.1.0.exe`
+1. تحميل ملف `HisabX-Setup-1.1.2.exe`
 2. النقر مرتين على الملف
 3. اتباع خطوات التثبيت
 4. تشغيل البرنامج من قائمة ابدأ أو سطح المكتب

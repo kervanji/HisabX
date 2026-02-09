@@ -14,6 +14,15 @@ import javafx.scene.control.*;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
+import javafx.scene.layout.VBox;
+import javafx.scene.control.ListView;
+import javafx.scene.control.Dialog;
+import javafx.scene.control.ButtonType;
+import javafx.scene.control.ButtonBar;
+import javafx.concurrent.Task;
+import java.util.List;
+import com.hisabx.service.drive.GoogleDriveService.BackupFile;
+import java.time.format.DateTimeFormatter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -61,6 +70,8 @@ public class SettingsController {
     private Label driveStatusLabel;
     @FXML
     private Label lastBackupLabel;
+    @FXML
+    private ProgressBar backupProgressBar;
 
     private com.hisabx.service.drive.BackupService backupService;
     private final CustomerService customerService = new CustomerService();
@@ -121,15 +132,17 @@ public class SettingsController {
         if (backupService == null)
             return;
 
-        // This is a bit of a hack since we didn't add getDriveService to BackupService
-        // But we initialized it in MainApp.
-        // Let's assume for now we can rely on UI feedback from connection attempts.
-        // Ideally we should expose connection status from BackupService.
+        boolean connected = backupService.isDriveConnected();
 
-        // For now, let's just leave status update to after actions or when we can check
-        // real status.
-        // We will implement a proper check in next iteration or via MainApp getter if
-        // needed.
+        javafx.application.Platform.runLater(() -> {
+            if (connected) {
+                driveStatusLabel.setText("متصل (Google Drive)");
+                driveStatusLabel.setStyle("-fx-text-fill: #10b981; -fx-font-weight: bold;"); // Green
+            } else {
+                driveStatusLabel.setText("غير متصل");
+                driveStatusLabel.setStyle("-fx-text-fill: #ef4444; -fx-font-weight: bold;"); // Red
+            }
+        });
     }
 
     @FXML
@@ -139,40 +152,33 @@ public class SettingsController {
             return;
         }
 
-        // We need to trigger the OAuth flow.
-        // Since BackupService manages Drive, we might need a method there or in
-        // DriveService.
-        // Let's use a background thread to re-initialize or trigger auth if needed.
+        if (backupService.isDriveConnected()) {
+            showInfo("Google Drive", "الحساب متصل بالفعل.");
+            return;
+        }
+
         new Thread(() -> {
             try {
-                // Re-running initialize usually triggers auth flow if not signed in
-                // But we don't have direct access to GoogleDriveService instance here easily
-                // without getter.
-                // Let's rely on MainApp to expose it or BackupService to expose it.
-                // I will assume I added getGoogleDriveService to MainApp or similar validation
-                // in the next step if needed.
-                // actually, let's use the one from MainApp if I can.
-
-                // Reflection or cast if needed, but I didn't add getter for GoogleDriveService
-                // in MainApp, only BackupService.
-                // Wait, inside MainApp I initialized BackupService with DriveService.
-                // I should add a check logic here.
-
-                // Simulating connection check/trigger
                 javafx.application.Platform.runLater(() -> {
                     driveStatusLabel.setText("جارِ الاتصال...");
                     driveStatusLabel.setStyle("-fx-text-fill: #fbbf24;"); // Orange
                 });
 
-                // Real implementation would call driveService.initialize() again or check
-                // status
-                // For now, let's assume the user has to restart or it's auto-connected.
-                // To make this button functional, I really need a method like `connect()` in
-                // BackupService or DriveService.
+                // Trigger re-initialization logic if needed or just guide user
+                // Note: Since GoogleDriveService.initialize() was called at startup,
+                // if it failed (e.g. no internet/credentials), we might need to retry it.
+                // However, exposing initialize() directly is safer via a wrapper.
+                // For now, let's assume if it failed, a restart is often cleanest,
+                // BUT we can try to force a check by attempting a dummy operation or re-init if
+                // possible.
+                // Given current structure, let's guide user to restart if auth window doesn't
+                // appear,
+                // or just rely on the fact that if they just added credentials, they MUST
+                // restart.
 
-                // Let's notify user to restart if first time, or handle it properly.
                 javafx.application.Platform.runLater(() -> {
-                    showInfo("Google Drive", "إذا لم تظهر نافذة الدخول للمتصفح، يرجى إعادة تشغيل البرنامج.");
+                    showInfo("Google Drive",
+                            "لإتمام الاتصال، يرجى التأكد من وجود ملف credentials.json وإعادة تشغيل البرنامج إذا لم يظهر المتصفح.");
                 });
             } catch (Exception e) {
                 logger.error("Failed to connect", e);
@@ -186,26 +192,141 @@ public class SettingsController {
         if (backupService == null)
             return;
 
-        backupStatusLabel.setText("جارِ إنشاء النسخة الاحتياطية...");
-        backupStatusLabel.setStyle("-fx-text-fill: #fbbf24;");
+        if (!backupService.isDriveConnected()) {
+            showError("خطأ", "يجب الاتصال بـ Google Drive أولاً");
+            return;
+        }
 
-        new Thread(() -> {
-            try {
+        if (backupProgressBar != null)
+            backupProgressBar.setVisible(true);
+        if (lastBackupLabel != null)
+            lastBackupLabel.setText("جارِ النسخ الاحتياطي...");
+
+        Task<Void> task = new Task<>() {
+            @Override
+            protected Void call() throws Exception {
                 backupService.performBackup();
-                javafx.application.Platform.runLater(() -> {
-                    backupStatusLabel.setText("✓ تم الانتهاء من النسخ الاحتياطي السحابي");
-                    backupStatusLabel.setStyle("-fx-text-fill: #10b981;");
-                    lastBackupLabel.setText(
-                            "آخر نسخة: " + LocalDateTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss")));
-                });
-            } catch (Exception e) {
-                logger.error("Backup failed", e);
-                javafx.application.Platform.runLater(() -> {
-                    backupStatusLabel.setText("✗ فشل النسخ الاحتياطي");
-                    backupStatusLabel.setStyle("-fx-text-fill: #ef4444;");
-                });
+                return null;
             }
-        }).start();
+        };
+
+        task.setOnSucceeded(e -> {
+            if (backupProgressBar != null)
+                backupProgressBar.setVisible(false);
+            if (lastBackupLabel != null)
+                lastBackupLabel.setText("آخر نسخة احتياطية: " +
+                        LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+            showInfo("تم بنجاح", "تم الانتهاء من النسخ الاحتياطي السحابي");
+        });
+
+        task.setOnFailed(e -> {
+            if (backupProgressBar != null)
+                backupProgressBar.setVisible(false);
+            if (lastBackupLabel != null)
+                lastBackupLabel.setText("فشل النسخ الاحتياطي");
+            showError("خطأ", "فشل النسخ الاحتياطي: " + task.getException().getMessage());
+        });
+
+        new Thread(task).start();
+    }
+
+    @FXML
+    private void handleRestoreFromCloud() {
+        if (backupService == null || !backupService.isDriveConnected()) {
+            showError("خطأ", "يجب الاتصال بـ Google Drive أولاً");
+            return;
+        }
+
+        if (backupProgressBar != null)
+            backupProgressBar.setVisible(true);
+
+        Task<List<BackupFile>> listTask = new Task<>() {
+            @Override
+            protected List<BackupFile> call() throws Exception {
+                return backupService.listCloudBackups();
+            }
+        };
+
+        listTask.setOnSucceeded(e -> {
+            if (backupProgressBar != null)
+                backupProgressBar.setVisible(false);
+            List<BackupFile> backups = listTask.getValue();
+            if (backups.isEmpty()) {
+                showInfo("Google Drive", "لا توجد نسخ احتياطية متاحة.");
+                return;
+            }
+            showBackupSelectionDialog(backups);
+        });
+
+        listTask.setOnFailed(e -> {
+            if (backupProgressBar != null)
+                backupProgressBar.setVisible(false);
+            showError("خطأ", "فشل جلب قائمة النسخ الاحتياطية: " + listTask.getException().getMessage());
+        });
+
+        new Thread(listTask).start();
+    }
+
+    private void showBackupSelectionDialog(List<BackupFile> backups) {
+        Dialog<BackupFile> dialog = new Dialog<>();
+        dialog.setTitle("استعادة من السحابة");
+        dialog.setHeaderText("اختر نسخة احتياطية للاستعادة\nسيتم عمل نسخة احتياطية للبيانات الحالية قبل الاستعادة.");
+
+        ButtonType loginButtonType = new ButtonType("استعادة", ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().addAll(loginButtonType, ButtonType.CANCEL);
+
+        ListView<BackupFile> listView = new ListView<>();
+        listView.getItems().addAll(backups);
+        listView.setPrefHeight(300);
+        listView.setPrefWidth(400);
+
+        VBox content = new VBox(10);
+        content.getChildren().add(listView);
+
+        dialog.getDialogPane().setContent(content);
+
+        dialog.setResultConverter(dialogButton -> {
+            if (dialogButton == loginButtonType) {
+                return listView.getSelectionModel().getSelectedItem();
+            }
+            return null;
+        });
+
+        dialog.showAndWait().ifPresent(selectedBackup -> {
+            performCloudRestore(selectedBackup);
+        });
+    }
+
+    private void performCloudRestore(BackupFile backup) {
+        if (backupProgressBar != null)
+            backupProgressBar.setVisible(true);
+
+        Task<Void> restoreTask = new Task<>() {
+            @Override
+            protected Void call() throws Exception {
+                backupService.restoreFromCloud(backup.getId());
+                return null;
+            }
+        };
+
+        restoreTask.setOnSucceeded(e -> {
+            if (backupProgressBar != null)
+                backupProgressBar.setVisible(false);
+            Alert alert = new Alert(Alert.AlertType.INFORMATION);
+            alert.setTitle("تم الاستعادة بنجاح");
+            alert.setHeaderText(null);
+            alert.setContentText("تم استعادة البيانات بنجاح.\nيجب إعادة تشغيل البرنامج لتطبيق التغييرات.");
+            alert.showAndWait();
+            System.exit(0); // Force restart by user
+        });
+
+        restoreTask.setOnFailed(e -> {
+            if (backupProgressBar != null)
+                backupProgressBar.setVisible(false);
+            showError("خطأ في الاستعادة", "فشل استعادة النسخة الاحتياطية: " + restoreTask.getException().getMessage());
+        });
+
+        new Thread(restoreTask).start();
     }
 
     public void setDialogStage(Stage dialogStage) {

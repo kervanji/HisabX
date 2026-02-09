@@ -19,7 +19,10 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
+import java.util.Collections;
+import java.util.List;
 
 public class BackupService {
     private static final Logger logger = LoggerFactory.getLogger(BackupService.class);
@@ -37,6 +40,10 @@ public class BackupService {
             t.setDaemon(true);
             return t;
         });
+    }
+
+    public boolean isDriveConnected() {
+        return driveService != null && driveService.isConnected();
     }
 
     public void startHourlyBackup() {
@@ -155,6 +162,84 @@ public class BackupService {
         if (driveService.isConnected()) {
             logger.info("Performing backup on exit...");
             performBackup();
+        }
+    }
+
+    public List<GoogleDriveService.BackupFile> listCloudBackups() {
+        if (!isDriveConnected())
+            return Collections.emptyList();
+        try {
+            return driveService.listBackups();
+        } catch (IOException e) {
+            logger.error("Failed to list backups", e);
+            return Collections.emptyList();
+        }
+    }
+
+    public void restoreFromCloud(String fileId) throws Exception {
+        if (!isDriveConnected())
+            throw new IOException("Drive not connected");
+
+        logger.info("Initiating cloud restore...");
+
+        // 1. Backup current data (Safety First)
+        logger.info("Creating safety backup before restore...");
+        performBackup();
+
+        // 2. Download the backup file
+        File tempZip = File.createTempFile("restore_download_", ".zip");
+        try {
+            logger.info("Downloading backup file...");
+            driveService.downloadFile(fileId, tempZip);
+
+            // 3. Unzip and verify
+            // For safety, let's extract to a temp db file first
+            File tempDb = File.createTempFile("restore_db_", ".db");
+
+            try (ZipInputStream zis = new ZipInputStream(new FileInputStream(tempZip))) {
+                ZipEntry entry = zis.getNextEntry();
+                // Assumes zip contains one file named hisabx_snapshot_... or similar, or just
+                // hisabx.db?
+                // Our backup creates zip with entry name = snapshot filename.
+                // We should extract whatever is in there to tempDb.
+                if (entry != null) {
+                    Files.copy(zis, tempDb.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                } else {
+                    throw new IOException("Empty zip file");
+                }
+            }
+
+            // 4. Critical Section: Replace Database
+            // We must try to close connections if possible
+            // In a JavaFX app with simple SQLite, often replacing file requires closing App
+            // or Connections.
+            // DatabaseManager.shutdown();
+
+            com.hisabx.database.DatabaseManager.shutdown();
+
+            // Give it a moment to release locks
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException ignored) {
+            }
+
+            File currentDb = new File(DB_PATH);
+            File backupOfCurrent = new File(DB_PATH + ".bak");
+
+            // Local file backup just in case
+            if (currentDb.exists()) {
+                Files.copy(currentDb.toPath(), backupOfCurrent.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            }
+
+            Files.copy(tempDb.toPath(), currentDb.toPath(), StandardCopyOption.REPLACE_EXISTING);
+
+            logger.info("Database restored successfully from cloud backup.");
+
+            // Cleanup temps
+            tempDb.delete();
+
+        } finally {
+            tempZip.delete();
         }
     }
 }

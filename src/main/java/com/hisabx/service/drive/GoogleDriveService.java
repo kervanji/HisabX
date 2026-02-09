@@ -141,54 +141,65 @@ public class GoogleDriveService {
         return file.getId();
     }
 
+    public void downloadFile(String fileId, java.io.File destination) throws IOException {
+        if (driveService == null)
+            throw new IOException("Drive not connected");
+        try (FileOutputStream fos = new FileOutputStream(destination)) {
+            driveService.files().get(fileId).executeMediaAndDownloadTo(fos);
+        }
+    }
+
+    public List<BackupFile> listBackups() throws IOException {
+        if (driveService == null)
+            return Collections.emptyList();
+
+        String folderId = getOrCreateBackupFolder();
+        List<File> allBackups = new ArrayList<>();
+        String pageToken = null;
+        do {
+            FileList result = driveService.files().list()
+                    .setQ("name contains 'hisabx_backup_' and '" + folderId + "' in parents and trashed=false")
+                    .setSpaces("drive")
+                    .setFields("nextPageToken, files(id, name, createdTime, size)")
+                    .setPageToken(pageToken)
+                    .execute();
+
+            allBackups.addAll(result.getFiles());
+            pageToken = result.getNextPageToken();
+        } while (pageToken != null);
+
+        List<BackupFile> parsedBackups = new ArrayList<>();
+        Pattern pattern = Pattern.compile("hisabx_backup_(\\d{8}_\\d{6})");
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss");
+
+        for (File file : allBackups) {
+            Matcher matcher = pattern.matcher(file.getName());
+            if (matcher.find()) {
+                try {
+                    LocalDateTime timestamp = LocalDateTime.parse(matcher.group(1), formatter);
+                    parsedBackups.add(new BackupFile(file, timestamp));
+                } catch (Exception e) {
+                    // ignore
+                }
+            }
+        }
+        parsedBackups.sort((b1, b2) -> b2.timestamp.compareTo(b1.timestamp)); // Newest first
+        return parsedBackups;
+    }
+
     public void cleanupOldBackups() {
         if (driveService == null)
             return;
 
         try {
-            String folderId = getOrCreateBackupFolder();
+            List<BackupFile> parsedBackups = listBackups(); // Reuse listBackups logic
 
-            // List all backup files
-            List<File> allBackups = new ArrayList<>();
-            String pageToken = null;
-            do {
-                FileList result = driveService.files().list()
-                        .setQ("name contains 'hisabx_backup_' and '" + folderId + "' in parents and trashed=false")
-                        .setSpaces("drive")
-                        .setFields("nextPageToken, files(id, name, createdTime)")
-                        .setPageToken(pageToken)
-                        .execute();
-
-                allBackups.addAll(result.getFiles());
-                pageToken = result.getNextPageToken();
-            } while (pageToken != null);
-
-            if (allBackups.isEmpty())
+            if (parsedBackups.isEmpty())
                 return;
 
-            logger.info("Found " + allBackups.size() + " backups to check for retention.");
+            logger.info("Found " + parsedBackups.size() + " backups to check for retention.");
 
-            // Parse timestamps and sort
-            Pattern pattern = Pattern.compile("hisabx_backup_(\\d{8}_\\d{6})");
-            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss");
-
-            List<BackupFile> parsedBackups = new ArrayList<>();
-            for (File file : allBackups) {
-                Matcher matcher = pattern.matcher(file.getName());
-                if (matcher.find()) {
-                    try {
-                        LocalDateTime timestamp = LocalDateTime.parse(matcher.group(1), formatter);
-                        parsedBackups.add(new BackupFile(file, timestamp));
-                    } catch (Exception e) {
-                        logger.warn("Skipping file with unparseable timestamp: " + file.getName());
-                    }
-                }
-            }
-
-            // Sort descending (newest first)
-            parsedBackups.sort((b1, b2) -> b2.timestamp.compareTo(b1.timestamp));
-
-            List<File> toDelete = new ArrayList<>();
+            List<String> toDeleteIds = new ArrayList<>();
             List<BackupFile> toKeep = new ArrayList<>();
 
             LocalDateTime now = LocalDateTime.now();
@@ -198,34 +209,34 @@ public class GoogleDriveService {
             Map<String, BackupFile> dailyBackups = new HashMap<>(); // Key: yyyyMMdd
 
             for (BackupFile backup : parsedBackups) {
-                if (backup.timestamp.isAfter(seventyTwoHoursAgo)) {
+                if (backup.getTimestamp().isAfter(seventyTwoHoursAgo)) {
                     // Keep all valid backups from last 72 hours
                     toKeep.add(backup);
-                } else if (backup.timestamp.isAfter(thirtyDaysAgo)) {
+                } else if (backup.getTimestamp().isAfter(thirtyDaysAgo)) {
                     // Keep one per day for last 30 days (fast-forwarding logic: keep the latest for
                     // that day)
-                    String dayKey = backup.timestamp.format(DateTimeFormatter.BASIC_ISO_DATE);
+                    String dayKey = backup.getTimestamp().format(DateTimeFormatter.BASIC_ISO_DATE);
                     if (!dailyBackups.containsKey(dayKey)) {
                         dailyBackups.put(dayKey, backup);
                         toKeep.add(backup);
                     } else {
-                        toDelete.add(backup.file);
+                        toDeleteIds.add(backup.getId());
                     }
                 } else {
                     // Delete backups older than 30 days
-                    toDelete.add(backup.file);
+                    toDeleteIds.add(backup.getId());
                 }
             }
 
             // Execute deletion
-            logger.info(" retention policy: Keeping " + toKeep.size() + ", Deleting " + toDelete.size());
+            logger.info(" retention policy: Keeping " + toKeep.size() + ", Deleting " + toDeleteIds.size());
 
-            for (File file : toDelete) {
+            for (String fileId : toDeleteIds) {
                 try {
-                    driveService.files().delete(file.getId()).execute();
-                    logger.debug("Deleted old backup: " + file.getName());
+                    driveService.files().delete(fileId).execute();
+                    logger.debug("Deleted old backup: " + fileId);
                 } catch (IOException e) {
-                    logger.error("Failed to delete file: " + file.getName(), e);
+                    logger.error("Failed to delete file: " + fileId, e);
                 }
             }
 
@@ -234,13 +245,38 @@ public class GoogleDriveService {
         }
     }
 
-    private static class BackupFile {
-        File file;
-        LocalDateTime timestamp;
+    public static class BackupFile {
+        private String id;
+        private String name;
+        private LocalDateTime timestamp;
+        private long size;
 
-        BackupFile(File file, LocalDateTime timestamp) {
-            this.file = file;
+        public BackupFile(File file, LocalDateTime timestamp) {
+            this.id = file.getId();
+            this.name = file.getName();
             this.timestamp = timestamp;
+            this.size = file.getSize() != null ? file.getSize() : 0;
+        }
+
+        public String getId() {
+            return id;
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public LocalDateTime getTimestamp() {
+            return timestamp;
+        }
+
+        public long getSize() {
+            return size;
+        }
+
+        @Override
+        public String toString() {
+            return timestamp.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")) + " (" + (size / 1024) + " KB)";
         }
     }
 }
