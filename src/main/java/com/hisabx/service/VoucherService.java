@@ -72,19 +72,17 @@ public class VoucherService {
     private byte[] generateVoucherPdf(Voucher voucher) throws DocumentException, IOException {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
 
-        boolean isReceipt = voucher.getVoucherType() == VoucherType.RECEIPT;
-        // Use a visible banner height for all voucher types (previously 10f made payment banner a thin line)
-        float bannerTargetHeight = isReceipt ? 120f : 100f;
-        Rectangle pageSize = PageSize.A4;
-        float bottomMargin = isReceipt ? 40f : 20f;
-        Document document = new Document(pageSize, 20, 20, 20 + bannerTargetHeight, bottomMargin);
+        float bannerTargetHeight = 60f;
+        Rectangle pageSize = PageSize.A5;
+        Document document = new Document(pageSize, 12, 12, 10 + bannerTargetHeight, 10);
         PdfWriter writer = PdfWriter.getInstance(document, baos);
         document.open();
 
         BaseFont baseFont = loadArabicBaseFont();
-        Font arabicFont = new Font(baseFont, 10, Font.NORMAL);
-        Font arabicBoldFont = new Font(baseFont, isReceipt ? 13 : 12, Font.BOLD);
-        Font smallFont = new Font(baseFont, 9, Font.NORMAL);
+        Font arabicFont = new Font(baseFont, 8, Font.NORMAL);
+        Font arabicBoldFont = new Font(baseFont, 9, Font.BOLD);
+        Font titleFont = new Font(baseFont, 11, Font.BOLD);
+        Font smallFont = new Font(baseFont, 7, Font.NORMAL);
 
         try {
             Image banner = loadBannerImage();
@@ -99,138 +97,31 @@ public class VoucherService {
             logger.warn("Failed to add voucher banner", e);
         }
 
-        document.add(new Paragraph(" ", arabicFont));
-
-        if (isReceipt) {
-            addReceiptVoucherLayout(document, voucher, arabicFont, arabicBoldFont, smallFont);
-            document.close();
-            return baos.toByteArray();
-        }
-
-        PdfPTable infoTable = new PdfPTable(2);
-        infoTable.setWidthPercentage(100);
-        infoTable.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
-        infoTable.setWidths(new float[]{1.5f, 1});
-        infoTable.setSpacingBefore(5f);
-        infoTable.setSpacingAfter(10f);
-
-        String accountName = voucher.getCustomer() != null && voucher.getCustomer().getName() != null ? voucher.getCustomer().getName() : "نقدي";
-        PdfPCell leftCell = new PdfPCell();
-        leftCell.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
-        leftCell.setPadding(8f);
-        leftCell.addElement(new Phrase("الحساب: " + accountName, arabicFont));
-        leftCell.addElement(new Phrase("العملة: " + (voucher.getCurrency() != null ? voucher.getCurrency() : "-"), arabicFont));
-        leftCell.addElement(new Phrase("المبلغ كتابةً: " + (voucher.getAmountInWords() != null ? voucher.getAmountInWords() : "-"), arabicFont));
-        if (voucher.getDescription() != null && !voucher.getDescription().trim().isEmpty()) {
-            leftCell.addElement(new Phrase("البيان: " + voucher.getDescription(), arabicFont));
-        }
-        infoTable.addCell(leftCell);
-
-        PdfPCell rightCell = new PdfPCell();
-        rightCell.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
-        rightCell.setPadding(8f);
-        rightCell.setBackgroundColor(voucher.getVoucherType() == VoucherType.RECEIPT ? new BaseColor(187, 247, 208) : new BaseColor(254, 202, 202));
-        rightCell.addElement(new Phrase(voucher.getVoucherType() == VoucherType.RECEIPT ? "سند قبض" : "سند دفع", arabicBoldFont));
-        rightCell.addElement(new Phrase(" ", smallFont));
-        rightCell.addElement(new Phrase("رقم السند: " + (voucher.getVoucherNumber() != null ? voucher.getVoucherNumber() : "-"), arabicFont));
-        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-        rightCell.addElement(new Phrase(
-            "التاريخ والوقت: " + (voucher.getVoucherDate() != null ? voucher.getVoucherDate().format(fmt) : "-"),
-            arabicFont
-        ));
-        // Removed "بواسطة" per request
-        infoTable.addCell(rightCell);
-
-        document.add(infoTable);
-
-        if (voucher.getVoucherType() == VoucherType.PAYMENT) {
-            List<VoucherItem> items = voucher.getItems() != null ? voucher.getItems() : Collections.emptyList();
-
-            PdfPTable table = new PdfPTable(6);
-            table.setWidthPercentage(100);
-            table.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
-            table.setWidths(new float[]{0.5f, 2.0f, 0.9f, 0.9f, 0.9f, 0.9f});
-            table.setSpacingBefore(5f);
-            table.setSpacingAfter(10f);
-
-            addHeaderCell(table, "ت", arabicBoldFont);
-            addHeaderCell(table, "المادة", arabicBoldFont);
-            addHeaderCell(table, "الكمية", arabicBoldFont);
-            addHeaderCell(table, "الوحدة", arabicBoldFont);
-            addHeaderCell(table, "سعر الوحدة", arabicBoldFont);
-            addHeaderCell(table, "المجموع", arabicBoldFont);
-
-            int rowNo = 1;
-            for (VoucherItem item : items) {
-                table.addCell(createBodyCell(String.valueOf(rowNo++), arabicFont, Element.ALIGN_CENTER));
-                table.addCell(createBodyCell(item.getProductName() != null ? item.getProductName() : "-", arabicFont, Element.ALIGN_RIGHT));
-                table.addCell(createBodyCell(item.getQuantity() != null ? String.valueOf(item.getQuantity()) : "0", arabicFont, Element.ALIGN_CENTER));
-                table.addCell(createBodyCell(item.getUnitOfMeasure() != null ? item.getUnitOfMeasure() : "-", arabicFont, Element.ALIGN_CENTER));
-                table.addCell(createBodyCell(formatAmount(item.getUnitPrice()), arabicFont, Element.ALIGN_CENTER));
-                table.addCell(createBodyCell(formatAmount(item.getTotalPrice()), arabicFont, Element.ALIGN_CENTER));
-            }
-            document.add(table);
-        }
-
-        PdfPTable totals = new PdfPTable(2);
-        totals.setWidthPercentage(100);
-        totals.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
-        totals.setWidths(new float[]{1, 1});
-        totals.setSpacingBefore(5f);
-
-        PdfPCell notesCell = new PdfPCell();
-        notesCell.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
-        notesCell.setPadding(8f);
-        notesCell.setMinimumHeight(60f);
-        if (voucher.getVoucherType() == VoucherType.PAYMENT) {
-            int itemCount = voucher.getItems() != null ? voucher.getItems().size() : 0;
-            notesCell.addElement(new Phrase("عدد المواد: " + itemCount, arabicFont));
-        }
-        if (voucher.getNotes() != null && !voucher.getNotes().trim().isEmpty()) {
-            notesCell.addElement(new Phrase("ملاحظات: " + voucher.getNotes(), arabicFont));
-        }
-        totals.addCell(notesCell);
-
-        PdfPCell summaryCell = new PdfPCell();
-        summaryCell.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
-        summaryCell.setPadding(8f);
-
-        PdfPTable inner = new PdfPTable(2);
-        inner.setWidthPercentage(100);
-        inner.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
-        double itemsTotal = getItemsTotal(voucher);
-        double netAmount = voucher.getNetAmount() != null ? voucher.getNetAmount() : itemsTotal;
-        double paidAmount = voucher.getAmount() != null ? voucher.getAmount() : 0.0;
-        double remainingAmount = Math.max(netAmount - paidAmount, 0);
-
-        addTotalRow(inner, "إجمالي المواد", formatCurrency(itemsTotal, voucher.getCurrency()), arabicFont, arabicBoldFont);
-        if (voucher.getDiscountAmount() != null && voucher.getDiscountAmount() > 0) {
-            addTotalRow(inner, "الخصم", formatCurrency(voucher.getDiscountAmount(), voucher.getCurrency()), arabicFont, arabicBoldFont);
-        }
-        addTotalRow(inner, "المدفوع", formatCurrency(paidAmount, voucher.getCurrency()), arabicFont, arabicBoldFont);
-        addTotalRow(inner, "المتبقي", formatCurrency(remainingAmount, voucher.getCurrency()), arabicFont, arabicBoldFont);
-
-        summaryCell.addElement(inner);
-        totals.addCell(summaryCell);
-
-        document.add(totals);
+        addVoucherLayout(document, voucher, arabicFont, arabicBoldFont, titleFont, smallFont);
 
         document.close();
         return baos.toByteArray();
     }
 
-    private void addReceiptVoucherLayout(Document document,
-                                         Voucher voucher,
-                                         Font arabicFont,
-                                         Font arabicBoldFont,
-                                         Font smallFont) throws DocumentException {
+    private void addVoucherLayout(Document document,
+                                   Voucher voucher,
+                                   Font arabicFont,
+                                   Font arabicBoldFont,
+                                   Font titleFont,
+                                   Font smallFont) throws DocumentException {
+        boolean isReceipt = voucher.getVoucherType() == VoucherType.RECEIPT;
+        String voucherTitle = isReceipt ? "سند قبض" : "سند دفع";
+        String personLabel = isReceipt ? "استلمنا من السيد" : "دفعنا إلى السيد";
+        BaseColor metaBgColor = isReceipt ? new BaseColor(232, 245, 233) : new BaseColor(254, 226, 226);
+
         PdfPTable titleTable = new PdfPTable(1);
         titleTable.setWidthPercentage(100);
         titleTable.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
-        PdfPCell titleCell = new PdfPCell(new Phrase("سند قبض", arabicBoldFont));
+        PdfPCell titleCell = new PdfPCell(new Phrase(voucherTitle, titleFont));
         titleCell.setBorder(PdfPCell.NO_BORDER);
         titleCell.setHorizontalAlignment(Element.ALIGN_CENTER);
-        titleCell.setPaddingBottom(8f);
+        titleCell.setPaddingBottom(3f);
+        titleCell.setPaddingTop(0f);
         titleTable.addCell(titleCell);
         document.add(titleTable);
 
@@ -238,16 +129,16 @@ public class VoucherService {
         info.setWidthPercentage(100);
         info.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
         info.setWidths(new float[]{1.1f, 0.9f});
-        info.setSpacingAfter(6f);
+        info.setSpacingAfter(3f);
 
         // Right block: voucher meta
         PdfPCell meta = new PdfPCell();
         meta.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
-        meta.setPadding(6f);
-        meta.setBackgroundColor(new BaseColor(232, 245, 233));
+        meta.setPadding(3f);
+        meta.setBackgroundColor(metaBgColor);
         meta.addElement(new Phrase("رقم السند: " + safe(voucher.getVoucherNumber()), arabicFont));
         DateTimeFormatter dateFmt = DateTimeFormatter.ofPattern("yyyy/MM/dd");
-        DateTimeFormatter timeFmt = DateTimeFormatter.ofPattern("hh:mm a");
+        DateTimeFormatter timeFmt = DateTimeFormatter.ofPattern("HH:mm");
         meta.addElement(new Phrase("التاريخ: " + (voucher.getVoucherDate() != null ? voucher.getVoucherDate().format(dateFmt) : "-"), arabicFont));
         meta.addElement(new Phrase("الوقت: " + (voucher.getVoucherDate() != null ? voucher.getVoucherDate().format(timeFmt) : "-"), arabicFont));
         info.addCell(meta);
@@ -255,7 +146,7 @@ public class VoucherService {
         // Left block: account info
         PdfPCell account = new PdfPCell();
         account.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
-        account.setPadding(6f);
+        account.setPadding(3f);
         String accountName = voucher.getCustomer() != null && voucher.getCustomer().getName() != null ? voucher.getCustomer().getName() : "نقدي";
         String projectName = voucher.getProjectName();
         String accountWithProject = accountName + ((projectName != null && !projectName.trim().isEmpty()) ? " / " + projectName.trim() : "");
@@ -273,22 +164,17 @@ public class VoucherService {
                     ? (voucher.getCustomer().getBalanceUsd() != null ? voucher.getCustomer().getBalanceUsd() : 0.0)
                     : (voucher.getCustomer().getBalanceIqd() != null ? voucher.getCustomer().getBalanceIqd() : 0.0);
         }
-        double previousBalance = customerBalance - net;
+        double previousBalance = isReceipt ? customerBalance - net : customerBalance + net;
 
         PdfPTable body = new PdfPTable(2);
         body.setWidthPercentage(100);
         body.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
-        body.setWidths(new float[]{0.75f, 0.25f});
-        body.setSpacingBefore(4f);
+        body.setWidths(new float[]{0.65f, 0.35f});
+        body.setSpacingBefore(2f);
 
-        double itemsTotal = getItemsTotal(voucher);
-        double netAmount = voucher.getNetAmount() != null ? voucher.getNetAmount() : itemsTotal;
         double paidAmount = voucher.getAmount() != null ? voucher.getAmount() : 0.0;
-        double remainingAmount = Math.max(netAmount - paidAmount, 0);
-        addLabeledRow(body, "استلمنا من السيد", accountWithProject, arabicFont, arabicBoldFont);
-        addLabeledRow(body, "إجمالي المواد", formatCurrency(itemsTotal, voucher.getCurrency()), arabicFont, arabicBoldFont);
+        addLabeledRow(body, personLabel, accountWithProject, arabicFont, arabicBoldFont);
         addLabeledRow(body, "المدفوع", formatCurrency(paidAmount, voucher.getCurrency()), arabicFont, arabicBoldFont);
-        addLabeledRow(body, "المتبقي", formatCurrency(remainingAmount, voucher.getCurrency()), arabicFont, arabicBoldFont);
         addLabeledRow(body, "المبلغ كتابةً", safe(voucher.getAmountInWords()), arabicFont, arabicBoldFont);
         addLabeledRow(body, "البيان", safe(voucher.getDescription()), arabicFont, arabicBoldFont);
         addLabeledRow(body, "ملاحظات", safe(voucher.getNotes()), arabicFont, arabicBoldFont);
@@ -296,18 +182,46 @@ public class VoucherService {
         addLabeledRow(body, "المبلغ الحالي", formatCurrency(Math.abs(customerBalance), voucher.getCurrency()), arabicFont, arabicBoldFont);
 
         document.add(body);
+
+        // جدول المواد (إن وجدت)
+        List<VoucherItem> items = voucher.getItems() != null ? voucher.getItems() : Collections.emptyList();
+        if (!items.isEmpty()) {
+            PdfPTable itemsTable = new PdfPTable(6);
+            itemsTable.setWidthPercentage(100);
+            itemsTable.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+            itemsTable.setWidths(new float[]{0.4f, 2.0f, 0.7f, 0.7f, 0.8f, 0.8f});
+            itemsTable.setSpacingBefore(3f);
+
+            addHeaderCell(itemsTable, "ت", arabicBoldFont);
+            addHeaderCell(itemsTable, "المادة", arabicBoldFont);
+            addHeaderCell(itemsTable, "الكمية", arabicBoldFont);
+            addHeaderCell(itemsTable, "الوحدة", arabicBoldFont);
+            addHeaderCell(itemsTable, "سعر الوحدة", arabicBoldFont);
+            addHeaderCell(itemsTable, "المجموع", arabicBoldFont);
+
+            int rowNo = 1;
+            for (VoucherItem item : items) {
+                itemsTable.addCell(createBodyCell(String.valueOf(rowNo++), smallFont, Element.ALIGN_CENTER));
+                itemsTable.addCell(createBodyCell(item.getProductName() != null ? item.getProductName() : "-", smallFont, Element.ALIGN_RIGHT));
+                itemsTable.addCell(createBodyCell(item.getQuantity() != null ? formatAmount(item.getQuantity()) : "0", smallFont, Element.ALIGN_CENTER));
+                itemsTable.addCell(createBodyCell(item.getUnitOfMeasure() != null ? item.getUnitOfMeasure() : "-", smallFont, Element.ALIGN_CENTER));
+                itemsTable.addCell(createBodyCell(formatAmount(item.getUnitPrice()), smallFont, Element.ALIGN_CENTER));
+                itemsTable.addCell(createBodyCell(formatAmount(item.getTotalPrice()), smallFont, Element.ALIGN_CENTER));
+            }
+            document.add(itemsTable);
+        }
     }
 
     private void addLabeledRow(PdfPTable table, String label, String value, Font labelFont, Font valueFont) {
         PdfPCell labelCell = new PdfPCell(new Phrase(label, labelFont));
         labelCell.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
-        labelCell.setPadding(6f);
+        labelCell.setPadding(3f);
         labelCell.setBackgroundColor(new BaseColor(245, 245, 245));
         table.addCell(labelCell);
 
         PdfPCell valueCell = new PdfPCell(new Phrase(value != null ? value : "-", valueFont));
         valueCell.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
-        valueCell.setPadding(6f);
+        valueCell.setPadding(3f);
         valueCell.setHorizontalAlignment(Element.ALIGN_LEFT);
         table.addCell(valueCell);
     }
@@ -330,7 +244,7 @@ public class VoucherService {
         PdfPCell cell = new PdfPCell(new Phrase(text, font));
         cell.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
         cell.setHorizontalAlignment(Element.ALIGN_CENTER);
-        cell.setPadding(6f);
+        cell.setPadding(3f);
         cell.setBackgroundColor(new BaseColor(241, 245, 249));
         table.addCell(cell);
     }
@@ -339,7 +253,7 @@ public class VoucherService {
         PdfPCell cell = new PdfPCell(new Phrase(text != null ? text : "-", font));
         cell.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
         cell.setHorizontalAlignment(align);
-        cell.setPadding(6f);
+        cell.setPadding(3f);
         return cell;
     }
 
@@ -444,6 +358,15 @@ public class VoucherService {
 
     private Image loadBannerImage() {
         try {
+            java.util.prefs.Preferences prefs = java.util.prefs.Preferences.userNodeForPackage(ReceiptService.class);
+            String bannerPath = prefs.get("receipt.banner.path", null);
+            if (bannerPath != null && !bannerPath.trim().isEmpty()) {
+                File f = new File(bannerPath);
+                if (f.exists() && f.isFile()) {
+                    return Image.getInstance(f.getAbsolutePath());
+                }
+            }
+            // Fallback to default logo
             URL logoUrl = VoucherService.class.getResource("/templates/HisabX.png");
             if (logoUrl != null) {
                 return Image.getInstance(logoUrl);
@@ -454,27 +377,34 @@ public class VoucherService {
         return null;
     }
     
-    // توليد رقم السند
+    // توليد رقم السند - تسلسل رقمي موحّد لجميع أنواع السندات
     public String generateVoucherNumber(VoucherType type) {
         try (Session session = DatabaseManager.getSessionFactory().openSession()) {
-            String prefix = type == VoucherType.RECEIPT ? "RV" : "PV";
             Query<String> query = session.createQuery(
-                "SELECT MAX(v.voucherNumber) FROM Voucher v WHERE v.voucherType = :type",
+                "SELECT v.voucherNumber FROM Voucher v",
                 String.class
             );
-            query.setParameter("type", type);
-            String maxNumber = query.uniqueResult();
+            List<String> allNumbers = query.list();
 
-            long next = 1L;
-            if (maxNumber != null && maxNumber.startsWith(prefix)) {
-                String numeric = maxNumber.substring(prefix.length());
-                try {
-                    next = Long.parseLong(numeric) + 1L;
-                } catch (NumberFormatException ignored) {
-                    next = 1L;
+            long max = 0L;
+            if (allNumbers != null) {
+                for (String num : allNumbers) {
+                    if (num == null) continue;
+                    String trimmed = num.trim();
+                    // إزالة البادئة القديمة (RV/PV) إن وجدت
+                    if (trimmed.startsWith("RV") || trimmed.startsWith("PV")) {
+                        trimmed = trimmed.substring(2);
+                    }
+                    try {
+                        long v = Long.parseLong(trimmed);
+                        if (v > max) {
+                            max = v;
+                        }
+                    } catch (NumberFormatException ignored) {
+                    }
                 }
             }
-            return prefix + String.format("%06d", next);
+            return String.valueOf(max + 1L);
         }
     }
     

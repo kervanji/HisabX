@@ -5,10 +5,12 @@ import com.hisabx.database.Repository.SaleRepository;
 import com.hisabx.database.Repository.SaleReturnRepository;
 import com.hisabx.model.Customer;
 import com.hisabx.model.Receipt;
-import com.hisabx.model.ReturnItem;
 import com.hisabx.model.Sale;
 import com.hisabx.model.SaleItem;
 import com.hisabx.model.SaleReturn;
+import com.hisabx.model.Voucher;
+import com.hisabx.model.VoucherType;
+import com.hisabx.model.dto.StatementItem;
 import com.itextpdf.text.BaseColor;
 import com.itextpdf.text.Document;
 import com.itextpdf.text.DocumentException;
@@ -33,8 +35,6 @@ import java.net.URL;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -93,9 +93,12 @@ public class ReceiptService {
         LocalDateTime toDt = to != null ? to.atTime(23, 59, 59) : null;
         List<Sale> sales;
         List<SaleReturn> returns;
+        List<Voucher> vouchers;
         try {
             sales = saleRepository.findForAccountStatement(customer.getId(), projectLocation, fromDt, toDt, includeItems);
             returns = returnRepository.findForAccountStatement(customer.getId(), projectLocation, fromDt, toDt);
+            VoucherService voucherService = new VoucherService();
+            vouchers = voucherService.getVouchersByCustomer(customer.getId());
             if (currency != null && !currency.isEmpty()) {
                 String selectedCurrency = currency;
                 sales = sales.stream()
@@ -104,14 +107,20 @@ public class ReceiptService {
                 returns = returns.stream()
                         .filter(ret -> ret.getSale() != null && selectedCurrency.equals(ret.getSale().getCurrency()))
                         .toList();
+                vouchers = vouchers.stream()
+                        .filter(v -> selectedCurrency.equals(v.getCurrency()))
+                        .toList();
             }
+            vouchers = vouchers.stream()
+                    .filter(v -> !Boolean.TRUE.equals(v.getIsCancelled()))
+                    .toList();
         } catch (Exception e) {
-            logger.error("Failed to load sales/returns for statement", e);
+            logger.error("Failed to load sales/returns/vouchers for statement", e);
             throw e;
         }
 
         try {
-            byte[] pdfData = generateAccountStatementPDF(customer, projectLocation, from, to, sales, returns, includeItems, currency);
+            byte[] pdfData = generateAccountStatementPDF(customer, projectLocation, from, to, sales, returns, vouchers, includeItems, currency);
 
             File out = outputFile;
             if (out == null) {
@@ -140,6 +149,296 @@ public class ReceiptService {
             logger.error("Failed to generate account statement PDF", e);
             throw new RuntimeException("فشل في إنشاء كشف الحساب", e);
         }
+    }
+
+    public File generateDetailedStatementPdf(Customer customer,
+                                               List<StatementItem> items,
+                                               String currency,
+                                               LocalDate from,
+                                               LocalDate to,
+                                               File outputFile) {
+        if (customer == null || customer.getId() == null) {
+            throw new IllegalArgumentException("العميل غير موجود");
+        }
+
+        try {
+            byte[] pdfData = generateDetailedStatementPDFBytes(customer, items, currency, from, to);
+
+            File out = outputFile;
+            if (out == null) {
+                File dir = new File("statements");
+                if (!dir.exists()) {
+                    dir.mkdirs();
+                }
+                String datePart = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
+                String safeCustomer = customer.getName() != null ? customer.getName().replaceAll("[^\\p{L}\\p{N}]+", "_") : "customer";
+                String fileName = "statement_detailed_" + safeCustomer + "_" + datePart + ".pdf";
+                out = new File(dir, fileName);
+            }
+
+            File parent = out.getParentFile();
+            if (parent != null && !parent.exists()) {
+                parent.mkdirs();
+            }
+
+            try (FileOutputStream fos = new FileOutputStream(out)) {
+                fos.write(pdfData);
+            }
+
+            return out;
+        } catch (Exception e) {
+            logger.error("Failed to generate detailed statement PDF", e);
+            throw new RuntimeException("فشل في إنشاء كشف الحساب التفصيلي", e);
+        }
+    }
+
+    private byte[] generateDetailedStatementPDFBytes(Customer customer,
+                                                      List<StatementItem> items,
+                                                      String currency,
+                                                      LocalDate from,
+                                                      LocalDate to) throws DocumentException, IOException {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+
+        final float bannerTargetHeight = 120f;
+        Document document = new Document(PageSize.A4.rotate(), 30, 30, 30 + bannerTargetHeight, 30);
+        PdfWriter writer = PdfWriter.getInstance(document, baos);
+        document.open();
+
+        BaseFont baseFont = loadArabicBaseFont();
+        Font arabicFont = new Font(baseFont, 9, Font.NORMAL);
+        Font arabicBoldFont = new Font(baseFont, 10, Font.BOLD);
+        Font sectionTitleFont = new Font(baseFont, 13, Font.BOLD);
+        Font smallFont = new Font(baseFont, 8, Font.NORMAL);
+
+        // Banner
+        try {
+            Image banner = loadBannerImage();
+            if (banner != null) {
+                float pageWidth = document.getPageSize().getWidth();
+                float pageHeight = document.getPageSize().getHeight();
+                banner.scaleAbsolute(pageWidth, bannerTargetHeight);
+                banner.setAbsolutePosition(0f, pageHeight - bannerTargetHeight);
+                writer.getDirectContent().addImage(banner);
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to add banner", e);
+        }
+
+        // Title
+        PdfPTable header = new PdfPTable(1);
+        header.setWidthPercentage(100);
+        header.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+        PdfPCell titleCell = new PdfPCell(new Phrase("كشف حساب تفصيلي", sectionTitleFont));
+        titleCell.setBorder(PdfPCell.NO_BORDER);
+        titleCell.setHorizontalAlignment(Element.ALIGN_CENTER);
+        titleCell.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+        titleCell.setPaddingBottom(4f);
+        header.addCell(titleCell);
+        document.add(header);
+
+        // Customer info
+        PdfPTable info = new PdfPTable(2);
+        info.setWidthPercentage(100);
+        info.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+        info.setWidths(new float[]{1.4f, 1f});
+        info.setSpacingBefore(6f);
+        info.setSpacingAfter(8f);
+
+        PdfPCell leftCell = new PdfPCell();
+        leftCell.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+        leftCell.setPadding(8f);
+        leftCell.addElement(new Phrase("اسم العميل: " + (customer.getName() != null ? customer.getName() : "-"), arabicFont));
+        if (customer.getPhoneNumber() != null && !customer.getPhoneNumber().trim().isEmpty()) {
+            leftCell.addElement(new Phrase("الهاتف: " + customer.getPhoneNumber(), arabicFont));
+        }
+        if (customer.getAddress() != null && !customer.getAddress().trim().isEmpty()) {
+            leftCell.addElement(new Phrase("العنوان: " + customer.getAddress(), arabicFont));
+        }
+        info.addCell(leftCell);
+
+        PdfPCell rightCell = new PdfPCell();
+        rightCell.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+        rightCell.setPadding(8f);
+        String period;
+        if (from != null && to != null) {
+            period = from.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")) + " إلى " + to.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+        } else if (from != null) {
+            period = "من " + from.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+        } else if (to != null) {
+            period = "إلى " + to.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+        } else {
+            period = "كل الفترات";
+        }
+        rightCell.addElement(new Phrase("الفترة: " + period, arabicFont));
+        rightCell.addElement(new Phrase("تاريخ الإصدار: " + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")), arabicFont));
+        if (currency != null && !currency.isEmpty()) {
+            rightCell.addElement(new Phrase("العملة: " + currency, arabicFont));
+        }
+        info.addCell(rightCell);
+        document.add(info);
+
+        // Statement table (chronological)
+        PdfPTable table = new PdfPTable(7);
+        table.setWidthPercentage(100);
+        table.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+        table.setSpacingBefore(5f);
+        table.setSpacingAfter(10f);
+        table.setWidths(new float[]{1.2f, 1f, 1f, 1.8f, 1f, 1f, 1f});
+
+        addTableHeader(table, "التاريخ", arabicBoldFont);
+        addTableHeader(table, "النوع", arabicBoldFont);
+        addTableHeader(table, "رقم المرجع", arabicBoldFont);
+        addTableHeader(table, "البيان", arabicBoldFont);
+        addTableHeader(table, "مدين (لنا)", arabicBoldFont);
+        addTableHeader(table, "دائن (دفعة)", arabicBoldFont);
+        addTableHeader(table, "الرصيد", arabicBoldFont);
+
+        DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+        double totalDebit = 0;
+        double totalCredit = 0;
+        double finalBalance = 0;
+
+        BaseColor saleColor = new BaseColor(239, 68, 68);
+        BaseColor receiptColor = new BaseColor(34, 197, 94);
+        BaseColor paymentColor = new BaseColor(245, 158, 11);
+        BaseColor returnColor = new BaseColor(139, 92, 246);
+        BaseColor openingColor = new BaseColor(100, 116, 139);
+        BaseColor openingBg = new BaseColor(240, 242, 245);
+
+        for (StatementItem item : items) {
+            String dateStr = item.getDate() != null ? item.getDate().format(dtf) : "";
+            String type = item.getType() != null ? item.getType() : "";
+            String ref = item.getReferenceNumber() != null ? item.getReferenceNumber() : "";
+            String desc = item.getDescription() != null ? item.getDescription() : "";
+            double debit = item.getDebit() != null ? item.getDebit() : 0;
+            double credit = item.getCredit() != null ? item.getCredit() : 0;
+            double balance = item.getBalance() != null ? item.getBalance() : 0;
+
+            boolean isOpening = "رصيد سابق".equals(type);
+
+            // Determine type color
+            BaseColor typeColor;
+            switch (type) {
+                case "فاتورة مبيع" -> typeColor = saleColor;
+                case "سند قبض" -> typeColor = receiptColor;
+                case "سند صرف" -> typeColor = paymentColor;
+                case "مرتجع مبيعات" -> typeColor = returnColor;
+                case "رصيد سابق" -> typeColor = openingColor;
+                default -> typeColor = BaseColor.BLACK;
+            }
+
+            Font typeFont = new Font(baseFont, 9, Font.BOLD, typeColor);
+
+            table.addCell(createBodyCell(dateStr, arabicFont, Element.ALIGN_CENTER));
+
+            PdfPCell typeCell = new PdfPCell(new Phrase(type, typeFont));
+            typeCell.setHorizontalAlignment(Element.ALIGN_CENTER);
+            typeCell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+            typeCell.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+            typeCell.setPadding(4f);
+            if (isOpening) typeCell.setBackgroundColor(openingBg);
+            table.addCell(typeCell);
+
+            PdfPCell refCell = createBodyCell(ref, arabicFont, Element.ALIGN_CENTER);
+            if (isOpening) refCell.setBackgroundColor(openingBg);
+            table.addCell(refCell);
+
+            PdfPCell descCell = createBodyCell(desc, arabicFont, Element.ALIGN_RIGHT);
+            if (isOpening) descCell.setBackgroundColor(openingBg);
+            table.addCell(descCell);
+
+            // Debit
+            PdfPCell debitCell;
+            if (debit > 0) {
+                Font debitFont = new Font(baseFont, 9, Font.NORMAL, saleColor);
+                debitCell = new PdfPCell(new Phrase(formatAmount(debit), debitFont));
+            } else {
+                debitCell = new PdfPCell(new Phrase("", arabicFont));
+            }
+            debitCell.setHorizontalAlignment(Element.ALIGN_CENTER);
+            debitCell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+            debitCell.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+            debitCell.setPadding(4f);
+            if (isOpening) debitCell.setBackgroundColor(openingBg);
+            table.addCell(debitCell);
+
+            // Credit
+            PdfPCell creditCell;
+            if (credit > 0) {
+                Font creditFont = new Font(baseFont, 9, Font.NORMAL, receiptColor);
+                creditCell = new PdfPCell(new Phrase(formatAmount(credit), creditFont));
+            } else {
+                creditCell = new PdfPCell(new Phrase("", arabicFont));
+            }
+            creditCell.setHorizontalAlignment(Element.ALIGN_CENTER);
+            creditCell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+            creditCell.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+            creditCell.setPadding(4f);
+            if (isOpening) creditCell.setBackgroundColor(openingBg);
+            table.addCell(creditCell);
+
+            // Balance
+            BaseColor balColor = balance > 0 ? saleColor : (balance < 0 ? receiptColor : BaseColor.BLACK);
+            Font balFont = new Font(baseFont, 9, Font.BOLD, balColor);
+            PdfPCell balCell = new PdfPCell(new Phrase(formatAmount(balance), balFont));
+            balCell.setHorizontalAlignment(Element.ALIGN_CENTER);
+            balCell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+            balCell.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+            balCell.setPadding(4f);
+            if (isOpening) balCell.setBackgroundColor(openingBg);
+            table.addCell(balCell);
+
+            // Accumulate totals (skip opening balance)
+            if (!isOpening) {
+                totalDebit += debit;
+                totalCredit += credit;
+            }
+            finalBalance = balance;
+        }
+
+        document.add(table);
+
+        // Summary footer
+        String currLabel = currency != null && !currency.isEmpty() ? currency : "";
+        PdfPTable summaryTable = new PdfPTable(4);
+        summaryTable.setWidthPercentage(100);
+        summaryTable.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+        summaryTable.setSpacingBefore(6f);
+        summaryTable.setSpacingAfter(10f);
+
+        PdfPCell sdCell = new PdfPCell(new Phrase("إجمالي مدين\n" + formatAmount(totalDebit) + " " + currLabel, arabicBoldFont));
+        sdCell.setHorizontalAlignment(Element.ALIGN_CENTER);
+        sdCell.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+        sdCell.setPadding(8f);
+        sdCell.setBackgroundColor(new BaseColor(254, 226, 226));
+        summaryTable.addCell(sdCell);
+
+        PdfPCell scCell = new PdfPCell(new Phrase("إجمالي دائن\n" + formatAmount(totalCredit) + " " + currLabel, arabicBoldFont));
+        scCell.setHorizontalAlignment(Element.ALIGN_CENTER);
+        scCell.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+        scCell.setPadding(8f);
+        scCell.setBackgroundColor(new BaseColor(220, 252, 231));
+        summaryTable.addCell(scCell);
+
+        PdfPCell sbCell = new PdfPCell(new Phrase("الرصيد النهائي\n" + formatAmount(finalBalance) + " " + currLabel, arabicBoldFont));
+        sbCell.setHorizontalAlignment(Element.ALIGN_CENTER);
+        sbCell.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+        sbCell.setPadding(8f);
+        summaryTable.addCell(sbCell);
+
+        int count = (int) items.stream().filter(i -> !"رصيد سابق".equals(i.getType())).count();
+        PdfPCell scntCell = new PdfPCell(new Phrase("عدد الحركات\n" + count, arabicBoldFont));
+        scntCell.setHorizontalAlignment(Element.ALIGN_CENTER);
+        scntCell.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+        scntCell.setPadding(8f);
+        summaryTable.addCell(scntCell);
+
+        document.add(summaryTable);
+
+        addUnifiedFooter(document, arabicBoldFont, smallFont);
+
+        document.close();
+        return baos.toByteArray();
     }
 
     private Receipt prepareReceiptForSale(Sale sale, String template, String printedBy) {
@@ -523,6 +822,7 @@ public class ReceiptService {
                                                LocalDate to,
                                                List<Sale> sales,
                                                List<SaleReturn> returns,
+                                               List<Voucher> vouchers,
                                                boolean includeItems,
                                                String currency) throws DocumentException, IOException {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -694,193 +994,278 @@ public class ReceiptService {
 
         document.add(summary);
 
-        if (includeItems) {
-            Map<String, ItemAggregate> aggregated = new HashMap<>();
+        // ===== Sales Table =====
+        PdfPTable salesTable = new PdfPTable(6);
+        salesTable.setWidthPercentage(100);
+        salesTable.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+        salesTable.setSpacingBefore(5f);
+        salesTable.setSpacingAfter(10f);
+        salesTable.setWidths(new float[]{1f, 1f, 1.2f, 1f, 1f, 0.2f});
 
-            for (Sale s : sales) {
-                String rowCurrency = currency == null || currency.isEmpty()
-                        ? ("دولار".equals(s.getCurrency()) ? "دولار" : "دينار")
-                        : currency;
-                List<SaleItem> items = s.getSaleItems() != null ? s.getSaleItems() : Collections.emptyList();
-                for (SaleItem it : items) {
-                    Long productId = it.getProduct() != null ? it.getProduct().getId() : null;
-                    String productName = it.getProduct() != null && it.getProduct().getName() != null ? it.getProduct().getName() : "-";
-                    String key = (productId != null ? productId : 0L) + "|" + rowCurrency;
+        addTableHeader(salesTable, "ت", arabicBoldFont);
+        addTableHeader(salesTable, "رقم الفاتورة", arabicBoldFont);
+        addTableHeader(salesTable, "التاريخ", arabicBoldFont);
+        addTableHeader(salesTable, "المشروع", arabicBoldFont);
+        addTableHeader(salesTable, "الإجمالي", arabicBoldFont);
+        addTableHeader(salesTable, "المدفوع/الدين", arabicBoldFont);
 
-                    double qty = it.getQuantity() != null ? it.getQuantity() : 0.0;
-                    double total = it.getTotalPrice() != null ? it.getTotalPrice() : 0.0;
+        Font detailFont = new Font(baseFont, 8, Font.NORMAL, new BaseColor(80, 80, 80));
+        BaseColor detailBg = new BaseColor(245, 247, 250);
 
-                    ItemAggregate agg = aggregated.computeIfAbsent(key, k -> new ItemAggregate(productName, rowCurrency));
-                    agg.quantity += qty;
-                    agg.total += total;
+        int row = 1;
+        for (Sale s : sales) {
+            String code = s.getSaleCode() != null ? s.getSaleCode() : "-";
+            String date = s.getSaleDate() != null ? s.getSaleDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")) : "-";
+            String proj = s.getProjectLocation() != null ? s.getProjectLocation() : "-";
+            double fin = s.getFinalAmount() != null ? s.getFinalAmount() : 0.0;
+            double paid = s.getPaidAmount() != null ? s.getPaidAmount() : 0.0;
+            double returnsForSale = returnsBySaleId.getOrDefault(s.getId(), 0.0);
+            double rem = fin - paid - returnsForSale;
+            String rowCurrency = currency == null || currency.isEmpty()
+                    ? ("دولار".equals(s.getCurrency()) ? "دولار" : "دينار")
+                    : currency;
+            String paidDebtDisplay = rem != 0
+                    ? formatCurrency(paid, rowCurrency) + " / " + formatCurrency(rem, rowCurrency)
+                    : formatCurrency(paid, rowCurrency);
+
+            salesTable.addCell(createBodyCell(String.valueOf(row), arabicFont, Element.ALIGN_CENTER));
+            salesTable.addCell(createBodyCell(code, arabicFont, Element.ALIGN_CENTER));
+            salesTable.addCell(createBodyCell(date, arabicFont, Element.ALIGN_CENTER));
+            salesTable.addCell(createBodyCell(proj, arabicFont, Element.ALIGN_CENTER));
+            salesTable.addCell(createBodyCell(formatCurrency(fin, rowCurrency), arabicFont, Element.ALIGN_CENTER));
+            salesTable.addCell(createBodyCell(paidDebtDisplay, arabicFont, Element.ALIGN_CENTER));
+
+            // Detail sub-rows when includeItems is true
+            if (includeItems) {
+                StringBuilder detailText = new StringBuilder();
+
+                // Sale items
+                List<SaleItem> saleItemsList = s.getSaleItems() != null ? s.getSaleItems() : Collections.emptyList();
+                if (!saleItemsList.isEmpty()) {
+                    detailText.append("━━ المواد ━━\n");
+                    int idx = 1;
+                    for (SaleItem si : saleItemsList) {
+                        String productName = si.getProduct() != null && si.getProduct().getName() != null ? si.getProduct().getName() : "منتج";
+                        detailText.append(idx++).append(". ").append(productName);
+                        detailText.append("  |  الكمية: ").append(formatAmount(si.getQuantity()));
+                        detailText.append(" × ").append(formatAmount(si.getUnitPrice()));
+                        detailText.append(" = ").append(formatAmount(si.getTotalPrice()));
+                        if (si.getDiscountAmount() != null && si.getDiscountAmount() > 0) {
+                            detailText.append("  (خصم: ").append(formatAmount(si.getDiscountAmount())).append(")");
+                        }
+                        detailText.append("\n");
+                    }
                 }
+
+                // Financial summary
+                detailText.append("━━ ملخص مالي ━━\n");
+                detailText.append("المجموع: ").append(formatCurrency(s.getTotalAmount(), rowCurrency));
+                if (s.getDiscountAmount() != null && s.getDiscountAmount() > 0) {
+                    detailText.append("  |  الخصم: ").append(formatCurrency(s.getDiscountAmount(), rowCurrency));
+                }
+                if (s.getTaxAmount() != null && s.getTaxAmount() > 0) {
+                    detailText.append("  |  الضريبة: ").append(formatCurrency(s.getTaxAmount(), rowCurrency));
+                }
+                detailText.append("  |  الصافي: ").append(formatCurrency(s.getFinalAmount(), rowCurrency)).append("\n");
+
+                // Payment info
+                detailText.append("━━ الدفع ━━\n");
+                detailText.append("الحالة: ").append("PAID".equals(s.getPaymentStatus()) ? "مدفوع ✓" : "قبل دفع ✗");
+                if (s.getPaidAmount() != null && s.getPaidAmount() > 0) {
+                    detailText.append("  |  المدفوع: ").append(formatCurrency(s.getPaidAmount(), rowCurrency));
+                    double remaining = fin - s.getPaidAmount();
+                    if (remaining > 0) {
+                        detailText.append("  |  المتبقي: ").append(formatCurrency(remaining, rowCurrency));
+                    }
+                }
+                if (s.getPaymentMethod() != null && !s.getPaymentMethod().isEmpty()) {
+                    detailText.append("  |  طريقة الدفع: ").append(getPaymentMethodArabic(s.getPaymentMethod()));
+                }
+                detailText.append("\n");
+
+                if (s.getCreatedBy() != null) {
+                    detailText.append("بواسطة: ").append(s.getCreatedBy());
+                }
+                if (s.getNotes() != null && !s.getNotes().isEmpty()) {
+                    detailText.append("  |  ملاحظات: ").append(s.getNotes());
+                }
+
+                PdfPCell detailCell = new PdfPCell(new Phrase(detailText.toString().trim(), detailFont));
+                detailCell.setColspan(6);
+                detailCell.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+                detailCell.setPadding(6f);
+                detailCell.setBackgroundColor(detailBg);
+                detailCell.setBorderWidthTop(0f);
+                salesTable.addCell(detailCell);
             }
 
+            row++;
+        }
+
+        document.add(salesTable);
+
+        // ===== Returns Section =====
+        if (!returns.isEmpty()) {
+            PdfPTable returnsHeader = new PdfPTable(1);
+            returnsHeader.setWidthPercentage(100);
+            returnsHeader.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+            returnsHeader.setSpacingBefore(10f);
+
+            PdfPCell returnsTitleCell = new PdfPCell(new Phrase("المرتجعات", sectionTitleFont));
+            returnsTitleCell.setBorder(PdfPCell.NO_BORDER);
+            returnsTitleCell.setHorizontalAlignment(Element.ALIGN_CENTER);
+            returnsTitleCell.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+            returnsTitleCell.setPaddingBottom(4f);
+            returnsTitleCell.setBackgroundColor(new BaseColor(255, 230, 230));
+            returnsHeader.addCell(returnsTitleCell);
+            document.add(returnsHeader);
+
+            PdfPTable returnsTable = new PdfPTable(6);
+            returnsTable.setWidthPercentage(100);
+            returnsTable.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+            returnsTable.setSpacingBefore(5f);
+            returnsTable.setSpacingAfter(10f);
+            returnsTable.setWidths(new float[]{1f, 1f, 1.2f, 1f, 1f, 0.2f});
+
+            addTableHeader(returnsTable, "ت", arabicBoldFont);
+            addTableHeader(returnsTable, "رقم الفاتورة", arabicBoldFont);
+            addTableHeader(returnsTable, "التاريخ", arabicBoldFont);
+            addTableHeader(returnsTable, "المشروع", arabicBoldFont);
+            addTableHeader(returnsTable, "الإجمالي", arabicBoldFont);
+            addTableHeader(returnsTable, "السبب", arabicBoldFont);
+
+            int retRow = 1;
             for (SaleReturn r : returns) {
+                String saleCode = r.getSale() != null && r.getSale().getSaleCode() != null ? r.getSale().getSaleCode() : "-";
+                String retDate = r.getReturnDate() != null ? r.getReturnDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")) : "-";
+                String projectName = r.getSale() != null && r.getSale().getProjectLocation() != null ? r.getSale().getProjectLocation() : "-";
+                double retAmount = r.getTotalReturnAmount() != null ? r.getTotalReturnAmount() : 0.0;
                 String returnCurrency = currency == null || currency.isEmpty()
                         ? ("دولار".equals(r.getSale() != null ? r.getSale().getCurrency() : null) ? "دولار" : "دينار")
                         : currency;
-                List<ReturnItem> returnItems = r.getReturnItems() != null ? r.getReturnItems() : Collections.emptyList();
-                for (ReturnItem item : returnItems) {
-                    Long productId = item.getProduct() != null ? item.getProduct().getId() : null;
-                    String productName = item.getProduct() != null && item.getProduct().getName() != null ? item.getProduct().getName() : "-";
-                    String key = (productId != null ? productId : 0L) + "|" + returnCurrency;
+                String reason = r.getReturnReason() != null ? r.getReturnReason() : "-";
 
-                    double qty = item.getQuantity() != null ? item.getQuantity() : 0.0;
-                    double total = item.getTotalPrice() != null ? item.getTotalPrice() : 0.0;
+                returnsTable.addCell(createBodyCell(String.valueOf(retRow), arabicFont, Element.ALIGN_CENTER));
+                returnsTable.addCell(createBodyCell(saleCode, arabicFont, Element.ALIGN_CENTER));
+                returnsTable.addCell(createBodyCell(retDate, arabicFont, Element.ALIGN_CENTER));
+                returnsTable.addCell(createBodyCell(projectName, arabicFont, Element.ALIGN_CENTER));
+                returnsTable.addCell(createBodyCell(formatCurrency(retAmount, returnCurrency), arabicFont, Element.ALIGN_CENTER));
+                returnsTable.addCell(createBodyCell(reason, arabicFont, Element.ALIGN_CENTER));
 
-                    ItemAggregate agg = aggregated.computeIfAbsent(key, k -> new ItemAggregate(productName, returnCurrency));
-                    agg.quantity -= qty;
-                    agg.total -= total;
-                }
+                retRow++;
             }
 
-            List<ItemAggregate> rows = new ArrayList<>(aggregated.values());
-            rows.removeIf(r -> Math.abs(r.quantity) < 0.000001 && Math.abs(r.total) < 0.000001);
-            rows.sort(Comparator
-                    .comparing((ItemAggregate a) -> a.productName != null ? a.productName : "")
-                    .thenComparing(a -> a.currency != null ? a.currency : ""));
+            document.add(returnsTable);
+        }
 
-            Map<String, Double> grandTotals = new HashMap<>();
-            for (ItemAggregate r : rows) {
-                String cur = r.currency != null ? r.currency : "دينار";
-                grandTotals.merge(cur, r.total, Double::sum);
-            }
+        // ===== Receipts (سندات القبض) =====
+        List<Voucher> receipts = vouchers.stream().filter(v -> v.getVoucherType() == VoucherType.RECEIPT).toList();
+        if (!receipts.isEmpty()) {
+            PdfPTable receiptsHeader = new PdfPTable(1);
+            receiptsHeader.setWidthPercentage(100);
+            receiptsHeader.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+            receiptsHeader.setSpacingBefore(10f);
 
-            PdfPTable itemsTable = new PdfPTable(5);
-            itemsTable.setWidthPercentage(100);
-            itemsTable.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
-            itemsTable.setSpacingBefore(5f);
-            itemsTable.setSpacingAfter(10f);
-            itemsTable.setWidths(new float[]{1f, 1.6f, 0.9f, 1f, 0.2f});
+            PdfPCell receiptsTitleCell = new PdfPCell(new Phrase("سندات القبض", sectionTitleFont));
+            receiptsTitleCell.setBorder(PdfPCell.NO_BORDER);
+            receiptsTitleCell.setHorizontalAlignment(Element.ALIGN_CENTER);
+            receiptsTitleCell.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+            receiptsTitleCell.setPaddingBottom(4f);
+            receiptsTitleCell.setBackgroundColor(new BaseColor(220, 252, 231));
+            receiptsHeader.addCell(receiptsTitleCell);
+            document.add(receiptsHeader);
 
-            addTableHeader(itemsTable, "ت", arabicBoldFont);
-            addTableHeader(itemsTable, "المادة", arabicBoldFont);
-            addTableHeader(itemsTable, "الكمية", arabicBoldFont);
-            addTableHeader(itemsTable, "السعر", arabicBoldFont);
-            addTableHeader(itemsTable, "المجموع", arabicBoldFont);
+            PdfPTable receiptsTable = new PdfPTable(6);
+            receiptsTable.setWidthPercentage(100);
+            receiptsTable.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+            receiptsTable.setSpacingBefore(5f);
+            receiptsTable.setSpacingAfter(10f);
+            receiptsTable.setWidths(new float[]{1f, 1f, 1.2f, 1f, 1f, 0.2f});
 
-            int i = 1;
-            for (ItemAggregate agg : rows) {
-                double unitPrice = agg.quantity != 0.0 ? (agg.total / agg.quantity) : 0.0;
-                itemsTable.addCell(createBodyCell(String.valueOf(i), arabicFont, Element.ALIGN_CENTER));
-                itemsTable.addCell(createBodyCell(agg.productName != null ? agg.productName : "-", arabicFont, Element.ALIGN_RIGHT));
-                itemsTable.addCell(createBodyCell(formatAmount(agg.quantity), arabicFont, Element.ALIGN_CENTER));
-                itemsTable.addCell(createBodyCell(formatCurrency(unitPrice, agg.currency), arabicFont, Element.ALIGN_CENTER));
-                itemsTable.addCell(createBodyCell(formatCurrency(agg.total, agg.currency), arabicFont, Element.ALIGN_CENTER));
-                i++;
-            }
+            addTableHeader(receiptsTable, "ت", arabicBoldFont);
+            addTableHeader(receiptsTable, "رقم السند", arabicBoldFont);
+            addTableHeader(receiptsTable, "التاريخ", arabicBoldFont);
+            addTableHeader(receiptsTable, "المشروع", arabicBoldFont);
+            addTableHeader(receiptsTable, "المبلغ", arabicBoldFont);
+            addTableHeader(receiptsTable, "البيان", arabicBoldFont);
 
-            List<String> currencies = new ArrayList<>(grandTotals.keySet());
-            currencies.sort(String::compareTo);
-            for (String cur : currencies) {
-                PdfPCell labelCell = new PdfPCell(new Phrase("المجموع النهائي - " + cur, arabicBoldFont));
-                labelCell.setColspan(4);
-                labelCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
-                labelCell.setVerticalAlignment(Element.ALIGN_MIDDLE);
-                labelCell.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
-                labelCell.setPadding(4f);
-                itemsTable.addCell(labelCell);
-
-                PdfPCell valueCell = new PdfPCell(new Phrase(formatCurrency(grandTotals.getOrDefault(cur, 0.0), cur), arabicBoldFont));
-                valueCell.setHorizontalAlignment(Element.ALIGN_CENTER);
-                valueCell.setVerticalAlignment(Element.ALIGN_MIDDLE);
-                valueCell.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
-                valueCell.setPadding(4f);
-                itemsTable.addCell(valueCell);
-            }
-
-            document.add(itemsTable);
-        } else {
-            PdfPTable salesTable = new PdfPTable(6);
-            salesTable.setWidthPercentage(100);
-            salesTable.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
-            salesTable.setSpacingBefore(5f);
-            salesTable.setSpacingAfter(10f);
-            salesTable.setWidths(new float[]{1f, 1f, 1.2f, 1f, 1f, 0.2f});
-
-            addTableHeader(salesTable, "ت", arabicBoldFont);
-            addTableHeader(salesTable, "رقم الفاتورة", arabicBoldFont);
-            addTableHeader(salesTable, "التاريخ", arabicBoldFont);
-            addTableHeader(salesTable, "المشروع", arabicBoldFont);
-            addTableHeader(salesTable, "الإجمالي", arabicBoldFont);
-            addTableHeader(salesTable, "المدفوع/الدين", arabicBoldFont);
-
-            int row = 1;
-            for (Sale s : sales) {
-                String code = s.getSaleCode() != null ? s.getSaleCode() : "-";
-                String date = s.getSaleDate() != null ? s.getSaleDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")) : "-";
-                String proj = s.getProjectLocation() != null ? s.getProjectLocation() : "-";
-                double fin = s.getFinalAmount() != null ? s.getFinalAmount() : 0.0;
-                double paid = s.getPaidAmount() != null ? s.getPaidAmount() : 0.0;
-                double returnsForSale = returnsBySaleId.getOrDefault(s.getId(), 0.0);
-                double rem = fin - paid - returnsForSale;
-                String rowCurrency = currency == null || currency.isEmpty()
-                        ? ("دولار".equals(s.getCurrency()) ? "دولار" : "دينار")
+            int rcptRow = 1;
+            for (Voucher v : receipts) {
+                String vNumber = v.getVoucherNumber() != null ? v.getVoucherNumber() : "-";
+                String vDate = v.getVoucherDate() != null ? v.getVoucherDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")) : "-";
+                String vProject = v.getProjectName() != null ? v.getProjectName() : "-";
+                double vAmount = v.getAmount() != null ? v.getAmount() : 0.0;
+                String vCurrency = currency == null || currency.isEmpty()
+                        ? ("دولار".equals(v.getCurrency()) ? "دولار" : "دينار")
                         : currency;
-                String paidDebtDisplay = rem != 0
-                        ? formatCurrency(paid, rowCurrency) + " / " + formatCurrency(rem, rowCurrency)
-                        : formatCurrency(paid, rowCurrency);
+                String vDesc = v.getDescription() != null ? v.getDescription() : "-";
 
-                salesTable.addCell(createBodyCell(String.valueOf(row), arabicFont, Element.ALIGN_CENTER));
-                salesTable.addCell(createBodyCell(code, arabicFont, Element.ALIGN_CENTER));
-                salesTable.addCell(createBodyCell(date, arabicFont, Element.ALIGN_CENTER));
-                salesTable.addCell(createBodyCell(proj, arabicFont, Element.ALIGN_CENTER));
-                salesTable.addCell(createBodyCell(formatCurrency(fin, rowCurrency), arabicFont, Element.ALIGN_CENTER));
-                salesTable.addCell(createBodyCell(paidDebtDisplay, arabicFont, Element.ALIGN_CENTER));
-                row++;
+                receiptsTable.addCell(createBodyCell(String.valueOf(rcptRow), arabicFont, Element.ALIGN_CENTER));
+                receiptsTable.addCell(createBodyCell(vNumber, arabicFont, Element.ALIGN_CENTER));
+                receiptsTable.addCell(createBodyCell(vDate, arabicFont, Element.ALIGN_CENTER));
+                receiptsTable.addCell(createBodyCell(vProject, arabicFont, Element.ALIGN_CENTER));
+                receiptsTable.addCell(createBodyCell(formatCurrency(vAmount, vCurrency), arabicFont, Element.ALIGN_CENTER));
+                receiptsTable.addCell(createBodyCell(vDesc, arabicFont, Element.ALIGN_CENTER));
+
+                rcptRow++;
             }
 
-            document.add(salesTable);
+            document.add(receiptsTable);
+        }
 
-            if (!returns.isEmpty()) {
-                PdfPTable returnsHeader = new PdfPTable(1);
-                returnsHeader.setWidthPercentage(100);
-                returnsHeader.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
-                returnsHeader.setSpacingBefore(10f);
+        // ===== Payments (سندات الدفع) =====
+        List<Voucher> payments = vouchers.stream().filter(v -> v.getVoucherType() == VoucherType.PAYMENT).toList();
+        if (!payments.isEmpty()) {
+            PdfPTable paymentsHeader = new PdfPTable(1);
+            paymentsHeader.setWidthPercentage(100);
+            paymentsHeader.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+            paymentsHeader.setSpacingBefore(10f);
 
-                PdfPCell returnsTitleCell = new PdfPCell(new Phrase("المرتجعات", sectionTitleFont));
-                returnsTitleCell.setBorder(PdfPCell.NO_BORDER);
-                returnsTitleCell.setHorizontalAlignment(Element.ALIGN_CENTER);
-                returnsTitleCell.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
-                returnsTitleCell.setPaddingBottom(4f);
-                returnsTitleCell.setBackgroundColor(new BaseColor(255, 230, 230));
-                returnsHeader.addCell(returnsTitleCell);
-                document.add(returnsHeader);
+            PdfPCell paymentsTitleCell = new PdfPCell(new Phrase("سندات الدفع", sectionTitleFont));
+            paymentsTitleCell.setBorder(PdfPCell.NO_BORDER);
+            paymentsTitleCell.setHorizontalAlignment(Element.ALIGN_CENTER);
+            paymentsTitleCell.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+            paymentsTitleCell.setPaddingBottom(4f);
+            paymentsTitleCell.setBackgroundColor(new BaseColor(254, 243, 199));
+            paymentsHeader.addCell(paymentsTitleCell);
+            document.add(paymentsHeader);
 
-                PdfPTable returnsTable = new PdfPTable(5);
-                returnsTable.setWidthPercentage(100);
-                returnsTable.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
-                returnsTable.setSpacingBefore(5f);
-                returnsTable.setSpacingAfter(10f);
-                returnsTable.setWidths(new float[]{1f, 1f, 1f, 1.2f, 0.2f});
+            PdfPTable paymentsTable = new PdfPTable(6);
+            paymentsTable.setWidthPercentage(100);
+            paymentsTable.setRunDirection(PdfWriter.RUN_DIRECTION_RTL);
+            paymentsTable.setSpacingBefore(5f);
+            paymentsTable.setSpacingAfter(10f);
+            paymentsTable.setWidths(new float[]{1f, 1f, 1.2f, 1f, 1f, 0.2f});
 
-                addTableHeader(returnsTable, "ت", arabicBoldFont);
-                addTableHeader(returnsTable, "رقم المرتجع", arabicBoldFont);
-                addTableHeader(returnsTable, "رقم الفاتورة", arabicBoldFont);
-                addTableHeader(returnsTable, "التاريخ", arabicBoldFont);
-                addTableHeader(returnsTable, "المبلغ المرتجع", arabicBoldFont);
+            addTableHeader(paymentsTable, "ت", arabicBoldFont);
+            addTableHeader(paymentsTable, "رقم السند", arabicBoldFont);
+            addTableHeader(paymentsTable, "التاريخ", arabicBoldFont);
+            addTableHeader(paymentsTable, "المشروع", arabicBoldFont);
+            addTableHeader(paymentsTable, "المبلغ", arabicBoldFont);
+            addTableHeader(paymentsTable, "البيان", arabicBoldFont);
 
-                int retRow = 1;
-                for (SaleReturn r : returns) {
-                    String retCode = r.getReturnCode() != null ? r.getReturnCode() : "-";
-                    String saleCode = r.getSale() != null && r.getSale().getSaleCode() != null ? r.getSale().getSaleCode() : "-";
-                    String retDate = r.getReturnDate() != null ? r.getReturnDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")) : "-";
-                    double retAmount = r.getTotalReturnAmount() != null ? r.getTotalReturnAmount() : 0.0;
+            int payRow = 1;
+            for (Voucher v : payments) {
+                String vNumber = v.getVoucherNumber() != null ? v.getVoucherNumber() : "-";
+                String vDate = v.getVoucherDate() != null ? v.getVoucherDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")) : "-";
+                String vProject = v.getProjectName() != null ? v.getProjectName() : "-";
+                double vAmount = v.getAmount() != null ? v.getAmount() : 0.0;
+                String vCurrency = currency == null || currency.isEmpty()
+                        ? ("دولار".equals(v.getCurrency()) ? "دولار" : "دينار")
+                        : currency;
+                String vDesc = v.getDescription() != null ? v.getDescription() : "-";
 
-                    returnsTable.addCell(createBodyCell(String.valueOf(retRow), arabicFont, Element.ALIGN_CENTER));
-                    returnsTable.addCell(createBodyCell(retCode, arabicFont, Element.ALIGN_CENTER));
-                    returnsTable.addCell(createBodyCell(saleCode, arabicFont, Element.ALIGN_CENTER));
-                    returnsTable.addCell(createBodyCell(retDate, arabicFont, Element.ALIGN_CENTER));
-                    String returnCurrency = currency == null || currency.isEmpty()
-                            ? ("دولار".equals(r.getSale() != null ? r.getSale().getCurrency() : null) ? "دولار" : "دينار")
-                            : currency;
-                    returnsTable.addCell(createBodyCell(formatCurrency(retAmount, returnCurrency), arabicFont, Element.ALIGN_CENTER));
-                    retRow++;
-                }
+                paymentsTable.addCell(createBodyCell(String.valueOf(payRow), arabicFont, Element.ALIGN_CENTER));
+                paymentsTable.addCell(createBodyCell(vNumber, arabicFont, Element.ALIGN_CENTER));
+                paymentsTable.addCell(createBodyCell(vDate, arabicFont, Element.ALIGN_CENTER));
+                paymentsTable.addCell(createBodyCell(vProject, arabicFont, Element.ALIGN_CENTER));
+                paymentsTable.addCell(createBodyCell(formatCurrency(vAmount, vCurrency), arabicFont, Element.ALIGN_CENTER));
+                paymentsTable.addCell(createBodyCell(vDesc, arabicFont, Element.ALIGN_CENTER));
 
-                document.add(returnsTable);
+                payRow++;
             }
+
+            document.add(paymentsTable);
         }
 
         addUnifiedFooter(document, arabicBoldFont, smallFont);
@@ -889,17 +1274,6 @@ public class ReceiptService {
         return baos.toByteArray();
     }
 
-    private static class ItemAggregate {
-        private final String productName;
-        private final String currency;
-        private double quantity;
-        private double total;
-
-        private ItemAggregate(String productName, String currency) {
-            this.productName = productName;
-            this.currency = currency;
-        }
-    }
 
     private PdfPCell createBodyCell(String text, Font font, int alignment) {
         PdfPCell cell = new PdfPCell(new Phrase(text != null ? text : "", font));

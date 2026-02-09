@@ -5,8 +5,10 @@ import com.hisabx.service.CustomerService;
 import com.hisabx.service.VoucherService;
 import com.hisabx.util.SessionManager;
 import com.hisabx.util.TabManager;
+import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.collections.transformation.FilteredList;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
@@ -24,6 +26,7 @@ import java.nio.charset.StandardCharsets;
 import java.net.URL;
 import java.text.DecimalFormat;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.ResourceBundle;
 
 public class PaymentVoucherController implements Initializable {
@@ -50,7 +53,14 @@ public class PaymentVoucherController implements Initializable {
     @FXML private HBox installmentOptionsBox;
     @FXML private TextField installmentCountField;
     @FXML private DatePicker firstInstallmentDatePicker;
-    
+
+    // Previous vouchers table
+    @FXML private TableView<PreviousVoucherRow> previousVouchersTable;
+    @FXML private TableColumn<PreviousVoucherRow, String> pvNumberColumn;
+    @FXML private TableColumn<PreviousVoucherRow, String> pvDateColumn;
+    @FXML private TableColumn<PreviousVoucherRow, String> pvAmountColumn;
+    @FXML private TableColumn<PreviousVoucherRow, String> pvProjectColumn;
+    @FXML private TableColumn<PreviousVoucherRow, String> pvRemainingColumn;
     
     private final VoucherService voucherService = new VoucherService();
     private final CustomerService customerService = new CustomerService();
@@ -59,6 +69,8 @@ public class PaymentVoucherController implements Initializable {
     
     private ObservableList<Customer> customers;
     private Customer selectedCustomer;
+    private ObservableList<PreviousVoucherRow> previousVoucherSource;
+    private FilteredList<PreviousVoucherRow> previousVoucherRows;
 
     private boolean tabMode = false;
     private String tabId;
@@ -75,8 +87,53 @@ public class PaymentVoucherController implements Initializable {
     public void initialize(URL url, ResourceBundle resourceBundle) {
         setupForm();
         loadCustomers();
+        setupPreviousVouchersTable();
         setupListeners();
         handleNew();
+    }
+
+    private void setupPreviousVouchersTable() {
+        if (previousVouchersTable == null) return;
+        pvNumberColumn.setCellValueFactory(d -> new SimpleStringProperty(d.getValue().voucherNumber));
+        pvDateColumn.setCellValueFactory(d -> new SimpleStringProperty(d.getValue().dateText));
+        pvAmountColumn.setCellValueFactory(d -> new SimpleStringProperty(d.getValue().amountText));
+        pvProjectColumn.setCellValueFactory(d -> new SimpleStringProperty(d.getValue().projectText));
+        pvRemainingColumn.setCellValueFactory(d -> new SimpleStringProperty(d.getValue().remainingText));
+        previousVoucherSource = FXCollections.observableArrayList();
+        previousVoucherRows = new FilteredList<>(previousVoucherSource, r -> true);
+        previousVouchersTable.setItems(previousVoucherRows);
+    }
+
+    private void loadPreviousVouchers() {
+        if (previousVoucherSource == null) return;
+        previousVoucherSource.clear();
+        if (selectedCustomer == null || selectedCustomer.getId() == null) return;
+
+        String currency = amountCurrencyCombo != null ? amountCurrencyCombo.getValue() : "دينار";
+        boolean isUsd = "دولار".equals(currency);
+        double currentBalance = isUsd ? selectedCustomer.getBalanceUsd() : selectedCustomer.getBalanceIqd();
+
+        List<Voucher> vouchers = voucherService.getVouchersByCustomerAndType(selectedCustomer.getId(), VoucherType.PAYMENT);
+        if (vouchers == null || vouchers.isEmpty()) return;
+
+        vouchers = vouchers.stream()
+                .filter(v -> v != null && currency.equals(v.getCurrency()))
+                .toList();
+
+        double running = currentBalance;
+        for (Voucher v : vouchers.stream().limit(50).toList()) {
+            String dateText = v.getVoucherDate() != null ? v.getVoucherDate().toLocalDate().toString() : "-";
+            String amountText = numberFormat.format(v.getNetAmount() != null ? v.getNetAmount() : 0.0) + (isUsd ? " $" : " د.ع");
+            String remainingText = numberFormat.format(running) + (isUsd ? " $" : " د.ع");
+            String projectText = v.getProjectName() != null ? v.getProjectName() : "";
+
+            previousVoucherSource.add(new PreviousVoucherRow(
+                    v.getVoucherNumber() != null ? v.getVoucherNumber() : "-",
+                    dateText, amountText, projectText, remainingText));
+
+            double net = v.getNetAmount() != null ? v.getNetAmount() : 0.0;
+            running += net;
+        }
     }
     
     private void setupForm() {
@@ -114,6 +171,7 @@ public class PaymentVoucherController implements Initializable {
             selectedCustomer = newVal;
             updateCustomerBalanceDisplay();
             updateDescription();
+            loadPreviousVouchers();
         });
         
         amountField.textProperty().addListener((obs, oldVal, newVal) -> {
@@ -447,6 +505,23 @@ public class PaymentVoucherController implements Initializable {
         }
     }
     
+    private static class PreviousVoucherRow {
+        final String voucherNumber;
+        final String dateText;
+        final String amountText;
+        final String projectText;
+        final String remainingText;
+
+        private PreviousVoucherRow(String voucherNumber, String dateText, String amountText,
+                                   String projectText, String remainingText) {
+            this.voucherNumber = voucherNumber;
+            this.dateText = dateText;
+            this.amountText = amountText;
+            this.projectText = projectText;
+            this.remainingText = remainingText;
+        }
+    }
+
     private void showAlert(Alert.AlertType type, String title, String message) {
         Alert alert = new Alert(type);
         alert.setTitle(title);

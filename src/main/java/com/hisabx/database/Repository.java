@@ -266,7 +266,11 @@ public class Repository<T> {
         public List<Sale> findByCustomerId(Long customerId) {
             try (Session session = DatabaseManager.getSessionFactory().openSession()) {
                 Query<Sale> query = session.createQuery(
-                    "FROM Sale WHERE customer.id = :customerId ORDER BY saleDate DESC", Sale.class);
+                    "SELECT DISTINCT s FROM Sale s " +
+                    "LEFT JOIN FETCH s.customer " +
+                    "LEFT JOIN FETCH s.saleItems si " +
+                    "LEFT JOIN FETCH si.product " +
+                    "WHERE s.customer.id = :customerId ORDER BY s.saleDate DESC", Sale.class);
                 query.setParameter("customerId", customerId);
                 return query.list();
             } catch (Exception e) {
@@ -535,13 +539,29 @@ public class Repository<T> {
 
         public String generateReturnCode() {
             try (Session session = DatabaseManager.getSessionFactory().openSession()) {
-                Query<Long> query = session.createQuery("SELECT COALESCE(MAX(id), 0) FROM SaleReturn", Long.class);
-                Long maxId = query.uniqueResult();
-                long next = (maxId == null ? 0L : maxId) + 1L;
-                return String.format("RET-%06d", next);
+                Query<String> query = session.createQuery(
+                    "SELECT r.returnCode FROM SaleReturn r", String.class);
+                List<String> codes = query.list();
+                long max = 0L;
+                if (codes != null) {
+                    for (String c : codes) {
+                        if (c == null) continue;
+                        String trimmed = c.trim();
+                        if (trimmed.isEmpty()) continue;
+                        // Support old RET-XXXXXX format
+                        if (trimmed.startsWith("RET-")) {
+                            trimmed = trimmed.substring(4);
+                        }
+                        try {
+                            long v = Long.parseLong(trimmed);
+                            if (v > max) max = v;
+                        } catch (NumberFormatException ignored) {}
+                    }
+                }
+                return String.valueOf(max + 1L);
             } catch (Exception e) {
                 logger.error("Failed to generate return code", e);
-                return "RET-" + System.currentTimeMillis();
+                return String.valueOf(System.currentTimeMillis());
             }
         }
 
@@ -565,7 +585,12 @@ public class Repository<T> {
         public List<SaleReturn> findByCustomerId(Long customerId) {
             try (Session session = DatabaseManager.getSessionFactory().openSession()) {
                 Query<SaleReturn> query = session.createQuery(
-                    "FROM SaleReturn WHERE customer.id = :customerId ORDER BY returnDate DESC", SaleReturn.class);
+                    "SELECT DISTINCT r FROM SaleReturn r " +
+                    "LEFT JOIN FETCH r.sale s " +
+                    "LEFT JOIN FETCH r.customer " +
+                    "LEFT JOIN FETCH r.returnItems ri " +
+                    "LEFT JOIN FETCH ri.product " +
+                    "WHERE r.customer.id = :customerId ORDER BY r.returnDate DESC", SaleReturn.class);
                 query.setParameter("customerId", customerId);
                 return query.list();
             } catch (Exception e) {

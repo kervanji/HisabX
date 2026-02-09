@@ -107,11 +107,22 @@
             <scope>test</scope>
         </dependency>
 
-        <!-- Firebase (Future Integration) -->
-        <dependency>
+    <dependency>
             <groupId>com.google.firebase</groupId>
             <artifactId>firebase-admin</artifactId>
             <version>9.2.0</version>
+        </dependency>
+
+        <!-- SVG Support (Batik) -->
+        <dependency>
+            <groupId>org.apache.xmlgraphics</groupId>
+            <artifactId>batik-transcoder</artifactId>
+            <version>1.17</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.xmlgraphics</groupId>
+            <artifactId>batik-codec</artifactId>
+            <version>1.17</version>
         </dependency>
     </dependencies>
 

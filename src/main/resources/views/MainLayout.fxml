@@ -92,18 +92,28 @@
 
                                         <!-- Alert Cards -->
                                         <HBox alignment="CENTER" spacing="16">
-                                            <HBox alignment="CENTER_RIGHT" spacing="10" style="-fx-background-color: linear-gradient(to right, #1a3050, #1e3a5f); -fx-background-radius: 12; -fx-padding: 12 20; -fx-pref-width: 350; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.2), 8,0,0,3);">
+                                            <HBox alignment="CENTER_RIGHT" spacing="10" style="-fx-background-color: linear-gradient(to right, #1a3050, #1e3a5f); -fx-background-radius: 12; -fx-padding: 12 20; -fx-pref-width: 350; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.2), 8,0,0,3); -fx-cursor: hand;" onMouseClicked="#handleLowStockAlertClick">
                                                 <VBox alignment="CENTER_RIGHT" spacing="4" HBox.hgrow="ALWAYS">
                                                     <Label text="تنبيهات المخزون" style="-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #ffab91;"/>
                                                     <Label fx:id="lowStockDescLabel" text="راقب المنتجات منخفضة المخزون" style="-fx-font-size: 11px; -fx-text-fill: #78909c;"/>
                                                     <Label fx:id="lowStockCountLabel" text="لا توجد تنبيهات" style="-fx-font-size: 12px; -fx-font-weight: 600; -fx-text-fill: #66bb6a; -fx-background-color: rgba(102,187,106,0.15); -fx-padding: 4 10; -fx-background-radius: 8;"/>
                                                 </VBox>
                                             </HBox>
-                                            <HBox alignment="CENTER_RIGHT" spacing="10" style="-fx-background-color: linear-gradient(to right, #1a3050, #1e3a5f); -fx-background-radius: 12; -fx-padding: 12 20; -fx-pref-width: 350; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.2), 8,0,0,3);">
+                                            <HBox alignment="CENTER_RIGHT" spacing="10" style="-fx-background-color: linear-gradient(to right, #1a3050, #1e3a5f); -fx-background-radius: 12; -fx-padding: 12 20; -fx-pref-width: 350; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.2), 8,0,0,3); -fx-cursor: hand;" onMouseClicked="#handlePendingPaymentsAlertClick">
                                                 <VBox alignment="CENTER_RIGHT" spacing="4" HBox.hgrow="ALWAYS">
                                                     <Label text="المدفوعات المعلقة" style="-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #ffe082;"/>
                                                     <Label fx:id="pendingPaymentsDescLabel" text="فواتير تنتظر الدفع" style="-fx-font-size: 11px; -fx-text-fill: #78909c;"/>
                                                     <Label fx:id="pendingPaymentsLabel" text="0 فاتورة" style="-fx-font-size: 12px; -fx-font-weight: 600; -fx-text-fill: #ffa726; -fx-background-color: rgba(255,167,38,0.15); -fx-padding: 4 10; -fx-background-radius: 8;"/>
+                                                </VBox>
+                                            </HBox>
+                                            <HBox alignment="CENTER_RIGHT" spacing="10" style="-fx-background-color: linear-gradient(to right, #1a2840, #1e3050); -fx-background-radius: 12; -fx-padding: 12 20; -fx-pref-width: 350; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.2), 8,0,0,3); -fx-cursor: hand;" onMouseClicked="#handleInstallmentAlertClick">
+                                                <VBox alignment="CENTER_RIGHT" spacing="4" HBox.hgrow="ALWAYS">
+                                                    <HBox alignment="CENTER_RIGHT" spacing="8">
+                                                        <Label fx:id="installmentReminderDaysLabel" text="تنبيه قبل: 3 أيام" style="-fx-font-size: 10px; -fx-text-fill: #90caf9; -fx-background-color: rgba(66,165,245,0.15); -fx-padding: 2 8; -fx-background-radius: 8; -fx-cursor: hand;" onMouseClicked="#handleChangeReminderDays"/>
+                                                        <Label text="تنبيهات الأقساط" style="-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #ce93d8;"/>
+                                                    </HBox>
+                                                    <Label fx:id="installmentAlertDescLabel" text="أقساط قادمة ومستحقة" style="-fx-font-size: 11px; -fx-text-fill: #78909c;"/>
+                                                    <Label fx:id="installmentAlertLabel" text="لا توجد أقساط قريبة" style="-fx-font-size: 12px; -fx-font-weight: 600; -fx-text-fill: #66bb6a; -fx-background-color: rgba(102,187,106,0.15); -fx-padding: 4 10; -fx-background-radius: 8;"/>
                                                 </VBox>
                                             </HBox>
                                         </HBox>

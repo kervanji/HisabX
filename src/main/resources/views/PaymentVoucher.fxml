@@ -126,7 +126,18 @@
                 </HBox>
             </HBox>
 
-            
+            <VBox spacing="8" VBox.vgrow="ALWAYS" style="-fx-background-color: #0f1b2d; -fx-padding: 10; -fx-background-radius: 8;">
+                <TableView fx:id="previousVouchersTable" VBox.vgrow="ALWAYS" style="-fx-background-radius: 8;">
+                    <columns>
+                        <TableColumn fx:id="pvNumberColumn" text="رقم" prefWidth="150" />
+                        <TableColumn fx:id="pvDateColumn" text="التاريخ" prefWidth="180" />
+                        <TableColumn fx:id="pvAmountColumn" text="المبلغ" prefWidth="180" />
+                        <TableColumn fx:id="pvProjectColumn" text="المشروع" prefWidth="200" />
+                        <TableColumn fx:id="pvRemainingColumn" text="المتبقي بعده" prefWidth="180" />
+                    </columns>
+                </TableView>
+            </VBox>
+
         </VBox>
     </HBox>
     

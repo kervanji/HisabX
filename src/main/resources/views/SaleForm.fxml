@@ -95,9 +95,9 @@
         <ScrollPane minWidth="280" prefWidth="320" fitToWidth="true" hbarPolicy="NEVER" vbarPolicy="AS_NEEDED"
                     style="-fx-background-color: #10233d; -fx-background: #10233d; -fx-background-radius: 10; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 14, 0, 0, 4);">
             <content>
-                <VBox spacing="15" style="-fx-background-color: #10233d; -fx-background-radius: 10;">
+                <VBox spacing="10" style="-fx-background-color: #10233d; -fx-background-radius: 10;">
                     <padding>
-                        <Insets top="15" right="15" bottom="15" left="15"/>
+                        <Insets top="10" right="12" bottom="10" left="12"/>
                     </padding>
 
             <!-- Payment Method -->
@@ -127,60 +127,58 @@
 
             <Separator/>
 
-            <!-- Additional Discount -->
-            <VBox spacing="8">
-                <Label text="خصم إضافي:" style="-fx-font-size: 14px; -fx-font-weight: bold;"/>
-                <HBox spacing="10" alignment="CENTER_LEFT">
-                    <TextField fx:id="additionalDiscountField" promptText="0.00" prefWidth="100" onKeyReleased="#handleDiscountChange"/>
-                    <Label fx:id="additionalDiscountCurrencyLabel" text="دينار"/>
-                </HBox>
-            </VBox>
+            <!-- Additional Discount + Paid Amount -->
+            <HBox spacing="10" alignment="CENTER_LEFT">
+                <VBox spacing="4" HBox.hgrow="ALWAYS">
+                    <Label text="خصم إضافي:" style="-fx-font-size: 13px; -fx-font-weight: bold;"/>
+                    <HBox spacing="5" alignment="CENTER_LEFT">
+                        <TextField fx:id="additionalDiscountField" promptText="0" prefWidth="80" onKeyReleased="#handleDiscountChange" HBox.hgrow="ALWAYS"/>
+                        <Label fx:id="additionalDiscountCurrencyLabel" text="دينار" style="-fx-font-size: 12px;"/>
+                    </HBox>
+                </VBox>
+                <VBox spacing="4" HBox.hgrow="ALWAYS">
+                    <Label text="المبلغ المدفوع:" style="-fx-font-size: 13px; -fx-font-weight: bold;"/>
+                    <HBox spacing="5" alignment="CENTER_LEFT">
+                        <TextField fx:id="paidAmountField" promptText="0" prefWidth="80" onKeyReleased="#handlePaidAmountChange" HBox.hgrow="ALWAYS"/>
+                        <Label fx:id="paidAmountCurrencyLabel" text="دينار" style="-fx-font-size: 12px;"/>
+                    </HBox>
+                </VBox>
+            </HBox>
 
             <Separator/>
 
             <!-- Summary -->
-            <VBox spacing="10" style="-fx-background-color: #152842; -fx-background-radius: 8;">
+            <VBox spacing="8" style="-fx-background-color: #152842; -fx-background-radius: 8;">
                 <padding>
-                    <Insets top="15" right="15" bottom="15" left="15"/>
+                    <Insets top="10" right="10" bottom="10" left="10"/>
                 </padding>
                 
                 <HBox alignment="CENTER_LEFT">
-                    <Label text="المجموع:" prefWidth="120" style="-fx-font-size: 14px;"/>
-                    <Label fx:id="subtotalLabel" text="0 دينار" style="-fx-font-size: 14px; -fx-font-weight: bold;"/>
+                    <Label text="المجموع:" prefWidth="100" style="-fx-font-size: 13px;"/>
+                    <Label fx:id="subtotalLabel" text="0 دينار" style="-fx-font-size: 13px; -fx-font-weight: bold;"/>
                 </HBox>
                 
                 <HBox alignment="CENTER_LEFT">
-                    <Label text="الخصم:" prefWidth="120" style="-fx-font-size: 14px;"/>
-                    <Label fx:id="discountLabel" text="0 دينار" style="-fx-font-size: 14px; -fx-text-fill: #e74c3c;"/>
+                    <Label text="الخصم:" prefWidth="100" style="-fx-font-size: 13px;"/>
+                    <Label fx:id="discountLabel" text="0 دينار" style="-fx-font-size: 13px; -fx-text-fill: #e74c3c;"/>
                 </HBox>
                 
                 <HBox alignment="CENTER_LEFT">
-                    <Label text="الإجمالي النهائي:" prefWidth="120" style="-fx-font-size: 16px; -fx-font-weight: bold;"/>
-                    <Label fx:id="finalTotalLabel" text="0 دينار" style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #27ae60;"/>
-                </HBox>
-            </VBox>
-
-            <Separator/>
-
-            <!-- Paid Amount -->
-            <VBox spacing="8">
-                <Label text="المبلغ المدفوع:" style="-fx-font-size: 14px; -fx-font-weight: bold;"/>
-                <HBox spacing="10" alignment="CENTER_LEFT">
-                    <TextField fx:id="paidAmountField" promptText="0" prefWidth="150" onKeyReleased="#handlePaidAmountChange"/>
-                    <Label fx:id="paidAmountCurrencyLabel" text="دينار"/>
+                    <Label text="الإجمالي النهائي:" prefWidth="100" style="-fx-font-size: 15px; -fx-font-weight: bold;"/>
+                    <Label fx:id="finalTotalLabel" text="0 دينار" style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #27ae60;"/>
                 </HBox>
             </VBox>
 
             <!-- Balance Display -->
-            <VBox spacing="8" style="-fx-background-color: #2a2000; -fx-background-radius: 8;">
+            <VBox spacing="4" style="-fx-background-color: #2a2000; -fx-background-radius: 8;">
                 <padding>
-                    <Insets top="10" right="10" bottom="10" left="10"/>
+                    <Insets top="8" right="10" bottom="8" left="10"/>
                 </padding>
                 <HBox alignment="CENTER_LEFT">
                     <Label text="الرصيد:" prefWidth="100" style="-fx-font-size: 14px; -fx-font-weight: bold;"/>
                     <Label fx:id="balanceLabel" text="0 دينار" style="-fx-font-size: 16px; -fx-font-weight: bold;"/>
                 </HBox>
-                <Label fx:id="balanceStatusLabel" text="" style="-fx-font-size: 13px; -fx-font-weight: bold;"/>
+                <Label fx:id="balanceStatusLabel" text="" style="-fx-font-size: 12px; -fx-font-weight: bold;"/>
             </VBox>
 
             <Separator/>
@@ -193,11 +191,11 @@
             </TitledPane>
 
             <!-- Action Buttons -->
-            <VBox spacing="10" VBox.vgrow="ALWAYS" alignment="BOTTOM_CENTER">
-                <Button text="حفظ وطباعة الفاتورة" onAction="#handleSaveAndPrint" prefWidth="280" prefHeight="45"
-                        style="-fx-background-color: #27ae60; -fx-text-fill: white; -fx-font-size: 16px; -fx-font-weight: bold;"/>
-                <Button text="إلغاء" onAction="#handleCancel" prefWidth="280" prefHeight="35"
-                        style="-fx-background-color: #e74c3c; -fx-text-fill: white; -fx-font-size: 14px;"/>
+            <VBox spacing="8" VBox.vgrow="ALWAYS" alignment="BOTTOM_CENTER">
+                <Button text="حفظ وطباعة الفاتورة" onAction="#handleSaveAndPrint" maxWidth="Infinity" prefHeight="40"
+                        style="-fx-background-color: #27ae60; -fx-text-fill: white; -fx-font-size: 15px; -fx-font-weight: bold;"/>
+                <Button text="إلغاء" onAction="#handleCancel" maxWidth="Infinity" prefHeight="30"
+                        style="-fx-background-color: #e74c3c; -fx-text-fill: white; -fx-font-size: 13px;"/>
             </VBox>
                 </VBox>
             </content>

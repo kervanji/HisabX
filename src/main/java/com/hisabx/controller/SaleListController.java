@@ -3,6 +3,7 @@ package com.hisabx.controller;
 import com.hisabx.model.Sale;
 import com.hisabx.service.ReceiptService;
 import com.hisabx.service.SalesService;
+import com.hisabx.util.TabManager;
 import javafx.beans.property.SimpleDoubleProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
@@ -44,9 +45,19 @@ public class SaleListController {
     private ObservableList<Sale> allSales;
     private final DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
     private com.hisabx.MainApp mainApp;
+    private boolean tabMode = false;
+    private String tabId;
 
     public void setMainApp(com.hisabx.MainApp mainApp) {
         this.mainApp = mainApp;
+    }
+
+    public void setTabMode(boolean tabMode) {
+        this.tabMode = tabMode;
+    }
+
+    public void setTabId(String tabId) {
+        this.tabId = tabId;
     }
 
     public SaleListController() {
@@ -292,6 +303,10 @@ public class SaleListController {
 
     @FXML
     private void handleClose() {
+        if (tabMode && tabId != null && !tabId.isBlank()) {
+            TabManager.getInstance().closeTab(tabId);
+            return;
+        }
         Stage stage = (Stage) salesTable.getScene().getWindow();
         stage.close();
     }
