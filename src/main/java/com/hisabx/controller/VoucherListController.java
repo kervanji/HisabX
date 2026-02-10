@@ -263,6 +263,9 @@ public class VoucherListController implements Initializable {
         if (voucherType == VoucherType.RECEIPT) {
             titleLabel.setText("سندات القبض");
             titleLabel.setStyle("-fx-font-size: 24px; -fx-font-weight: bold; -fx-text-fill: #166534;");
+        } else if (voucherType == VoucherType.PURCHASE) {
+            titleLabel.setText("المشتريات");
+            titleLabel.setStyle("-fx-font-size: 24px; -fx-font-weight: bold; -fx-text-fill: #d97706;");
         } else {
             titleLabel.setText("سندات الدفع");
             titleLabel.setStyle("-fx-font-size: 24px; -fx-font-weight: bold; -fx-text-fill: #991b1b;");

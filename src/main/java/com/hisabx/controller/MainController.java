@@ -132,6 +132,12 @@ public class MainController {
     private Label installmentAlertDescLabel;
     @FXML
     private Label installmentAlertLabel;
+    @FXML
+    private Label driveStatusIndicator;
+    @FXML
+    private Label driveStatusLabel;
+    @FXML
+    private Button connectDriveButton;
 
     private static final String PREF_COMPANY_NAME = "company.name";
     private static final String PREF_INSTALLMENT_REMINDER_DAYS = "installment.reminder.days";
@@ -300,6 +306,8 @@ public class MainController {
                     "linear-gradient(to bottom right, #0d3b3b, #145050)", "handleReceiptVoucher"),
             new TileDef("payment-voucher", "📤", "payment_voucher.svg", "سند دفع",
                     "linear-gradient(to bottom right, #3b1515, #501a1a)", "handlePaymentVoucher"),
+            new TileDef("purchase", "🛍️", "purchase.svg", "المشتريات",
+                    "linear-gradient(to bottom right, #3b2e0a, #504010)", "handlePurchase"),
             new TileDef("accounts", "📊", "statement.svg", "حسابات",
                     "linear-gradient(to bottom right, #0d2d4a, #144070)", "handleAccounts"),
             new TileDef("product-return", "↩️", "return_items.svg", "إرجاع مواد",
@@ -339,6 +347,7 @@ public class MainController {
         initUpdateUi();
         checkForUpdatesInBackground();
         showInstallmentStartupAlert();
+        updateDriveStatusIndicator();
     }
 
     private void initUpdateUi() {
@@ -787,6 +796,11 @@ public class MainController {
             TabManager.getInstance().setDashboardRefreshCallback(this::refreshDashboard);
         }
         refreshDashboard();
+        // Update drive status after mainApp is set (delayed to allow background token reconnect)
+        new Thread(() -> {
+            try { Thread.sleep(3000); } catch (InterruptedException ignored) {}
+            Platform.runLater(this::updateDriveStatusIndicator);
+        }).start();
     }
 
     private void refreshDashboard() {
@@ -1513,6 +1527,98 @@ public class MainController {
         showInfo("قريباً", "ميزة المزامنة مع فايربيس قيد التطوير");
     }
 
+    private void updateDriveStatusIndicator() {
+        com.hisabx.service.drive.BackupService bs = mainApp != null ? mainApp.getBackupService() : null;
+        boolean connected = bs != null && bs.isDriveConnected();
+
+        Platform.runLater(() -> {
+            if (connected) {
+                if (driveStatusIndicator != null) {
+                    driveStatusIndicator.setText("●");
+                    driveStatusIndicator.setStyle("-fx-font-size: 10px; -fx-text-fill: #10b981;");
+                }
+                if (driveStatusLabel != null) {
+                    driveStatusLabel.setText("Google Drive: متصل");
+                    driveStatusLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #10b981; -fx-font-weight: bold;");
+                }
+                if (connectDriveButton != null) {
+                    connectDriveButton.setText("متصل ✓");
+                    connectDriveButton.setDisable(true);
+                    connectDriveButton.setStyle("-fx-background-color: rgba(16,185,129,0.2); -fx-text-fill: #10b981; -fx-font-size: 10px; -fx-padding: 3 10; -fx-background-radius: 8;");
+                }
+            } else {
+                if (driveStatusIndicator != null) {
+                    driveStatusIndicator.setText("●");
+                    driveStatusIndicator.setStyle("-fx-font-size: 10px; -fx-text-fill: #ef4444;");
+                }
+                if (driveStatusLabel != null) {
+                    driveStatusLabel.setText("Google Drive: غير متصل");
+                    driveStatusLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #78909c; -fx-font-weight: 600;");
+                }
+                if (connectDriveButton != null) {
+                    connectDriveButton.setText("ربط Google Drive");
+                    connectDriveButton.setDisable(false);
+                    connectDriveButton.setStyle("-fx-background-color: rgba(66,133,244,0.2); -fx-text-fill: #8ab4f8; -fx-font-size: 10px; -fx-padding: 3 10; -fx-background-radius: 8;");
+                }
+            }
+        });
+    }
+
+    @FXML
+    private void handleConnectGoogleDrive() {
+        if (mainApp == null) {
+            showError("خطأ", "التطبيق غير جاهز");
+            return;
+        }
+
+        com.hisabx.service.drive.BackupService bs = mainApp.getBackupService();
+        com.hisabx.service.drive.GoogleDriveService driveService = mainApp.getGoogleDriveService();
+
+        if (bs != null && bs.isDriveConnected()) {
+            showInfo("Google Drive", "الحساب متصل بالفعل.");
+            return;
+        }
+
+        if (driveService == null) {
+            showError("خطأ", "خدمة Google Drive غير متوفرة");
+            return;
+        }
+
+        Platform.runLater(() -> {
+            if (driveStatusIndicator != null) {
+                driveStatusIndicator.setStyle("-fx-font-size: 10px; -fx-text-fill: #fbbf24;");
+            }
+            if (driveStatusLabel != null) {
+                driveStatusLabel.setText("Google Drive: جارِ الاتصال...");
+                driveStatusLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #fbbf24; -fx-font-weight: 600;");
+            }
+            if (connectDriveButton != null) {
+                connectDriveButton.setDisable(true);
+                connectDriveButton.setText("جارِ الاتصال...");
+            }
+        });
+
+        new Thread(() -> {
+            try {
+                driveService.initialize();
+                if (bs != null) {
+                    bs.startHourlyBackup();
+                }
+                logger.info("Google Drive connected successfully via dashboard button");
+                Platform.runLater(() -> {
+                    updateDriveStatusIndicator();
+                    showInfo("Google Drive", "تم الاتصال بـ Google Drive بنجاح!");
+                });
+            } catch (Exception e) {
+                logger.error("Failed to connect to Google Drive", e);
+                Platform.runLater(() -> {
+                    updateDriveStatusIndicator();
+                    showError("خطأ", "فشل الاتصال بـ Google Drive: " + e.getMessage());
+                });
+            }
+        }).start();
+    }
+
     @FXML
     private void handleReceiptVoucher() {
         try {
@@ -1544,6 +1650,23 @@ public class MainController {
         } catch (Exception e) {
             logger.error("Failed to open payment voucher", e);
             showError("خطأ", "فشل في فتح سند الدفع: " + e.getMessage());
+        }
+    }
+
+    @FXML
+    private void handlePurchase() {
+        try {
+            TabManager.getInstance().openTab(
+                    "purchase",
+                    "🛍️ المشتريات",
+                    "/views/Purchase.fxml",
+                    (PurchaseController controller) -> {
+                        controller.setTabMode(true);
+                        controller.setTabId("purchase");
+                    });
+        } catch (Exception e) {
+            logger.error("Failed to open purchase", e);
+            showError("خطأ", "فشل في فتح المشتريات: " + e.getMessage());
         }
     }
 
@@ -1599,7 +1722,7 @@ public class MainController {
     @FXML
     private void handleAbout() {
         showInfo("عن البرنامج",
-                "HisabX v1.1.2\n\n" +
+                "HisabX v1.1.3\n\n" +
                         "من تطوير: KervanjiHolding\n" +
                         "الموقع: Kervanjiholding.com\n\n" +
                         "نظام متكامل لإدارة المخازن والمبيعات\n\n" +

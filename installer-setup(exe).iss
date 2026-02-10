@@ -3,7 +3,7 @@
 
 #define MyAppName "HisabX"
 #define MyAppNameArabic "حساب إكس - نظام إدارة المخازن والمبيعات"
-#define MyAppVersion "1.1.2"
+#define MyAppVersion "1.1.3"
 #define MyAppPublisher "HisabX"
 #define MyAppExeName "HisabX.exe"
 #define MyAppIcon "src\main\resources\templates\HisabX.ico"

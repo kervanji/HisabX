@@ -1,4 +1,4 @@
-# HisabX Distribution Build Script
+﻿# HisabX Distribution Build Script
 # Creates a complete distributable package with a custom Java runtime (JRE) using jlink
 # Output: ./distribution/
 
@@ -8,7 +8,7 @@ $ErrorActionPreference = "Stop"
 # Configuration
 # -----------------------------
 $APP_NAME = "HisabX"
-$APP_VERSION = "1.1.2"
+$APP_VERSION = "1.1.3"
 $JAVAFX_VERSION = "17.0.10"
 
 # Main class (must contain public static void main)
@@ -219,14 +219,14 @@ $readmeContent = @"
 # $APP_NAME - نظام إدارة المخازن والمبيعات
 
 ## التشغيل
-- تشغيل عادي بدون نافذة سوداء (موصى به): $APP_NAME.vbs
+- تشغيل عادي بدون نافذة سوداء (موصى به): $APP_NAME.exe
 - تشغيل مع إظهار الأخطاء للتجربة: $APP_NAME.bat
 
 ## المتطلبات
 لا يوجد! البرنامج يحتوي على Runtime Java + JavaFX.
 
 ## الملفات
-- $APP_NAME.vbs: تشغيل بدون Console
+- $APP_NAME.exe: تشغيل بدون Console
 - $APP_NAME.bat: تشغيل للتصحيح
 - $APP_NAME.jar: البرنامج
 - runtime/: بيئة Java المخصصة
@@ -253,4 +253,4 @@ Write-Host "$([math]::Round($size, 2)) MB" -ForegroundColor White
 Write-Host "`nTo distribute:" -ForegroundColor Cyan
 Write-Host "1) Compress the 'distribution' folder to ZIP" -ForegroundColor White
 Write-Host "2) Send to customers" -ForegroundColor White
-Write-Host "3) They extract and run $APP_NAME.vbs" -ForegroundColor White
+Write-Host "3) They extract and run $APP_NAME.exe" -ForegroundColor White

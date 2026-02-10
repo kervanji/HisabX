@@ -7,7 +7,8 @@ package com.hisabx.model;
  */
 public enum VoucherType {
     RECEIPT("سند قبض"),    // قبض - دخول أموال
-    PAYMENT("سند دفع");    // دفع - خروج أموال
+    PAYMENT("سند دفع"),    // دفع - خروج أموال
+    PURCHASE("مشتريات");   // مشتريات - شراء مواد
     
     private final String arabicName;
     

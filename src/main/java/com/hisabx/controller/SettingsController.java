@@ -157,32 +157,36 @@ public class SettingsController {
             return;
         }
 
+        com.hisabx.MainApp app = TabManager.getInstance().getMainApp();
+        com.hisabx.service.drive.GoogleDriveService driveService = app != null ? app.getGoogleDriveService() : null;
+        if (driveService == null) {
+            showError("خطأ", "خدمة Google Drive غير متوفرة");
+            return;
+        }
+
+        javafx.application.Platform.runLater(() -> {
+            driveStatusLabel.setText("جارِ الاتصال... سيتم فتح المتصفح");
+            driveStatusLabel.setStyle("-fx-text-fill: #fbbf24;"); // Orange
+        });
+
         new Thread(() -> {
             try {
-                javafx.application.Platform.runLater(() -> {
-                    driveStatusLabel.setText("جارِ الاتصال...");
-                    driveStatusLabel.setStyle("-fx-text-fill: #fbbf24;"); // Orange
-                });
-
-                // Trigger re-initialization logic if needed or just guide user
-                // Note: Since GoogleDriveService.initialize() was called at startup,
-                // if it failed (e.g. no internet/credentials), we might need to retry it.
-                // However, exposing initialize() directly is safer via a wrapper.
-                // For now, let's assume if it failed, a restart is often cleanest,
-                // BUT we can try to force a check by attempting a dummy operation or re-init if
-                // possible.
-                // Given current structure, let's guide user to restart if auth window doesn't
-                // appear,
-                // or just rely on the fact that if they just added credentials, they MUST
-                // restart.
+                driveService.initialize();
+                backupService.startHourlyBackup();
+                logger.info("Google Drive connected successfully via button");
 
                 javafx.application.Platform.runLater(() -> {
-                    showInfo("Google Drive",
-                            "لإتمام الاتصال، يرجى التأكد من وجود ملف credentials.json وإعادة تشغيل البرنامج إذا لم يظهر المتصفح.");
+                    driveStatusLabel.setText("متصل (Google Drive)");
+                    driveStatusLabel.setStyle("-fx-text-fill: #10b981; -fx-font-weight: bold;");
+                    showInfo("Google Drive", "تم الاتصال بـ Google Drive بنجاح!");
                 });
             } catch (Exception e) {
-                logger.error("Failed to connect", e);
-                javafx.application.Platform.runLater(() -> showError("خطأ", "فشل الاتصال: " + e.getMessage()));
+                logger.error("Failed to connect to Google Drive", e);
+                javafx.application.Platform.runLater(() -> {
+                    driveStatusLabel.setText("غير متصل");
+                    driveStatusLabel.setStyle("-fx-text-fill: #ef4444; -fx-font-weight: bold;");
+                    showError("خطأ", "فشل الاتصال بـ Google Drive: " + e.getMessage());
+                });
             }
         }).start();
     }
@@ -230,6 +234,8 @@ public class SettingsController {
         new Thread(task).start();
     }
 
+    private static final String BACKUP_DOWNLOAD_DIR = "C:\\HisabX";
+
     @FXML
     private void handleRestoreFromCloud() {
         if (backupService == null || !backupService.isDriveConnected()) {
@@ -239,6 +245,8 @@ public class SettingsController {
 
         if (backupProgressBar != null)
             backupProgressBar.setVisible(true);
+        if (lastBackupLabel != null)
+            lastBackupLabel.setText("جارِ جلب قائمة النسخ الاحتياطية...");
 
         Task<List<BackupFile>> listTask = new Task<>() {
             @Override
@@ -250,9 +258,11 @@ public class SettingsController {
         listTask.setOnSucceeded(e -> {
             if (backupProgressBar != null)
                 backupProgressBar.setVisible(false);
+            if (lastBackupLabel != null)
+                lastBackupLabel.setText("");
             List<BackupFile> backups = listTask.getValue();
             if (backups.isEmpty()) {
-                showInfo("Google Drive", "لا توجد نسخ احتياطية متاحة.");
+                showInfo("Google Drive", "لا توجد نسخ احتياطية متاحة في Google Drive.");
                 return;
             }
             showBackupSelectionDialog(backups);
@@ -261,6 +271,8 @@ public class SettingsController {
         listTask.setOnFailed(e -> {
             if (backupProgressBar != null)
                 backupProgressBar.setVisible(false);
+            if (lastBackupLabel != null)
+                lastBackupLabel.setText("");
             showError("خطأ", "فشل جلب قائمة النسخ الاحتياطية: " + listTask.getException().getMessage());
         });
 
@@ -268,65 +280,231 @@ public class SettingsController {
     }
 
     private void showBackupSelectionDialog(List<BackupFile> backups) {
-        Dialog<BackupFile> dialog = new Dialog<>();
+        // Ensure download directory exists
+        File downloadDir = new File(BACKUP_DOWNLOAD_DIR);
+        if (!downloadDir.exists()) {
+            downloadDir.mkdirs();
+        }
+
+        Dialog<File> dialog = new Dialog<>();
         dialog.setTitle("استعادة من السحابة");
-        dialog.setHeaderText("اختر نسخة احتياطية للاستعادة\nسيتم عمل نسخة احتياطية للبيانات الحالية قبل الاستعادة.");
+        dialog.setHeaderText("النسخ الاحتياطية المتاحة في Google Drive\nاختر نسخة لتنزيلها ثم استعادتها");
+        dialog.getDialogPane().setPrefWidth(620);
+        dialog.getDialogPane().setPrefHeight(500);
 
-        ButtonType loginButtonType = new ButtonType("استعادة", ButtonBar.ButtonData.OK_DONE);
-        dialog.getDialogPane().getButtonTypes().addAll(loginButtonType, ButtonType.CANCEL);
+        ButtonType restoreButtonType = new ButtonType("استعادة النسخة المحددة", ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().addAll(restoreButtonType, ButtonType.CANCEL);
 
-        ListView<BackupFile> listView = new ListView<>();
-        listView.getItems().addAll(backups);
-        listView.setPrefHeight(300);
-        listView.setPrefWidth(400);
+        // Disable restore button initially
+        javafx.scene.Node restoreBtn = dialog.getDialogPane().lookupButton(restoreButtonType);
+        restoreBtn.setDisable(true);
 
         VBox content = new VBox(10);
-        content.getChildren().add(listView);
+        content.setStyle("-fx-padding: 10;");
+
+        Label infoLabel = new Label("سيتم تنزيل النسخة إلى: " + BACKUP_DOWNLOAD_DIR);
+        infoLabel.setStyle("-fx-text-fill: #64b5f6; -fx-font-size: 11px;");
+        content.getChildren().add(infoLabel);
+
+        javafx.scene.control.ScrollPane scrollPane = new javafx.scene.control.ScrollPane();
+        scrollPane.setFitToWidth(true);
+        scrollPane.setPrefHeight(350);
+        scrollPane.setStyle("-fx-background: transparent; -fx-background-color: transparent;");
+
+        VBox backupListBox = new VBox(6);
+        backupListBox.setStyle("-fx-padding: 5;");
+
+        // Track which backup is selected for restore
+        final File[] selectedDbFile = {null};
+        final javafx.scene.layout.HBox[] selectedRow = {null};
+
+        DateTimeFormatter displayFmt = DateTimeFormatter.ofPattern("yyyy-MM-dd  HH:mm:ss");
+
+        for (BackupFile backup : backups) {
+            javafx.scene.layout.HBox row = new javafx.scene.layout.HBox(10);
+            row.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+            row.setStyle("-fx-background-color: #10233d; -fx-padding: 10; -fx-background-radius: 8; -fx-cursor: hand;");
+
+            Label statusIcon = new Label("☁");
+            statusIcon.setStyle("-fx-font-size: 16px; -fx-text-fill: #64b5f6; -fx-min-width: 24;");
+
+            VBox infoBox = new VBox(2);
+            javafx.scene.layout.HBox.setHgrow(infoBox, javafx.scene.layout.Priority.ALWAYS);
+
+            Label nameLabel = new Label(backup.getTimestamp().format(displayFmt));
+            nameLabel.setStyle("-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #e0e0e0;");
+
+            String sizeText = backup.getSize() > 0 ? String.format("%.1f KB", backup.getSize() / 1024.0) : "";
+            Label detailLabel = new Label(backup.getName() + (sizeText.isEmpty() ? "" : "  •  " + sizeText));
+            detailLabel.setStyle("-fx-font-size: 10px; -fx-text-fill: #78909c;");
+
+            infoBox.getChildren().addAll(nameLabel, detailLabel);
+
+            Button downloadBtn = new Button("تنزيل");
+            downloadBtn.setStyle("-fx-background-color: #3b82f6; -fx-text-fill: white; -fx-font-size: 11px; -fx-padding: 5 12; -fx-background-radius: 6;");
+
+            // Check if already downloaded
+            String expectedZipName = backup.getName();
+            String expectedDbName = expectedZipName.replace(".zip", ".db");
+            File existingDb = new File(BACKUP_DOWNLOAD_DIR, expectedDbName);
+            if (existingDb.exists()) {
+                statusIcon.setText("✓");
+                statusIcon.setStyle("-fx-font-size: 16px; -fx-text-fill: #10b981; -fx-min-width: 24;");
+                downloadBtn.setText("تم التنزيل ✓");
+                downloadBtn.setStyle("-fx-background-color: #10b981; -fx-text-fill: white; -fx-font-size: 11px; -fx-padding: 5 12; -fx-background-radius: 6;");
+            }
+
+            downloadBtn.setOnAction(ev -> {
+                downloadBtn.setDisable(true);
+                downloadBtn.setText("جارِ التنزيل...");
+                statusIcon.setText("⏳");
+                statusIcon.setStyle("-fx-font-size: 16px; -fx-text-fill: #fbbf24; -fx-min-width: 24;");
+
+                Task<File> dlTask = new Task<>() {
+                    @Override
+                    protected File call() throws Exception {
+                        return downloadAndExtractBackup(backup);
+                    }
+                };
+
+                dlTask.setOnSucceeded(ev2 -> {
+                    File dbFile = dlTask.getValue();
+                    statusIcon.setText("✓");
+                    statusIcon.setStyle("-fx-font-size: 16px; -fx-text-fill: #10b981; -fx-min-width: 24;");
+                    downloadBtn.setText("تم التنزيل ✓");
+                    downloadBtn.setStyle("-fx-background-color: #10b981; -fx-text-fill: white; -fx-font-size: 11px; -fx-padding: 5 12; -fx-background-radius: 6;");
+                    downloadBtn.setDisable(false);
+                });
+
+                dlTask.setOnFailed(ev2 -> {
+                    statusIcon.setText("✗");
+                    statusIcon.setStyle("-fx-font-size: 16px; -fx-text-fill: #ef4444; -fx-min-width: 24;");
+                    downloadBtn.setText("فشل - إعادة");
+                    downloadBtn.setStyle("-fx-background-color: #ef4444; -fx-text-fill: white; -fx-font-size: 11px; -fx-padding: 5 12; -fx-background-radius: 6;");
+                    downloadBtn.setDisable(false);
+                    logger.error("Failed to download backup", dlTask.getException());
+                });
+
+                new Thread(dlTask).start();
+            });
+
+            // Click row to select for restore
+            row.setOnMouseClicked(ev -> {
+                // Deselect previous
+                if (selectedRow[0] != null) {
+                    selectedRow[0].setStyle("-fx-background-color: #10233d; -fx-padding: 10; -fx-background-radius: 8; -fx-cursor: hand;");
+                }
+                // Select this row
+                row.setStyle("-fx-background-color: #1a3a5c; -fx-padding: 10; -fx-background-radius: 8; -fx-cursor: hand; -fx-border-color: #3b82f6; -fx-border-radius: 8; -fx-border-width: 1;");
+                selectedRow[0] = row;
+
+                // Check if db file exists locally
+                String zipName = backup.getName();
+                String dbName = zipName.replace(".zip", ".db");
+                File dbFile = new File(BACKUP_DOWNLOAD_DIR, dbName);
+                if (dbFile.exists()) {
+                    selectedDbFile[0] = dbFile;
+                    restoreBtn.setDisable(false);
+                } else {
+                    selectedDbFile[0] = null;
+                    restoreBtn.setDisable(true);
+                }
+            });
+
+            row.getChildren().addAll(statusIcon, infoBox, downloadBtn);
+            backupListBox.getChildren().add(row);
+        }
+
+        scrollPane.setContent(backupListBox);
+        content.getChildren().add(scrollPane);
+
+        Label hintLabel = new Label("💡 قم بتنزيل النسخة أولاً ثم اضغط عليها لتحديدها ثم اضغط 'استعادة'");
+        hintLabel.setStyle("-fx-text-fill: #fbbf24; -fx-font-size: 11px;");
+        content.getChildren().add(hintLabel);
 
         dialog.getDialogPane().setContent(content);
 
         dialog.setResultConverter(dialogButton -> {
-            if (dialogButton == loginButtonType) {
-                return listView.getSelectionModel().getSelectedItem();
+            if (dialogButton == restoreButtonType) {
+                return selectedDbFile[0];
             }
             return null;
         });
 
-        dialog.showAndWait().ifPresent(selectedBackup -> {
-            performCloudRestore(selectedBackup);
+        dialog.showAndWait().ifPresent(dbFile -> {
+            if (dbFile != null && dbFile.exists()) {
+                performLocalRestore(dbFile);
+            }
         });
     }
 
-    private void performCloudRestore(BackupFile backup) {
-        if (backupProgressBar != null)
-            backupProgressBar.setVisible(true);
+    private File downloadAndExtractBackup(BackupFile backup) throws Exception {
+        com.hisabx.MainApp app = TabManager.getInstance().getMainApp();
+        com.hisabx.service.drive.GoogleDriveService driveService = app != null ? app.getGoogleDriveService() : null;
+        if (driveService == null) {
+            throw new IOException("خدمة Google Drive غير متوفرة");
+        }
 
-        Task<Void> restoreTask = new Task<>() {
-            @Override
-            protected Void call() throws Exception {
-                backupService.restoreFromCloud(backup.getId());
-                return null;
+        File downloadDir = new File(BACKUP_DOWNLOAD_DIR);
+        if (!downloadDir.exists()) {
+            downloadDir.mkdirs();
+        }
+
+        // Download zip
+        File zipFile = new File(downloadDir, backup.getName());
+        driveService.downloadFile(backup.getId(), zipFile);
+        logger.info("Downloaded backup to: " + zipFile.getAbsolutePath());
+
+        // Extract zip
+        String dbName = backup.getName().replace(".zip", ".db");
+        File dbFile = new File(downloadDir, dbName);
+
+        try (java.util.zip.ZipInputStream zis = new java.util.zip.ZipInputStream(new FileInputStream(zipFile))) {
+            java.util.zip.ZipEntry entry = zis.getNextEntry();
+            if (entry != null) {
+                java.nio.file.Files.copy(zis, dbFile.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                logger.info("Extracted backup to: " + dbFile.getAbsolutePath());
+            } else {
+                throw new IOException("ملف ZIP فارغ");
             }
-        };
+        }
 
-        restoreTask.setOnSucceeded(e -> {
-            if (backupProgressBar != null)
-                backupProgressBar.setVisible(false);
-            Alert alert = new Alert(Alert.AlertType.INFORMATION);
-            alert.setTitle("تم الاستعادة بنجاح");
-            alert.setHeaderText(null);
-            alert.setContentText("تم استعادة البيانات بنجاح.\nيجب إعادة تشغيل البرنامج لتطبيق التغييرات.");
-            alert.showAndWait();
-            System.exit(0); // Force restart by user
+        // Optionally delete zip after extraction
+        zipFile.delete();
+
+        return dbFile;
+    }
+
+    private void performLocalRestore(File dbFile) {
+        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+        confirm.setTitle("تأكيد الاستعادة");
+        confirm.setHeaderText("هل أنت متأكد من استعادة البيانات؟");
+        confirm.setContentText("سيتم استبدال قاعدة البيانات الحالية بـ:\n" + dbFile.getName()
+                + "\n\nسيتم إنشاء نسخة احتياطية تلقائياً.\nسيتم إغلاق البرنامج وتطبيق الاستعادة عند إعادة التشغيل.");
+
+        confirm.showAndWait().ifPresent(response -> {
+            if (response == ButtonType.OK) {
+                try {
+                    // Stage the restore file next to hisabx.db
+                    File pendingRestore = new File("hisabx_restore_pending.db");
+                    java.nio.file.Files.copy(dbFile.toPath(), pendingRestore.toPath(),
+                            java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                    logger.info("Staged restore file: " + pendingRestore.getAbsolutePath());
+
+                    Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                    alert.setTitle("جاهز للاستعادة");
+                    alert.setHeaderText(null);
+                    alert.setContentText("تم تجهيز النسخة الاحتياطية للاستعادة.\n"
+                            + "سيتم إغلاق البرنامج الآن.\n"
+                            + "عند إعادة التشغيل سيتم تطبيق الاستعادة تلقائياً.");
+                    alert.showAndWait();
+                    System.exit(0);
+                } catch (Exception e) {
+                    logger.error("Failed to stage restore file", e);
+                    showError("خطأ", "فشل تجهيز ملف الاستعادة: " + e.getMessage());
+                }
+            }
         });
-
-        restoreTask.setOnFailed(e -> {
-            if (backupProgressBar != null)
-                backupProgressBar.setVisible(false);
-            showError("خطأ في الاستعادة", "فشل استعادة النسخة الاحتياطية: " + restoreTask.getException().getMessage());
-        });
-
-        new Thread(restoreTask).start();
     }
 
     public void setDialogStage(Stage dialogStage) {

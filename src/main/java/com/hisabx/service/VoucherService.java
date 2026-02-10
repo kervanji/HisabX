@@ -110,9 +110,10 @@ public class VoucherService {
                                    Font titleFont,
                                    Font smallFont) throws DocumentException {
         boolean isReceipt = voucher.getVoucherType() == VoucherType.RECEIPT;
-        String voucherTitle = isReceipt ? "سند قبض" : "سند دفع";
-        String personLabel = isReceipt ? "استلمنا من السيد" : "دفعنا إلى السيد";
-        BaseColor metaBgColor = isReceipt ? new BaseColor(232, 245, 233) : new BaseColor(254, 226, 226);
+        boolean isPurchase = voucher.getVoucherType() == VoucherType.PURCHASE;
+        String voucherTitle = isReceipt ? "سند قبض" : isPurchase ? "فاتورة مشتريات" : "سند دفع";
+        String personLabel = isReceipt ? "استلمنا من السيد" : isPurchase ? "مشتريات من" : "دفعنا إلى السيد";
+        BaseColor metaBgColor = isReceipt ? new BaseColor(232, 245, 233) : isPurchase ? new BaseColor(254, 243, 199) : new BaseColor(254, 226, 226);
 
         PdfPTable titleTable = new PdfPTable(1);
         titleTable.setWidthPercentage(100);
@@ -440,7 +441,7 @@ public class VoucherService {
             }
 
             // إضافة المواد للمخزون (داخل نفس Session/Transaction لتجنب SQLITE_BUSY)
-            if (voucher.getVoucherType() == VoucherType.PAYMENT && voucher.getItems() != null) {
+            if ((voucher.getVoucherType() == VoucherType.PAYMENT || voucher.getVoucherType() == VoucherType.PURCHASE) && voucher.getItems() != null) {
                 for (VoucherItem item : voucher.getItems()) {
                     if (Boolean.TRUE.equals(item.getAddToInventory()) && item.getProduct() != null && item.getProduct().getId() != null) {
                         addStockInSession(session, item.getProduct().getId(), item.getQuantity());
@@ -509,7 +510,7 @@ public class VoucherService {
             }
 
             // إضافة المواد للمخزون (داخل نفس Session/Transaction لتجنب SQLITE_BUSY)
-            if (voucher.getVoucherType() == VoucherType.PAYMENT && voucher.getItems() != null) {
+            if ((voucher.getVoucherType() == VoucherType.PAYMENT || voucher.getVoucherType() == VoucherType.PURCHASE) && voucher.getItems() != null) {
                 for (VoucherItem item : voucher.getItems()) {
                     if (Boolean.TRUE.equals(item.getAddToInventory()) && item.getProduct() != null && item.getProduct().getId() != null) {
                         addStockInSession(session, item.getProduct().getId(), item.getQuantity());
@@ -851,6 +852,7 @@ public class VoucherService {
                 customer.setCurrentBalance(customer.getCurrentBalance() + amount);
             }
         } else {
+            // PAYMENT و PURCHASE كلاهما يخصم من رصيد العميل/المورد
             if (isUsd) {
                 customer.setBalanceUsd(customer.getBalanceUsd() - amount);
             } else {
@@ -910,7 +912,14 @@ public class VoucherService {
     }
     
     private String generateDescription(Voucher voucher) {
-        String typeName = voucher.getVoucherType() == VoucherType.RECEIPT ? "قبض من حساب" : "دفع لحساب";
+        String typeName;
+        if (voucher.getVoucherType() == VoucherType.RECEIPT) {
+            typeName = "قبض من حساب";
+        } else if (voucher.getVoucherType() == VoucherType.PURCHASE) {
+            typeName = "مشتريات من";
+        } else {
+            typeName = "دفع لحساب";
+        }
         String customerName = voucher.getCustomer() != null ? voucher.getCustomer().getName() : "نقدي";
         return typeName + " .. " + customerName;
     }

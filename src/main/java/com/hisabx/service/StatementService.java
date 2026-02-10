@@ -110,6 +110,16 @@ public class StatementService {
                             0.0,
                             voucher.getCurrency(),
                             voucher));
+                } else if (voucher.getVoucherType() == VoucherType.PURCHASE) {
+                    items.add(new StatementItem(
+                            voucher.getVoucherDate(),
+                            "مشتريات",
+                            voucher.getVoucherNumber(),
+                            voucher.getDescription(),
+                            voucher.getAmount(), // Debit
+                            0.0,
+                            voucher.getCurrency(),
+                            voucher));
                 }
             }
         }

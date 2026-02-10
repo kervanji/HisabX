@@ -41,6 +41,10 @@ public class MainApp extends Application {
         return backupService;
     }
 
+    public com.hisabx.service.drive.GoogleDriveService getGoogleDriveService() {
+        return googleDriveService;
+    }
+
     @Override
     public void start(Stage primaryStage) {
         this.primaryStage = primaryStage;
@@ -48,20 +52,23 @@ public class MainApp extends Application {
 
         registerStage(primaryStage);
 
-        // Initialize Services
+        // Initialize Services (Drive will be connected on-demand via Settings or Connect button)
         try {
             googleDriveService = new com.hisabx.service.drive.GoogleDriveService();
-            // Initialize drive service asynchronously to not block UI startup
-            new Thread(() -> {
-                try {
-                    googleDriveService.initialize();
-                } catch (Exception e) {
-                    logger.error("Failed to initialize Google Drive Service", e);
-                }
-            }).start();
-
             backupService = new com.hisabx.service.drive.BackupService(googleDriveService);
-            backupService.startHourlyBackup();
+
+            // Check if tokens already exist (previously connected) - reconnect silently (no browser)
+            java.io.File tokensDir = new java.io.File(System.getProperty("user.home") + "/.hisabx/drive_tokens");
+            if (tokensDir.exists() && tokensDir.list() != null && tokensDir.list().length > 0) {
+                new Thread(() -> {
+                    if (googleDriveService.initializeSilently()) {
+                        backupService.startHourlyBackup();
+                        logger.info("Google Drive reconnected silently from saved tokens");
+                    } else {
+                        logger.info("Saved tokens invalid/expired, user must connect manually via button");
+                    }
+                }).start();
+            }
 
         } catch (Exception e) {
             logger.error("Failed to initialize Backup Service", e);
@@ -84,7 +91,7 @@ public class MainApp extends Application {
         this.primaryStage.setFullScreen(false);
 
         try {
-            // Initialize database
+            // Initialize database (pending restore already applied in main() before JavaFX)
             DatabaseManager.initialize();
 
             // Set up logout callback
@@ -285,7 +292,39 @@ public class MainApp extends Application {
     }
 
     public static void main(String[] args) {
+        // Apply pending restore BEFORE JavaFX or any DB touches hisabx.db
+        applyPendingRestoreStatic();
         launch(args);
+    }
+
+    private static void applyPendingRestoreStatic() {
+        java.io.File pendingRestore = new java.io.File("hisabx_restore_pending.db");
+        if (!pendingRestore.exists()) {
+            return;
+        }
+        System.out.println("[RESTORE] Found pending restore file: " + pendingRestore.getAbsolutePath());
+        try {
+            java.io.File currentDb = new java.io.File("hisabx.db");
+            // Backup current DB before replacing
+            if (currentDb.exists()) {
+                java.io.File backup = new java.io.File("hisabx_before_restore.db");
+                java.nio.file.Files.copy(currentDb.toPath(), backup.toPath(),
+                        java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                System.out.println("[RESTORE] Backed up current DB to: " + backup.getAbsolutePath());
+            }
+            // Delete WAL and SHM files first (they hold locks)
+            new java.io.File("hisabx.db-wal").delete();
+            new java.io.File("hisabx.db-shm").delete();
+            // Replace current DB with the pending restore
+            java.nio.file.Files.copy(pendingRestore.toPath(), currentDb.toPath(),
+                    java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            // Delete the pending file
+            pendingRestore.delete();
+            System.out.println("[RESTORE] Database restored successfully from pending restore file");
+        } catch (Exception e) {
+            System.err.println("[RESTORE] Failed to apply pending restore: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 
     public Stage getPrimaryStage() {

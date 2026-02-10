@@ -38,17 +38,18 @@ public class GoogleDriveService {
     private static final String APPLICATION_NAME = "HisabX Inventory Management";
     private static final JsonFactory JSON_FACTORY = GsonFactory.getDefaultInstance();
     private static final String TOKENS_DIRECTORY_PATH = System.getProperty("user.home") + "/.hisabx/drive_tokens";
-    private static final List<String> SCOPES = Collections.singletonList(DriveScopes.DRIVE_FILE);
+    private static final List<String> SCOPES = Collections.singletonList(DriveScopes.DRIVE);
     private static final String CREDENTIALS_FILE_PATH = "/credentials.json";
     private static final String BACKUP_FOLDER_NAME = "HisabX Backups";
 
     private Drive driveService;
     private String backupFolderId;
+    private volatile boolean initializing = false;
 
     public GoogleDriveService() {
     }
 
-    private Credential getCredentials(final NetHttpTransport HTTP_TRANSPORT) throws IOException {
+    private GoogleAuthorizationCodeFlow buildFlow(final NetHttpTransport HTTP_TRANSPORT) throws IOException {
         InputStream in = GoogleDriveService.class.getResourceAsStream(CREDENTIALS_FILE_PATH);
         if (in == null) {
             // Fallback to trying to find it in the current directory or a config folder if
@@ -63,24 +64,92 @@ public class GoogleDriveService {
 
         GoogleClientSecrets clientSecrets = GoogleClientSecrets.load(JSON_FACTORY, new InputStreamReader(in));
 
-        GoogleAuthorizationCodeFlow flow = new GoogleAuthorizationCodeFlow.Builder(
+        return new GoogleAuthorizationCodeFlow.Builder(
                 HTTP_TRANSPORT, JSON_FACTORY, clientSecrets, SCOPES)
                 .setDataStoreFactory(new FileDataStoreFactory(new java.io.File(TOKENS_DIRECTORY_PATH)))
                 .setAccessType("offline")
                 .build();
+    }
 
-        LocalServerReceiver receiver = new LocalServerReceiver.Builder().setPort(8888).build();
+    private Credential getCredentials(final NetHttpTransport HTTP_TRANSPORT) throws IOException {
+        GoogleAuthorizationCodeFlow flow = buildFlow(HTTP_TRANSPORT);
+
+        // Try loading stored credential first (no port bind needed)
+        Credential storedCredential = flow.loadCredential("user");
+        if (storedCredential != null && (storedCredential.getRefreshToken() != null
+                || storedCredential.getExpiresInSeconds() == null
+                || storedCredential.getExpiresInSeconds() > 60)) {
+            logger.info("Loaded stored Google Drive credential (no browser needed)");
+            return storedCredential;
+        }
+
+        // No valid stored credential — need browser OAuth (use port 0 for dynamic port)
+        logger.info("No stored credential found, starting browser OAuth flow...");
+        LocalServerReceiver receiver = new LocalServerReceiver.Builder().setPort(0).build();
         return new AuthorizationCodeInstalledApp(flow, receiver).authorize("user");
     }
 
-    public void initialize() throws GeneralSecurityException, IOException {
-        final NetHttpTransport HTTP_TRANSPORT = GoogleNetHttpTransport.newTrustedTransport();
-        driveService = new Drive.Builder(HTTP_TRANSPORT, JSON_FACTORY, getCredentials(HTTP_TRANSPORT))
-                .setApplicationName(APPLICATION_NAME)
-                .build();
+    /**
+     * Initialize with browser OAuth if needed (user-triggered).
+     */
+    public synchronized void initialize() throws GeneralSecurityException, IOException {
+        if (driveService != null) {
+            logger.info("Google Drive already connected, skipping initialization");
+            return;
+        }
+        if (initializing) {
+            logger.warn("Google Drive initialization already in progress, skipping");
+            return;
+        }
+        initializing = true;
+        try {
+            final NetHttpTransport HTTP_TRANSPORT = GoogleNetHttpTransport.newTrustedTransport();
+            driveService = new Drive.Builder(HTTP_TRANSPORT, JSON_FACTORY, getCredentials(HTTP_TRANSPORT))
+                    .setApplicationName(APPLICATION_NAME)
+                    .build();
 
-        // Initialize backup folder
-        getOrCreateBackupFolder();
+            // Initialize backup folder
+            getOrCreateBackupFolder();
+        } finally {
+            initializing = false;
+        }
+    }
+
+    /**
+     * Try to reconnect silently from saved tokens only. Never opens a browser.
+     * Returns true if reconnected successfully, false otherwise.
+     */
+    public synchronized boolean initializeSilently() {
+        if (driveService != null) {
+            return true;
+        }
+        if (initializing) {
+            return false;
+        }
+        initializing = true;
+        try {
+            final NetHttpTransport HTTP_TRANSPORT = GoogleNetHttpTransport.newTrustedTransport();
+            GoogleAuthorizationCodeFlow flow = buildFlow(HTTP_TRANSPORT);
+            Credential storedCredential = flow.loadCredential("user");
+            if (storedCredential != null && (storedCredential.getRefreshToken() != null
+                    || storedCredential.getExpiresInSeconds() == null
+                    || storedCredential.getExpiresInSeconds() > 60)) {
+                driveService = new Drive.Builder(HTTP_TRANSPORT, JSON_FACTORY, storedCredential)
+                        .setApplicationName(APPLICATION_NAME)
+                        .build();
+                getOrCreateBackupFolder();
+                logger.info("Google Drive reconnected silently from saved tokens");
+                return true;
+            } else {
+                logger.info("No valid stored credential, silent reconnect skipped (browser auth needed)");
+                return false;
+            }
+        } catch (Exception e) {
+            logger.warn("Silent Google Drive reconnect failed", e);
+            return false;
+        } finally {
+            initializing = false;
+        }
     }
 
     public boolean isConnected() {
@@ -153,36 +222,92 @@ public class GoogleDriveService {
         if (driveService == null)
             return Collections.emptyList();
 
-        String folderId = getOrCreateBackupFolder();
-        List<File> allBackups = new ArrayList<>();
+        // Search ALL of Drive for hisabx_backup_ files
+        Map<String, File> backupMap = new HashMap<>(); // deduplicate by file ID
         String pageToken = null;
+
+        // Search 1: Global search across all of Drive
         do {
             FileList result = driveService.files().list()
-                    .setQ("name contains 'hisabx_backup_' and '" + folderId + "' in parents and trashed=false")
+                    .setQ("name contains 'hisabx_backup_' and trashed=false")
                     .setSpaces("drive")
                     .setFields("nextPageToken, files(id, name, createdTime, size)")
                     .setPageToken(pageToken)
                     .execute();
 
-            allBackups.addAll(result.getFiles());
+            for (File f : result.getFiles()) {
+                backupMap.put(f.getId(), f);
+            }
             pageToken = result.getNextPageToken();
         } while (pageToken != null);
 
+        // Search 2: Also search inside the backup folder specifically
+        try {
+            String folderId = getOrCreateBackupFolder();
+            pageToken = null;
+            do {
+                FileList result = driveService.files().list()
+                        .setQ("name contains 'hisabx_backup_' and '" + folderId + "' in parents and trashed=false")
+                        .setSpaces("drive")
+                        .setFields("nextPageToken, files(id, name, createdTime, size)")
+                        .setPageToken(pageToken)
+                        .execute();
+
+                for (File f : result.getFiles()) {
+                    backupMap.put(f.getId(), f);
+                }
+                pageToken = result.getNextPageToken();
+            } while (pageToken != null);
+        } catch (Exception e) {
+            logger.warn("Could not search backup folder", e);
+        }
+
+        List<File> allBackups = new ArrayList<>(backupMap.values());
+        logger.info("Found " + allBackups.size() + " files matching 'hisabx_backup_' in Google Drive");
+
         List<BackupFile> parsedBackups = new ArrayList<>();
-        Pattern pattern = Pattern.compile("hisabx_backup_(\\d{8}_\\d{6})");
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss");
+        // Format 1: yyyy-MM-dd_HH-mm-ss (current BackupService format)
+        Pattern pattern1 = Pattern.compile("hisabx_backup_(\\d{4}-\\d{2}-\\d{2}_\\d{2}-\\d{2}-\\d{2})");
+        DateTimeFormatter formatter1 = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss");
+        // Format 2: yyyyMMdd_HHmmss (legacy format)
+        Pattern pattern2 = Pattern.compile("hisabx_backup_(\\d{8}_\\d{6})");
+        DateTimeFormatter formatter2 = DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss");
 
         for (File file : allBackups) {
-            Matcher matcher = pattern.matcher(file.getName());
-            if (matcher.find()) {
+            logger.debug("Processing Drive file: " + file.getName() + " (id=" + file.getId() + ")");
+            boolean parsed = false;
+
+            // Try format 1 first (current)
+            Matcher matcher1 = pattern1.matcher(file.getName());
+            if (matcher1.find()) {
                 try {
-                    LocalDateTime timestamp = LocalDateTime.parse(matcher.group(1), formatter);
+                    LocalDateTime timestamp = LocalDateTime.parse(matcher1.group(1), formatter1);
                     parsedBackups.add(new BackupFile(file, timestamp));
+                    parsed = true;
                 } catch (Exception e) {
-                    // ignore
+                    logger.warn("Failed to parse timestamp (format1) from: " + file.getName(), e);
                 }
             }
+
+            // Try format 2 (legacy)
+            if (!parsed) {
+                Matcher matcher2 = pattern2.matcher(file.getName());
+                if (matcher2.find()) {
+                    try {
+                        LocalDateTime timestamp = LocalDateTime.parse(matcher2.group(1), formatter2);
+                        parsedBackups.add(new BackupFile(file, timestamp));
+                        parsed = true;
+                    } catch (Exception e) {
+                        logger.warn("Failed to parse timestamp (format2) from: " + file.getName(), e);
+                    }
+                }
+            }
+
+            if (!parsed) {
+                logger.warn("Could not parse backup filename: " + file.getName());
+            }
         }
+        logger.info("Parsed " + parsedBackups.size() + " valid backups from " + allBackups.size() + " files");
         parsedBackups.sort((b1, b2) -> b2.timestamp.compareTo(b1.timestamp)); // Newest first
         return parsedBackups;
     }
